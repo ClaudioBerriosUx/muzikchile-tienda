@@ -58,7 +58,9 @@ export default function Sidebar({ items, footer }: Props) {
       </nav>
 
       {footer && (
-        <div className="border-t border-[#e8e8e8]">{footer}</div>
+        <div className="border-t border-[#e8e8e8] shrink-0 bg-[#f8f7f5]">
+          {footer}
+        </div>
       )}
     </div>
   );
