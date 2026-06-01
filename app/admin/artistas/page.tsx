@@ -24,7 +24,6 @@ interface Artista {
 }
 
 export default function ArtistasPage() {
-  const supabase = createClient();
   const queryClient = useQueryClient();
 
   const [seleccionado, setSeleccionado] = useState<Artista | null>(null);
@@ -41,10 +40,13 @@ export default function ArtistasPage() {
   const { data: artistas = [] } = useQuery<Artista[]>({
     queryKey: ["admin-artistas"],
     queryFn: async () => {
+      const supabase = createClient();
       const { data, error } = await supabase
         .from("artistas")
         .select("id, nombre, slug, foto, bio, ciudad, region, comision, es_founder, tienda_activa")
         .order("nombre");
+      console.log("admin artistas data:", data);
+      console.log("admin artistas error:", error);
       if (error) throw error;
       return (data ?? []) as Artista[];
     },
@@ -61,6 +63,7 @@ export default function ArtistasPage() {
   const guardar = async () => {
     if (!seleccionado) return;
     setGuardando(true);
+    const supabase = createClient();
     const { error } = await supabase
       .from("artistas")
       .update({ comision: esFounder ? 0 : comision, es_founder: esFounder, tienda_activa: tiendaActiva })
@@ -77,6 +80,7 @@ export default function ArtistasPage() {
     if (!emailInvitar.trim()) return;
     setInvitando(true);
     setLinkManual("");
+    const supabase = createClient();
     try {
       const { error } = await supabase.functions.invoke("invitar-artista", {
         body: { email: emailInvitar.trim() },

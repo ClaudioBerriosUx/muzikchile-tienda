@@ -35,7 +35,6 @@ function nombreCategoria(c: Categoria | Categoria[] | null): string {
 }
 
 export default function ModerarProductosPage() {
-  const supabase = createClient();
   const queryClient = useQueryClient();
 
   const [tab, setTab] = useState<"pendientes" | "todos">("pendientes");
@@ -48,12 +47,15 @@ export default function ModerarProductosPage() {
   const { data: productos = [] } = useQuery<Producto[]>({
     queryKey: ["admin-productos", tab],
     queryFn: async () => {
+      const supabase = createClient();
       let q = supabase
         .from("productos")
         .select("id, nombre, precio, imagenes, tipo, estado, descripcion, zonas_envio, artista_id, artistas(nombre, slug), categorias(nombre)")
         .order("created_at", { ascending: true });
       if (tab === "pendientes") q = q.eq("estado", "en_revision");
       const { data, error } = await q;
+      console.log("admin productos data:", data);
+      console.log("admin productos error:", error);
       if (error) throw error;
       return (data ?? []) as unknown as Producto[];
     },
@@ -80,6 +82,7 @@ export default function ModerarProductosPage() {
   const aprobar = async () => {
     if (!seleccionado) return;
     setProcesando(true);
+    const supabase = createClient();
     const { error } = await supabase
       .from("productos")
       .update({ estado: "aprobado" })
@@ -95,6 +98,7 @@ export default function ModerarProductosPage() {
       return;
     }
     setProcesando(true);
+    const supabase = createClient();
     const { error } = await supabase
       .from("productos")
       .update({ estado: "rechazado", motivo_rechazo: motivo.trim() })
