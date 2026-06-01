@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,6 +29,15 @@ interface FormState {
 }
 
 const FORM_VACIO: FormState = { nombre: "", icono: "", padre_id: "" };
+
+function generarSlug(texto: string) {
+  return texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 export default function CategoriasPage() {
   const queryClient = useQueryClient();
@@ -76,18 +85,24 @@ export default function CategoriasPage() {
         if (error) throw error;
         toast.success("Categoría actualizada");
       } else {
-        const { data: existentes } = await supabase
+        let ordenQuery = supabase
           .from("categorias")
           .select("orden")
-          .is("padre_id", form.padre_id || null)
           .order("orden", { ascending: false })
           .limit(1);
+        if (form.padre_id) {
+          ordenQuery = ordenQuery.eq("padre_id", form.padre_id);
+        } else {
+          ordenQuery = ordenQuery.is("padre_id", null);
+        }
+        const { data: existentes } = await ordenQuery;
         const siguienteOrden = existentes?.[0]?.orden != null ? existentes[0].orden + 1 : 0;
         const payload = {
-          nombre: form.nombre.trim(),
-          icono: form.icono.trim() || null,
+          nombre:   form.nombre.trim(),
+          slug:     generarSlug(form.nombre.trim()),
+          icono:    form.icono.trim() || null,
           padre_id: form.padre_id || null,
-          orden: siguienteOrden,
+          orden:    siguienteOrden,
         };
         const { error } = await supabase.from("categorias").insert(payload);
         if (error) throw error;
