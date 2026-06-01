@@ -352,6 +352,14 @@ export default function NuevoProductoPage() {
                 </div>
               )}
 
+              <div style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#999999", marginTop: "6px", lineHeight: 1.5 }}>
+                📐 Tamaño recomendado: 800 × 800 px (cuadrada)<br />
+                📁 Formatos: JPG, PNG, WEBP<br />
+                ⚖️ Peso máximo: 5 MB por imagen<br />
+                🖼️ Mínimo 1 imagen, máximo 5<br />
+                💡 Tip: fondo blanco o neutro para mejor presentación
+              </div>
+
               {previews.length > 0 && (
                 <div className="flex gap-2 mt-3 flex-wrap">
                   {previews.map((url, i) => (

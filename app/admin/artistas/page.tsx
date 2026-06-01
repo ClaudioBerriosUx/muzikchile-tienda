@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Music, UserPlus } from "lucide-react";
+import { Music, UserPlus, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -264,6 +265,21 @@ export default function ArtistasPage() {
                 </div>
                 <Switch checked={tiendaActiva} onCheckedChange={setTiendaActiva} />
               </div>
+
+              <Link
+                href={`/admin/artistas/${seleccionado.id}/editar`}
+                className="flex items-center justify-center gap-2 w-full h-10 rounded-md border text-sm font-semibold transition-colors"
+                style={{
+                  fontFamily: "Barlow, sans-serif",
+                  borderColor: "#e8e8e8",
+                  color: "#444444",
+                  backgroundColor: "#ffffff",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8f7f5")}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#ffffff")}
+              >
+                <Pencil size={13} /> Editar perfil completo
+              </Link>
 
               <button
                 onClick={guardar}

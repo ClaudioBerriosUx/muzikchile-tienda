@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Camera, ExternalLink } from "lucide-react";
+import { Camera } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { REGIONES_CHILE, BANCOS_CHILE } from "@/lib/constants";
@@ -15,37 +16,11 @@ import ColorPicker from "@/components/ui/ColorPicker";
 const TIPOS_CUENTA = ["Cuenta Corriente", "Cuenta Vista", "Cuenta de Ahorro", "Cuenta RUT"];
 
 const REDES_CONFIG = [
-  {
-    key: "instagram" as const,
-    label: "Instagram",
-    placeholder: "@nombre_de_usuario",
-    hint: "Solo el nombre de usuario, sin @. Ej: camilamoreno_oficial",
-  },
-  {
-    key: "spotify" as const,
-    label: "Spotify",
-    placeholder: "https://open.spotify.com/artist/...",
-    hint: "Pega el link de tu perfil de Spotify. Se mostrará un botón para escucharte.",
-    badge: "🔗 Próximamente: Conectar con Spotify",
-  },
-  {
-    key: "youtube" as const,
-    label: "YouTube",
-    placeholder: "https://youtube.com/@canal",
-    hint: "Link a tu canal de YouTube",
-  },
-  {
-    key: "tiktok" as const,
-    label: "TikTok",
-    placeholder: "@nombre_de_usuario",
-    hint: "Solo el nombre de usuario, sin @",
-  },
-  {
-    key: "soundcloud" as const,
-    label: "SoundCloud",
-    placeholder: "https://soundcloud.com/tu-perfil",
-    hint: "Link a tu perfil de SoundCloud",
-  },
+  { key: "instagram" as const, label: "Instagram", placeholder: "@nombre_de_usuario", hint: "Solo el nombre de usuario, sin @" },
+  { key: "spotify"   as const, label: "Spotify",   placeholder: "https://open.spotify.com/artist/...", hint: "Link del perfil de Spotify" },
+  { key: "youtube"   as const, label: "YouTube",   placeholder: "https://youtube.com/@canal", hint: "Link al canal de YouTube" },
+  { key: "tiktok"    as const, label: "TikTok",    placeholder: "@nombre_de_usuario", hint: "Solo el nombre de usuario, sin @" },
+  { key: "soundcloud" as const, label: "SoundCloud", placeholder: "https://soundcloud.com/tu-perfil", hint: "Link al perfil de SoundCloud" },
 ];
 
 function slugify(texto: string) {
@@ -58,8 +33,8 @@ function slugify(texto: string) {
 
 const schema = z.object({
   nombre:          z.string().min(2, "Mínimo 2 caracteres"),
-  slug:            z.string().min(2, "Mínimo 2 caracteres").regex(/^[a-z0-9-]+$/, "Solo minúsculas, números y guiones"),
-  bio:             z.string().max(160, "Máximo 160 caracteres").optional().or(z.literal("")),
+  slug:            z.string().min(2).regex(/^[a-z0-9-]+$/, "Solo minúsculas, números y guiones"),
+  bio:             z.string().max(160).optional().or(z.literal("")),
   bio_completa:    z.string().max(2000).optional().or(z.literal("")),
   ciudad:          z.string().optional().or(z.literal("")),
   region:          z.string().optional().or(z.literal("")),
@@ -71,8 +46,8 @@ const schema = z.object({
   tiktok:          z.string().optional().or(z.literal("")),
   soundcloud:      z.string().optional().or(z.literal("")),
   facebook:        z.string().optional().or(z.literal("")),
-  seo_titulo:      z.string().max(60, "Máximo 60 caracteres").optional().or(z.literal("")),
-  seo_descripcion: z.string().max(160, "Máximo 160 caracteres").optional().or(z.literal("")),
+  seo_titulo:      z.string().max(60).optional().or(z.literal("")),
+  seo_descripcion: z.string().max(160).optional().or(z.literal("")),
   banco:           z.string().optional().or(z.literal("")),
   rut:             z.string().optional().or(z.literal("")),
   tipo_cuenta:     z.string().optional().or(z.literal("")),
@@ -110,10 +85,9 @@ const hintStyle: React.CSSProperties = {
   lineHeight: 1.5,
 };
 
-export default function PerfilPage() {
-  const supabase    = createClient();
-  const queryClient = useQueryClient();
-  const fotoRef     = useRef<HTMLInputElement>(null);
+export default function AdminEditarArtistaPage() {
+  const { id } = useParams<{ id: string }>();
+  const fotoRef = useRef<HTMLInputElement>(null);
 
   const [fotoPreview,  setFotoPreview]  = useState<string | null>(null);
   const [fotoArchivo,  setFotoArchivo]  = useState<File | null>(null);
@@ -121,14 +95,14 @@ export default function PerfilPage() {
   const [guardando,    setGuardando]    = useState(false);
 
   const { data: artista, isLoading } = useQuery<Artista | null>({
-    queryKey: ["panel-artista"],
+    queryKey: ["admin-artista-edit", id],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
+      const supabase = createClient();
       const { data } = await supabase
-        .from("artistas").select("*").eq("user_id", user.id).single();
+        .from("artistas").select("*").eq("id", id).single();
       return data as Artista | null;
     },
+    enabled: !!id,
   });
 
   const { register, handleSubmit, setValue, watch, reset, formState: { errors } } =
@@ -168,9 +142,7 @@ export default function PerfilPage() {
     if (artista.foto_url) setFotoPreview(artista.foto_url);
   }, [artista, reset]);
 
-  const autoSlug = () => {
-    if (!artista?.slug) setValue("slug", slugify(nombreWatch));
-  };
+  const autoSlug = () => setValue("slug", slugify(nombreWatch));
 
   const handleFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -180,16 +152,15 @@ export default function PerfilPage() {
   };
 
   const onSubmit = async (data: FormData) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { toast.error("Sin sesión"); return; }
-
+    if (!artista) return;
     setGuardando(true);
+    const supabase = createClient();
     try {
-      let fotoUrl = artista?.foto_url ?? null;
+      let fotoUrl = artista.foto_url ?? null;
 
       if (fotoArchivo) {
         const ext  = fotoArchivo.name.split(".").pop() ?? "jpg";
-        const path = `${user.id}/foto.${ext}`;
+        const path = `${artista.id}/foto.${ext}`;
         const { error: upErr } = await supabase.storage
           .from("artistas").upload(path, fotoArchivo, { upsert: true });
         if (upErr) throw upErr;
@@ -203,8 +174,7 @@ export default function PerfilPage() {
           .filter(([, v]) => v)
       );
 
-      const payload = {
-        user_id:         user.id,
+      const { error } = await supabase.from("artistas").update({
         nombre:          data.nombre,
         slug:            data.slug,
         bio:             data.bio || null,
@@ -221,18 +191,10 @@ export default function PerfilPage() {
         rut:             data.rut || null,
         tipo_cuenta:     data.tipo_cuenta || null,
         cuenta_bancaria: data.cuenta_bancaria || null,
-      };
+      }).eq("id", artista.id);
 
-      if (artista?.id) {
-        const { error } = await supabase.from("artistas").update(payload).eq("id", artista.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from("artistas").insert(payload);
-        if (error) throw error;
-      }
-
-      toast.success("Perfil guardado");
-      queryClient.invalidateQueries({ queryKey: ["panel-artista"] });
+      if (error) throw error;
+      toast.success("Perfil actualizado");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al guardar");
     } finally {
@@ -253,7 +215,7 @@ export default function PerfilPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Cargando perfil...</p>
+        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Cargando artista...</p>
       </div>
     );
   }
@@ -263,22 +225,33 @@ export default function PerfilPage() {
 
   return (
     <div className="max-w-3xl">
+      {/* Header admin */}
       <div className="flex items-center justify-between mb-8">
-        <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
-          Mi perfil
-        </h1>
-        {artista?.slug && (
+        <div className="flex flex-col gap-1">
           <Link
-            href={`/artista/${artista.slug}`}
-            target="_blank"
-            className="flex items-center gap-1.5 text-sm transition-colors"
-            style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#e8003d")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#666666")}
+            href="/admin/artistas"
+            style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#999999" }}
+            className="hover:text-[#e8003d] transition-colors"
           >
-            <ExternalLink size={14} /> Ver mi tienda
+            ← Volver a artistas
           </Link>
-        )}
+          <div className="flex items-center gap-3">
+            <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "24px", fontWeight: "700", color: "#111111" }}>
+              Editando perfil de {artista?.nombre ?? "…"}
+            </h1>
+            <span style={{
+              fontFamily: "Barlow, sans-serif",
+              fontSize: "11px",
+              fontWeight: 600,
+              backgroundColor: "#fef08a",
+              color: "#713f12",
+              padding: "2px 8px",
+              borderRadius: "4px",
+            }}>
+              Vista admin
+            </span>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-8">
@@ -298,46 +271,29 @@ export default function PerfilPage() {
                 <Camera size={20} className="text-white" />
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => fotoRef.current?.click()}
-              className="text-xs transition-colors"
-              style={{ fontFamily: "Barlow, sans-serif", color: "#e8003d" }}
-            >
+            <button type="button" onClick={() => fotoRef.current?.click()} className="text-xs"
+              style={{ fontFamily: "Barlow, sans-serif", color: "#e8003d" }}>
               Cambiar foto
             </button>
             <input ref={fotoRef} type="file" accept="image/*" className="hidden" onChange={handleFoto} />
-            <p style={{ ...hintStyle, marginTop: "4px", textAlign: "center" }}>
-              📐 400 × 400 px<br />
-              📁 JPG, PNG, WEBP<br />
-              ⚖️ Máx. 2 MB
-            </p>
           </div>
 
           <div className="flex-1 flex flex-col gap-4">
             <div>
               {labelEl("Nombre artístico *")}
-              <input
-                {...register("nombre")}
-                onBlur={autoSlug}
-                className={inputClass}
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
-                placeholder="Tu nombre de artista"
-              />
+              <input {...register("nombre")} onBlur={autoSlug} className={inputClass}
+                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} placeholder="Nombre del artista" />
               {errEl(errors.nombre?.message)}
             </div>
             <div>
-              {labelEl("URL de tu tienda (slug)")}
+              {labelEl("Slug")}
               <div className="flex items-center rounded-md border border-[#e8e8e8] overflow-hidden focus-within:border-[#e8003d] transition-colors">
                 <span className="px-3 py-2.5 text-sm bg-[#f8f7f5] border-r border-[#e8e8e8] shrink-0"
                   style={{ fontFamily: "Barlow, sans-serif", color: "#999999" }}>
-                  tienda.muzikchile.cl/artista/
+                  /artista/
                 </span>
-                <input
-                  {...register("slug")}
-                  className="flex-1 px-3 py-2.5 text-sm focus:outline-none"
-                  style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
-                />
+                <input {...register("slug")} className="flex-1 px-3 py-2.5 text-sm focus:outline-none"
+                  style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} />
               </div>
               {errEl(errors.slug?.message)}
             </div>
@@ -346,32 +302,23 @@ export default function PerfilPage() {
 
         {/* ── Información pública ── */}
         <section className="p-6 rounded-xl border border-[#e8e8e8] bg-white flex flex-col gap-5">
-          <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111", marginBottom: "-4px" }}>
+          <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
             Información pública
           </h2>
 
           <div>
-            {labelEl(`Bio corta (${(bioWatch ?? "").length}/160 — aparece en el catálogo)`)}
-            <textarea
-              {...register("bio")}
-              rows={2}
-              maxLength={160}
-              className={`${inputClass} resize-none`}
-              style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
-              placeholder="Una frase que te describe..."
-            />
+            {labelEl(`Bio corta (${(bioWatch ?? "").length}/160)`)}
+            <textarea {...register("bio")} rows={2} maxLength={160}
+              className={`${inputClass} resize-none`} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+              placeholder="Una frase que describe al artista..." />
             {errEl(errors.bio?.message)}
           </div>
 
           <div>
             {labelEl("Biografía completa")}
-            <textarea
-              {...register("bio_completa")}
-              rows={5}
-              className={`${inputClass} resize-none`}
-              style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
-              placeholder="Cuéntale a tus fans quién eres..."
-            />
+            <textarea {...register("bio_completa")} rows={5}
+              className={`${inputClass} resize-none`} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+              placeholder="Biografía extendida..." />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -382,7 +329,7 @@ export default function PerfilPage() {
             <div>
               {labelEl("Región")}
               <select {...register("region")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}>
-                <option value="">Selecciona tu región</option>
+                <option value="">Selecciona región</option>
                 {REGIONES_CHILE.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
@@ -390,54 +337,29 @@ export default function PerfilPage() {
 
           <div>
             {labelEl("Géneros musicales")}
-            <input
-              {...register("generos")}
-              className={inputClass}
+            <input {...register("generos")} className={inputClass}
               style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
-              placeholder="Ej: Indie folk, Nueva Canción, Acústico"
-            />
-            <p style={hintStyle}>Separa los géneros con comas. Ayuda a que te descubran más fácil.</p>
+              placeholder="Ej: Indie folk, Nueva Canción, Acústico" />
+            <p style={hintStyle}>Separar con comas.</p>
           </div>
 
           <div>
-            {labelEl("Color de acento (aparece en tu perfil)")}
-            <ColorPicker
-              valor={colorAccento}
-              onChange={(c) => { setColorAccento(c); setValue("color_acento", c); }}
-            />
+            {labelEl("Color de acento")}
+            <ColorPicker valor={colorAccento} onChange={(c) => { setColorAccento(c); setValue("color_acento", c); }} />
           </div>
         </section>
 
         {/* ── Redes sociales ── */}
         <section className="p-6 rounded-xl border border-[#e8e8e8] bg-white flex flex-col gap-5">
-          <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111", marginBottom: "-4px" }}>
+          <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
             Redes sociales
           </h2>
-          {REDES_CONFIG.map(({ key, label: lbl, placeholder, hint, badge }) => (
+          {REDES_CONFIG.map(({ key, label: lbl, placeholder, hint }) => (
             <div key={key}>
               {labelEl(lbl)}
-              <input
-                {...register(key as keyof FormData)}
-                className={inputClass}
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
-                placeholder={placeholder}
-              />
+              <input {...register(key as keyof FormData)} className={inputClass}
+                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} placeholder={placeholder} />
               <p style={hintStyle}>{hint}</p>
-              {badge && (
-                <span style={{
-                  fontFamily: "Barlow, sans-serif",
-                  fontSize: "11px",
-                  color: "#aaaaaa",
-                  backgroundColor: "#f0f0f0",
-                  padding: "3px 8px",
-                  borderRadius: "4px",
-                  marginTop: "6px",
-                  display: "inline-block",
-                  cursor: "default",
-                }}>
-                  {badge}
-                </span>
-              )}
             </div>
           ))}
         </section>
@@ -446,85 +368,48 @@ export default function PerfilPage() {
         <section className="p-6 rounded-xl border border-[#e8e8e8] bg-white flex flex-col gap-5">
           <div>
             <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
-              SEO de tu perfil
+              SEO del perfil
             </h2>
             <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#999999", marginTop: "2px" }}>
-              Ayuda a que tus fans te encuentren en Google
+              Cómo aparece en Google
             </p>
           </div>
 
           <div>
             {labelEl("Título para Google")}
-            <input
-              {...register("seo_titulo")}
-              maxLength={60}
-              className={inputClass}
+            <input {...register("seo_titulo")} maxLength={60} className={inputClass}
               style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
-              placeholder={`Ej: ${artista?.nombre ?? "Tu nombre"} | Merch oficial`}
-            />
-            <div className="flex items-start justify-between mt-1.5">
-              <p style={{ ...hintStyle, marginTop: 0 }}>
-                Aparece en Google como título de tu página. Si está vacío, se genera como &quot;[Nombre] | Merch en MuzikChile&quot;.
-              </p>
-              <span style={{
-                fontFamily: "Barlow, sans-serif",
-                fontSize: "12px",
-                color: (seoTituloWatch?.length ?? 0) >= 60 ? "#e8003d" : "#999999",
-                whiteSpace: "nowrap",
-                marginLeft: "8px",
-                flexShrink: 0,
-              }}>
+              placeholder="Ej: Nombre artista | Merch oficial" />
+            <div className="flex justify-end">
+              <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: (seoTituloWatch?.length ?? 0) >= 60 ? "#e8003d" : "#999999" }}>
                 {seoTituloWatch?.length ?? 0}/60
               </span>
             </div>
-            {errEl(errors.seo_titulo?.message)}
           </div>
 
           <div>
             {labelEl("Descripción para Google")}
-            <textarea
-              {...register("seo_descripcion")}
-              maxLength={160}
-              rows={3}
-              className={`${inputClass} resize-none`}
-              style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
-              placeholder="Ej: Compra merch oficial de Camila Moreno. Poleras, vinilos y más desde Santiago."
-            />
-            <div className="flex items-start justify-between mt-1.5">
-              <p style={{ ...hintStyle, marginTop: 0 }}>
-                Aparece debajo del título en Google. Si está vacío, se usa la bio. Máximo 160 caracteres.
-              </p>
-              <span style={{
-                fontFamily: "Barlow, sans-serif",
-                fontSize: "12px",
-                color: (seoDescWatch?.length ?? 0) >= 160 ? "#e8003d" : "#999999",
-                whiteSpace: "nowrap",
-                marginLeft: "8px",
-                flexShrink: 0,
-              }}>
+            <textarea {...register("seo_descripcion")} maxLength={160} rows={3}
+              className={`${inputClass} resize-none`} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+              placeholder="Descripción breve para Google..." />
+            <div className="flex justify-end">
+              <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: (seoDescWatch?.length ?? 0) >= 160 ? "#e8003d" : "#999999" }}>
                 {seoDescWatch?.length ?? 0}/160
               </span>
             </div>
-            {errEl(errors.seo_descripcion?.message)}
           </div>
         </section>
 
         {/* ── Datos bancarios ── */}
         <section className="p-6 rounded-xl border border-[#e8e8e8] bg-white flex flex-col gap-4">
-          <div>
-            <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
-              Datos bancarios
-            </h2>
-            <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#999999", marginTop: "2px" }}>
-              Necesarios para recibir tus pagos. No son públicos.
-            </p>
-          </div>
-
+          <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
+            Datos bancarios
+          </h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
               {labelEl("Banco")}
               <select {...register("banco")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}>
-                <option value="">Selecciona tu banco</option>
+                <option value="">Selecciona banco</option>
                 {BANCOS_CHILE.map((b) => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
@@ -547,7 +432,7 @@ export default function PerfilPage() {
         </section>
 
         {/* Submit */}
-        <div className="pb-4">
+        <div className="pb-8">
           <button
             type="submit"
             disabled={guardando}
