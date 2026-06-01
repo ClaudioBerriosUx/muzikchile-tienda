@@ -20,8 +20,8 @@ export default function Sidebar({ items, footer }: Props) {
 
   return (
     <div
-      className="w-60 h-screen sticky top-16 border-r border-[#e8e8e8] shrink-0 flex flex-col"
-      style={{ backgroundColor: "#f8f7f5" }}
+      className="w-60 sticky top-16 border-r border-[#e8e8e8] shrink-0 flex flex-col"
+      style={{ height: "calc(100vh - 64px)", backgroundColor: "#f8f7f5" }}
     >
       <nav className="flex-1 overflow-y-auto py-4">
         {items.map((item) => {
