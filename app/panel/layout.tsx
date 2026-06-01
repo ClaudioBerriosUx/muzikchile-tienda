@@ -38,7 +38,17 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         .eq("user_id", user.id)
         .single();
 
-      if (!roleData || (roleData.role !== "artista" && roleData.role !== "admin")) {
+      const role = roleData?.role;
+
+      if (!role) {
+        router.push("/login?redirectTo=/panel");
+        return;
+      }
+      if (role === "admin") {
+        router.push("/admin");
+        return;
+      }
+      if (role !== "artista") {
         router.push("/");
         return;
       }
