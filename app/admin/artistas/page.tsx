@@ -36,7 +36,6 @@ export default function ArtistasPage() {
   const [invitarOpen, setInvitarOpen] = useState(false);
   const [emailInvitar, setEmailInvitar] = useState("");
   const [invitando, setInvitando] = useState(false);
-  const [linkManual, setLinkManual] = useState("");
 
   const { data: artistas = [] } = useQuery<Artista[]>({
     queryKey: ["admin-artistas"],
@@ -80,24 +79,42 @@ export default function ArtistasPage() {
   const invitar = async () => {
     if (!emailInvitar.trim()) return;
     setInvitando(true);
-    setLinkManual("");
     const supabase = createClient();
+
+    // Intenta Edge Function primero
     try {
       const { error } = await supabase.functions.invoke("invitar-artista", {
         body: { email: emailInvitar.trim() },
       });
-      if (error) throw error;
-      toast.success("Invitación enviada por email");
+      if (!error) {
+        toast.success("Invitación enviada por email");
+        setInvitarOpen(false);
+        setEmailInvitar("");
+        setInvitando(false);
+        return;
+      }
+    } catch {
+      // fallthrough al magic link directo
+    }
+
+    // Fallback: magic link real via Supabase Auth
+    const siteUrl = process.env.NEXT_PUBLIC_URL ?? window.location.origin;
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: emailInvitar.trim(),
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: `${siteUrl}/panel/perfil`,
+      },
+    });
+
+    if (otpError) {
+      toast.error(otpError.message);
+    } else {
+      toast.success("Magic link enviado al email del artista");
       setInvitarOpen(false);
       setEmailInvitar("");
-    } catch {
-      const token = Math.random().toString(36).slice(2, 10);
-      const url = process.env.NEXT_PUBLIC_URL ?? window.location.origin;
-      setLinkManual(`${url}/registro?token=${token}`);
-      toast.info("Edge Function no disponible — usa el link manual");
-    } finally {
-      setInvitando(false);
     }
+    setInvitando(false);
   };
 
   const inputClass = "w-full rounded-md px-3 py-2 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none transition-colors";
@@ -112,7 +129,7 @@ export default function ArtistasPage() {
             Artistas ({artistas.length})
           </h2>
           <button
-            onClick={() => { setInvitarOpen(true); setLinkManual(""); }}
+            onClick={() => setInvitarOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded text-white text-xs"
             style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#e8003d" }}
           >
@@ -312,14 +329,6 @@ export default function ArtistasPage() {
               className="w-full mt-2 rounded-md px-3 py-2 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none"
               style={{ fontFamily: "DM Sans, sans-serif" }}
             />
-            {linkManual && (
-              <div className="mt-3 p-3 rounded bg-[#f8f7f5] border border-[#e8e8e8]">
-                <p className="text-xs mb-1" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
-                  Envía este link manualmente:
-                </p>
-                <code className="text-xs break-all" style={{ color: "#e8003d" }}>{linkManual}</code>
-              </div>
-            )}
           </div>
           <DialogFooter>
             <button

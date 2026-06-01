@@ -41,7 +41,15 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       const role = roleData?.role;
 
       if (!role) {
-        router.push("/login?redirectTo=/panel");
+        // Primer login via magic link de invitación → asignar rol artista
+        const { error: insertError } = await supabase
+          .from("user_roles")
+          .insert({ user_id: user.id, role: "artista" });
+        if (insertError) {
+          router.push("/login?redirectTo=/panel");
+          return;
+        }
+        setAuthorized(true);
         return;
       }
       if (role === "admin") {
