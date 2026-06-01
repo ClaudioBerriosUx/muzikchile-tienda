@@ -58,7 +58,7 @@ interface Artista {
   user_id: string;
   nombre: string;
   slug: string;
-  foto?: string;
+  foto_url?: string;
   bio?: string;
   bio_completa?: string;
   ciudad?: string;
@@ -122,7 +122,7 @@ export default function PerfilPage() {
       cuenta_bancaria: artista.cuenta_bancaria ?? "",
     });
     setColorAccento(artista.color_acento ?? "#e8003d");
-    if (artista.foto) setFotoPreview(artista.foto);
+    if (artista.foto_url) setFotoPreview(artista.foto_url);
   }, [artista, reset]);
 
   const autoSlug = () => {
@@ -142,7 +142,7 @@ export default function PerfilPage() {
 
     setGuardando(true);
     try {
-      let fotoUrl = artista?.foto ?? null;
+      let fotoUrl = artista?.foto_url ?? null;
 
       if (fotoArchivo) {
         const ext  = fotoArchivo.name.split(".").pop() ?? "jpg";
@@ -169,7 +169,7 @@ export default function PerfilPage() {
         region:          data.region || null,
         color_acento:    colorAccento,
         redes_sociales,
-        foto:            fotoUrl,
+        foto_url:        fotoUrl,
         banco:           data.banco || null,
         rut:             data.rut || null,
         tipo_cuenta:     data.tipo_cuenta || null,
@@ -211,7 +211,7 @@ export default function PerfilPage() {
     );
   }
 
-  const fotoActual = fotoPreview ?? artista?.foto;
+  const fotoActual = fotoPreview ?? artista?.foto_url;
   const inicial    = (artista?.nombre ?? "A")[0].toUpperCase();
 
   return (

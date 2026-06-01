@@ -22,7 +22,7 @@ interface OrdenLiq {
 interface Artista {
   id: string;
   nombre: string;
-  foto?: string;
+  foto_url?: string;
   banco?: string;
   cuenta_bancaria?: string;
   tipo_cuenta?: string;
@@ -58,7 +58,7 @@ export default function LiquidacionesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("artistas")
-        .select("id, nombre, foto, banco, cuenta_bancaria, tipo_cuenta, rut, ordenes(id, monto_artista, estado, liquidado, created_at)")
+        .select("id, nombre, foto_url, banco, cuenta_bancaria, tipo_cuenta, rut, ordenes(id, monto_artista, estado, liquidado, created_at)")
         .order("nombre");
       if (error) throw error;
       return (data ?? []) as unknown as Artista[];
@@ -208,8 +208,8 @@ export default function LiquidacionesPage() {
             const tieneBanco = !!(a.banco && a.cuenta_bancaria);
             return (
               <div key={a.id} className="flex items-center gap-4 rounded-xl border border-[#e8e8e8] p-4">
-                {a.foto ? (
-                  <img src={a.foto} alt={a.nombre} className="w-10 h-10 rounded-full object-cover shrink-0" />
+                {a.foto_url ? (
+                  <img src={a.foto_url} alt={a.nombre} className="w-10 h-10 rounded-full object-cover shrink-0" />
                 ) : (
                   <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0" style={{ backgroundColor: "#e8003d", fontFamily: "Oswald, sans-serif" }}>
                     {a.nombre[0]?.toUpperCase()}

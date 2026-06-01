@@ -26,7 +26,7 @@ interface Artista {
   ciudad?: string;
   region?: string;
   color_acento?: string;
-  foto?: string;
+  foto_url?: string;
   bio?: string;
   bio_completa?: string;
   redes_sociales?: RedesSociales;
@@ -116,9 +116,9 @@ export default function ArtistaPage() {
         <div className="flex gap-8 items-start max-w-4xl mx-auto">
           {/* Foto */}
           <div className="shrink-0">
-            {artista.foto ? (
+            {artista.foto_url ? (
               <img
-                src={artista.foto}
+                src={artista.foto_url}
                 alt={artista.nombre}
                 className="w-24 h-24 rounded-full object-cover"
                 style={{ border: `4px solid ${acento}` }}

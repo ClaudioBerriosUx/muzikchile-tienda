@@ -14,7 +14,7 @@ interface Artista {
   id: string;
   nombre: string;
   slug: string;
-  foto?: string;
+  foto_url?: string;
   bio?: string;
   ciudad?: string;
   region?: string;
@@ -43,7 +43,7 @@ export default function ArtistasPage() {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("artistas")
-        .select("id, nombre, slug, foto, bio, ciudad, region, comision, es_founder, tienda_activa")
+        .select("id, nombre, slug, foto_url, bio, ciudad, region, comision, es_founder, tienda_activa")
         .order("nombre");
       console.log("admin artistas data:", data);
       console.log("admin artistas error:", error);
@@ -133,8 +133,8 @@ export default function ArtistasPage() {
                   paddingLeft: activo ? "13px" : "16px",
                 }}
               >
-                {a.foto ? (
-                  <img src={a.foto} alt={a.nombre} className="w-9 h-9 rounded-full object-cover shrink-0" />
+                {a.foto_url ? (
+                  <img src={a.foto_url} alt={a.nombre} className="w-9 h-9 rounded-full object-cover shrink-0" />
                 ) : (
                   <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
                     style={{ backgroundColor: "#e8003d", fontFamily: "Oswald, sans-serif" }}>
@@ -180,8 +180,8 @@ export default function ArtistasPage() {
           <div className="max-w-md">
             {/* Header artista */}
             <div className="flex items-center gap-4 mb-6">
-              {seleccionado.foto ? (
-                <img src={seleccionado.foto} alt={seleccionado.nombre} className="w-16 h-16 rounded-full object-cover" />
+              {seleccionado.foto_url ? (
+                <img src={seleccionado.foto_url} alt={seleccionado.nombre} className="w-16 h-16 rounded-full object-cover" />
               ) : (
                 <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold"
                   style={{ backgroundColor: "#e8003d", fontFamily: "Oswald, sans-serif" }}>

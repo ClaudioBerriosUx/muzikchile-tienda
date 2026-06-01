@@ -17,7 +17,7 @@ interface Artista {
   nombre: string;
   slug: string;
   ciudad?: string;
-  foto?: string;
+  foto_url?: string;
   color_acento?: string;
 }
 
@@ -84,7 +84,7 @@ export default function ProductoPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("productos")
-        .select("*, artistas(id, nombre, slug, ciudad, foto, color_acento), categorias(id, nombre, slug)")
+        .select("*, artistas(id, nombre, slug, ciudad, foto_url, color_acento), categorias(id, nombre, slug)")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -231,9 +231,9 @@ export default function ProductoPage() {
                 href={`/artista/${artista.slug}`}
                 className="flex items-center gap-2 mt-3 group w-fit"
               >
-                {artista.foto ? (
+                {artista.foto_url ? (
                   <img
-                    src={artista.foto}
+                    src={artista.foto_url}
                     alt={artista.nombre}
                     className="w-8 h-8 rounded-full object-cover"
                   />
