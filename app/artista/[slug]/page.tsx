@@ -66,11 +66,11 @@ export default function ArtistaPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("productos")
-        .select("*, categorias(nombre, slug)")
+        .select("*, categorias(nombre)")
         .eq("artista_id", artista!.id)
         .eq("estado", "aprobado");
       if (error) throw error;
-      return (data ?? []) as Producto[];
+      return (data ?? []) as unknown as Producto[];
     },
     enabled: !!artista?.id,
   });

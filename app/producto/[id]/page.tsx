@@ -197,7 +197,7 @@ export default function ProductoPage() {
           <div>
             {/* Breadcrumb */}
             <div className="flex items-center gap-1 text-sm" style={{ fontFamily: "Barlow, sans-serif", color: "#999999" }}>
-              <Link href="/tienda" className="hover:text-[#e8003d] transition-colors">Tienda</Link>
+              <Link href="/" className="hover:text-[#e8003d] transition-colors">Tienda</Link>
               {categoria && (
                 <>
                   <span>/</span>
