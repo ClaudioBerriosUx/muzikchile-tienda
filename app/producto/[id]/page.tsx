@@ -201,7 +201,9 @@ export default function ProductoPage() {
               {categoria && (
                 <>
                   <span>/</span>
-                  <span>{categoria.nombre}</span>
+                  <Link href={`/?categoria=${categoria.slug}`} className="hover:text-[#e8003d] transition-colors">
+                    {categoria.nombre}
+                  </Link>
                 </>
               )}
               <span>/</span>

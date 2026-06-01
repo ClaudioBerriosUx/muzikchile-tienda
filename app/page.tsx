@@ -1,6 +1,9 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useState, useMemo } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import Header from "@/components/layout/Header";
@@ -49,7 +52,11 @@ const OPCIONES_ORDEN = [
 
 export default function HomePage() {
   const supabase = createClient();
-  const [categoriaActiva, setCategoriaActiva] = useState("todas");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [categoriaActiva, setCategoriaActiva] = useState(
+    searchParams.get("categoria") ?? "todas"
+  );
   const [regionActiva, setRegionActiva] = useState("todas");
   const [tipoActivo, setTipoActivo] = useState("todos");
   const [ordenActivo, setOrdenActivo] = useState("recientes");
@@ -88,8 +95,17 @@ export default function HomePage() {
 
   const opcionesCategorias = useMemo(() => [
     { label: "Todas", value: "todas" },
-    ...categorias.map((c) => ({ label: c.nombre, value: c.id })),
+    ...categorias.map((c) => ({ label: c.nombre, value: c.slug })),
   ], [categorias]);
+
+  const handleCategoriaChange = (valor: string) => {
+    setCategoriaActiva(valor);
+    if (valor === "todas") {
+      router.replace("/", { scroll: false });
+    } else {
+      router.replace(`/?categoria=${valor}`, { scroll: false });
+    }
+  };
 
   const opcionesRegiones = useMemo(() => {
     const regiones = Array.from(
@@ -104,7 +120,7 @@ export default function HomePage() {
   const productosFiltrados = useMemo(() => {
     let lista = [...productos];
     if (categoriaActiva !== "todas") {
-      lista = lista.filter((p) => p.categoria_id === categoriaActiva);
+      lista = lista.filter((p) => p.categorias?.slug === categoriaActiva);
     }
     if (tipoActivo !== "todos") {
       lista = lista.filter((p) => p.tipo === tipoActivo);
@@ -147,7 +163,7 @@ export default function HomePage() {
           <FilterChips
             opciones={opcionesCategorias}
             valor={categoriaActiva}
-            onChange={setCategoriaActiva}
+            onChange={handleCategoriaChange}
           />
           <div className="flex gap-3 flex-wrap items-center">
             <FilterChips opciones={opcionesRegiones} valor={regionActiva} onChange={setRegionActiva} />
