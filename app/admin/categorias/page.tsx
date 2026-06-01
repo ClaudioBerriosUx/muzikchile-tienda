@@ -31,7 +31,6 @@ interface FormState {
 const FORM_VACIO: FormState = { nombre: "", icono: "", padre_id: "" };
 
 export default function CategoriasPage() {
-  const supabase = createClient();
   const queryClient = useQueryClient();
 
   const [dialogOpen,  setDialogOpen]  = useState(false);
@@ -42,6 +41,7 @@ export default function CategoriasPage() {
   const { data: categorias = [] } = useQuery<Categoria[]>({
     queryKey: ["admin-categorias"],
     queryFn: async () => {
+      const supabase = createClient();
       const { data, error } = await supabase
         .from("categorias")
         .select("id, nombre, icono, padre_id, orden")
@@ -64,24 +64,39 @@ export default function CategoriasPage() {
   const guardar = async () => {
     if (!form.nombre.trim()) { toast.error("El nombre es obligatorio"); return; }
     setGuardando(true);
+    const supabase = createClient();
     try {
-      const payload = {
-        nombre: form.nombre.trim(),
-        icono: form.icono.trim() || null,
-        padre_id: form.padre_id || null,
-      };
       if (editando) {
+        const payload = {
+          nombre: form.nombre.trim(),
+          icono: form.icono.trim() || null,
+          padre_id: form.padre_id || null,
+        };
         const { error } = await supabase.from("categorias").update(payload).eq("id", editando.id);
         if (error) throw error;
         toast.success("Categoría actualizada");
       } else {
+        const { data: existentes } = await supabase
+          .from("categorias")
+          .select("orden")
+          .is("padre_id", form.padre_id || null)
+          .order("orden", { ascending: false })
+          .limit(1);
+        const siguienteOrden = existentes?.[0]?.orden != null ? existentes[0].orden + 1 : 0;
+        const payload = {
+          nombre: form.nombre.trim(),
+          icono: form.icono.trim() || null,
+          padre_id: form.padre_id || null,
+          orden: siguienteOrden,
+        };
         const { error } = await supabase.from("categorias").insert(payload);
         if (error) throw error;
         toast.success("Categoría creada");
       }
       queryClient.invalidateQueries({ queryKey: ["admin-categorias"] });
       setDialogOpen(false);
-    } catch {
+    } catch (error) {
+      console.error("Error al guardar categoría:", error);
       toast.error("Error al guardar");
     } finally {
       setGuardando(false);
@@ -89,8 +104,13 @@ export default function CategoriasPage() {
   };
 
   const eliminar = async (id: string) => {
+    const supabase = createClient();
     const { error } = await supabase.from("categorias").delete().eq("id", id);
-    if (error) { toast.error("No se puede eliminar — tiene productos asociados"); return; }
+    if (error) {
+      console.error("Error al eliminar categoría:", error);
+      toast.error("No se puede eliminar — tiene productos asociados");
+      return;
+    }
     toast.success("Categoría eliminada");
     queryClient.invalidateQueries({ queryKey: ["admin-categorias"] });
   };
