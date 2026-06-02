@@ -197,6 +197,26 @@ export default function PerfilPage() {
         fotoUrl = publicUrl;
       }
 
+      const esUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-/.test(artista?.slug ?? "");
+      let slugFinal = data.slug;
+
+      if (esUUID) {
+        const base = slugify(data.nombre);
+        let candidato = base;
+        let n = 2;
+        while (true) {
+          const { data: ocupado } = await supabase
+            .from("artistas")
+            .select("id")
+            .eq("slug", candidato)
+            .neq("id", artista?.id ?? "")
+            .single();
+          if (!ocupado) { slugFinal = candidato; break; }
+          candidato = `${base}-${n++}`;
+        }
+        setValue("slug", slugFinal);
+      }
+
       const redes_sociales = Object.fromEntries(
         ["instagram", "spotify", "youtube", "tiktok", "soundcloud", "facebook"]
           .map((key) => [key, (data as Record<string, string>)[key] ?? ""])
@@ -206,7 +226,7 @@ export default function PerfilPage() {
       const payload = {
         user_id:         user.id,
         nombre:          data.nombre,
-        slug:            data.slug,
+        slug:            slugFinal,
         bio:             data.bio || null,
         bio_completa:    data.bio_completa || null,
         ciudad:          data.ciudad || null,
