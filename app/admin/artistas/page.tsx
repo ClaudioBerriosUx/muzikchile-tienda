@@ -22,6 +22,7 @@ interface Artista {
   comision: number;
   es_founder: boolean;
   tienda_activa: boolean;
+  verificado: boolean;
 }
 
 export default function ArtistasPage() {
@@ -31,6 +32,7 @@ export default function ArtistasPage() {
   const [comision, setComision] = useState(0);
   const [esFounder, setEsFounder] = useState(false);
   const [tiendaActiva, setTiendaActiva] = useState(false);
+  const [verificado, setVerificado] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
   const [invitarOpen, setInvitarOpen] = useState(false);
@@ -43,7 +45,7 @@ export default function ArtistasPage() {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("artistas")
-        .select("id, nombre, slug, foto_url, bio, ciudad, region, comision, es_founder, tienda_activa")
+        .select("id, nombre, slug, foto_url, bio, ciudad, region, comision, es_founder, tienda_activa, verificado")
         .order("nombre");
       console.log("admin artistas data:", data);
       console.log("admin artistas error:", error);
@@ -57,6 +59,7 @@ export default function ArtistasPage() {
       setComision(seleccionado.comision ?? 0);
       setEsFounder(seleccionado.es_founder ?? false);
       setTiendaActiva(seleccionado.tienda_activa ?? false);
+      setVerificado(seleccionado.verificado ?? false);
     }
   }, [seleccionado?.id]);
 
@@ -66,7 +69,7 @@ export default function ArtistasPage() {
     const supabase = createClient();
     const { error } = await supabase
       .from("artistas")
-      .update({ comision: esFounder ? 0 : comision, es_founder: esFounder, tienda_activa: tiendaActiva })
+      .update({ comision: esFounder ? 0 : comision, es_founder: esFounder, tienda_activa: tiendaActiva, verificado })
       .eq("id", seleccionado.id);
     if (error) { toast.error("Error al guardar"); }
     else {
@@ -281,6 +284,19 @@ export default function ArtistasPage() {
                   </p>
                 </div>
                 <Switch checked={tiendaActiva} onCheckedChange={setTiendaActiva} />
+              </div>
+
+              {/* Verificado */}
+              <div className="flex items-center justify-between py-3 border-t border-[#e8e8e8]">
+                <div>
+                  <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#111111", fontWeight: 600 }}>
+                    Artista verificado
+                  </p>
+                  <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#666666" }}>
+                    Muestra el badge ✓ Verificado en su perfil público
+                  </p>
+                </div>
+                <Switch checked={verificado} onCheckedChange={setVerificado} />
               </div>
 
               <Link

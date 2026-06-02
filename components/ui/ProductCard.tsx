@@ -16,6 +16,7 @@ interface Props {
   ciudad?: string;
   slug_artista: string;
   colorAccento?: string;
+  verificado?: boolean;
 }
 
 export default function ProductCard({
@@ -28,6 +29,7 @@ export default function ProductCard({
   ciudad,
   slug_artista,
   colorAccento = "#111111",
+  verificado,
 }: Props) {
   const agregar = useCarrito((s) => s.agregar);
   const imagen = imagenes?.[0];
@@ -106,6 +108,11 @@ export default function ProductCard({
               {artista}{ciudad ? ` · ${ciudad}` : ""}
             </span>
           </div>
+          {verificado && (
+            <span style={{ fontSize: "10px", color: "#e8003d", fontFamily: "Barlow, sans-serif", fontWeight: "700" }}>
+              ✓ Verificado
+            </span>
+          )}
 
           <p
             className="text-lg font-bold mt-2"

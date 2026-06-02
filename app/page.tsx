@@ -17,6 +17,7 @@ interface Artista {
   ciudad?: string;
   region?: string;
   color_acento?: string;
+  verificado?: boolean;
 }
 
 interface Categoria {
@@ -70,7 +71,7 @@ function HomePageContent() {
         .select(`
           id, nombre, precio, imagenes, tipo, stock,
           artista_id, categoria_id,
-          artistas (id, nombre, slug, ciudad, region, color_acento),
+          artistas (id, nombre, slug, ciudad, region, color_acento, verificado),
           categorias (id, nombre, slug)
         `)
         .eq("estado", "aprobado")
@@ -218,6 +219,7 @@ function HomePageContent() {
                   ciudad={p.artistas?.ciudad}
                   slug_artista={p.artistas?.slug ?? ""}
                   colorAccento={p.artistas?.color_acento}
+                  verificado={p.artistas?.verificado}
                 />
               ))}
             </div>

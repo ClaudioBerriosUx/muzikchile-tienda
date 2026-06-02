@@ -27,6 +27,7 @@ interface Artista {
   bio?: string;
   bio_completa?: string;
   redes_sociales?: RedesSociales;
+  verificado?: boolean;
 }
 
 interface Producto {
@@ -140,6 +141,25 @@ export default function ArtistaClient({ slug }: { slug: string }) {
           <div className="flex-1 min-w-0">
             <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "36px", fontWeight: "700", color: "#111111", lineHeight: 1.1 }}>
               {artista.nombre}
+              {artista.verificado && (
+                <span style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "3px",
+                  backgroundColor: "#e8003d",
+                  color: "white",
+                  fontSize: "10px",
+                  fontFamily: "Barlow, sans-serif",
+                  fontWeight: "700",
+                  padding: "2px 8px",
+                  borderRadius: "20px",
+                  letterSpacing: "0.05em",
+                  marginLeft: "8px",
+                  verticalAlign: "middle",
+                }}>
+                  ✓ Verificado
+                </span>
+              )}
             </h1>
 
             {(artista.ciudad || artista.region) && (
@@ -227,6 +247,7 @@ export default function ArtistaClient({ slug }: { slug: string }) {
                   ciudad={artista.ciudad}
                   slug_artista={artista.slug}
                   colorAccento={acento}
+                  verificado={artista.verificado}
                 />
               ))}
             </div>
