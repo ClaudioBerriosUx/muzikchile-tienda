@@ -32,6 +32,26 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         return;
       }
 
+      async function ensureArtistaRecord() {
+        const { data: existente } = await supabase
+          .from("artistas")
+          .select("id")
+          .eq("user_id", user!.id)
+          .single();
+        if (!existente) {
+          await supabase.from("artistas").insert({
+            user_id: user!.id,
+            nombre: user!.email?.split("@")[0] ?? "Artista",
+            slug: user!.id,
+            tiene_tienda: false,
+            tienda_activa: false,
+            comision: 10,
+            es_founder: false,
+            verificado: false,
+          });
+        }
+      }
+
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
@@ -49,6 +69,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           router.push("/login?redirectTo=/panel");
           return;
         }
+        await ensureArtistaRecord();
         setAuthorized(true);
         return;
       }
@@ -61,6 +82,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         return;
       }
 
+      await ensureArtistaRecord();
       setAuthorized(true);
     }
 
