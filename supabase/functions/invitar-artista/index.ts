@@ -1,13 +1,14 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, content-type'
-      }
-    })
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
@@ -15,12 +16,14 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+      (Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))!
     )
+
+    const siteUrl = Deno.env.get('SITE_URL') ?? 'https://tienda.muzikchile.cl'
 
     const { data, error } = await supabase.auth.admin
       .inviteUserByEmail(email, {
-        redirectTo: `${Deno.env.get('SITE_URL')}/panel/perfil`
+        redirectTo: `${siteUrl}/registro`
       })
 
     if (error) throw error
@@ -34,8 +37,8 @@ Deno.serve(async (req) => {
       JSON.stringify({ success: true }),
       {
         headers: {
+          ...corsHeaders,
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
         }
       }
     )
@@ -45,8 +48,8 @@ Deno.serve(async (req) => {
       {
         status: 400,
         headers: {
+          ...corsHeaders,
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
         }
       }
     )

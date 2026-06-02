@@ -10,7 +10,6 @@ import { createClient } from "@/lib/supabase/client";
 function RegistroContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token") ?? searchParams.get("token_hash");
 
   const [estado, setEstado] = useState<"verificando" | "valido" | "invalido">("verificando");
   const [password, setPassword] = useState("");
@@ -19,15 +18,39 @@ function RegistroContent() {
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    if (!token) {
-      setEstado("invalido");
+    const supabase = createClient();
+
+    // Caso 1: Supabase implicit flow — access_token llega en el hash (#)
+    const hash = window.location.hash;
+    if (hash && hash.length > 1) {
+      const params = new URLSearchParams(hash.slice(1));
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token") ?? "";
+      if (access_token) {
+        supabase.auth
+          .setSession({ access_token, refresh_token })
+          .then(({ error }) => setEstado(error ? "invalido" : "valido"));
+        return;
+      }
+    }
+
+    // Caso 2: PKCE flow — token_hash largo en query string
+    const token_hash = searchParams.get("token_hash") ?? searchParams.get("token");
+    if (token_hash) {
+      supabase.auth
+        .verifyOtp({ token_hash, type: "magiclink" })
+        .then(({ error }) => {
+          if (!error) { setEstado("valido"); return; }
+          // Reintenta con type "invite" (invitaciones admin)
+          supabase.auth
+            .verifyOtp({ token_hash, type: "invite" })
+            .then(({ error: e2 }) => setEstado(e2 ? "invalido" : "valido"));
+        });
       return;
     }
-    const supabase = createClient();
-    supabase.auth
-      .verifyOtp({ token_hash: token, type: "magiclink" })
-      .then(({ error }) => setEstado(error ? "invalido" : "valido"));
-  }, [token]);
+
+    setEstado("invalido");
+  }, []);
 
   const crearPassword = async () => {
     setErrorMsg("");

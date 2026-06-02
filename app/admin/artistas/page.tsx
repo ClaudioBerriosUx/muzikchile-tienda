@@ -103,7 +103,7 @@ export default function ArtistasPage() {
       email: emailInvitar.trim(),
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: `${siteUrl}/panel/perfil`,
+        emailRedirectTo: `${siteUrl}/registro`,
       },
     });
 
