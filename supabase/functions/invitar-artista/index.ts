@@ -12,46 +12,52 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email } = await req.json()
+    const body = await req.json()
+    console.log('Body recibido:', JSON.stringify(body))
+
+    const { email } = body
+
+    const serviceRoleKey =
+      Deno.env.get('SERVICE_ROLE_KEY') ??
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+    console.log('SERVICE_ROLE_KEY existe:', !!serviceRoleKey)
+    console.log('SUPABASE_URL:', Deno.env.get('SUPABASE_URL'))
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
-      (Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'))!
+      serviceRoleKey!
     )
 
     const siteUrl = Deno.env.get('SITE_URL') ?? 'https://tienda.muzikchile.cl'
+
+    console.log('Invitando a:', email)
+    console.log('siteUrl:', siteUrl)
 
     const { data, error } = await supabase.auth.admin
       .inviteUserByEmail(email, {
         redirectTo: `${siteUrl}/registro`
       })
 
+    console.log('Resultado invite:', JSON.stringify({ data, error }))
+
     if (error) throw error
 
-    await supabase.from('user_roles').insert({
-      user_id: data.user.id,
-      role: 'artista'
-    })
+    const roleResult = await supabase
+      .from('user_roles')
+      .insert({ user_id: data.user.id, role: 'artista' })
+
+    console.log('Rol asignado:', JSON.stringify(roleResult))
 
     return new Response(
       JSON.stringify({ success: true }),
-      {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        }
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
+    console.error('ERROR:', (error as Error).message, JSON.stringify(error))
     return new Response(
       JSON.stringify({ error: (error as Error).message }),
-      {
-        status: 400,
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json',
-        }
-      }
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
