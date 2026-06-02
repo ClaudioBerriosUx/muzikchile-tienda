@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useMemo } from "react";
+import { Suspense, useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -50,7 +50,7 @@ const OPCIONES_ORDEN = [
   { label: "Mayor precio", value: "precio_desc" },
 ];
 
-export default function HomePage() {
+function HomePageContent() {
   const supabase = createClient();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -225,5 +225,17 @@ export default function HomePage() {
         </div>
       </main>
     </>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white">
+        <Header />
+      </div>
+    }>
+      <HomePageContent />
+    </Suspense>
   );
 }
