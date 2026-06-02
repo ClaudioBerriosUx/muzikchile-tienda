@@ -33,13 +33,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
       }
 
       async function ensureArtistaRecord() {
-        const { data: existente } = await supabase
+        const { data: existente, error: selectError } = await supabase
           .from("artistas")
           .select("id")
           .eq("user_id", user!.id)
           .single();
+        console.log("[ensureArtista] select →", { existente, selectError });
         if (!existente) {
-          await supabase.from("artistas").insert({
+          const { error: insertError } = await supabase.from("artistas").insert({
             user_id: user!.id,
             nombre: user!.email?.split("@")[0] ?? "Artista",
             slug: user!.id,
@@ -49,6 +50,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             es_founder: false,
             verificado: false,
           });
+          console.log("[ensureArtista] insert →", { insertError });
         }
       }
 
