@@ -37,7 +37,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           .from("artistas")
           .select("id")
           .eq("user_id", user!.id)
-          .single();
+          .maybeSingle();
         console.log("[ensureArtista] select →", { existente, selectError });
         if (!existente) {
           const { error: insertError } = await supabase.from("artistas").insert({
