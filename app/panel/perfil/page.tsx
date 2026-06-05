@@ -48,6 +48,48 @@ const REDES_CONFIG = [
   },
 ];
 
+const comprimirImagen = (archivo: File, maxWidth = 400, calidad = 0.85): Promise<File> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(archivo);
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+
+      let width  = img.width;
+      let height = img.height;
+
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width  = maxWidth;
+      }
+
+      canvas.width  = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(archivo); return; }
+          const comprimido = new File(
+            [blob],
+            archivo.name.replace(/\.[^.]+$/, ".jpg"),
+            { type: "image/jpeg" }
+          );
+          URL.revokeObjectURL(url);
+          resolve(comprimido);
+        },
+        "image/jpeg",
+        calidad
+      );
+    };
+
+    img.src = url;
+  });
+};
+
 function slugify(texto: string) {
   return texto.toLowerCase()
     .replace(/[áàäâã]/g, "a").replace(/[éèëê]/g, "e")
@@ -238,11 +280,11 @@ export default function PerfilPage() {
       let fotoUrl = artista?.foto_url ?? null;
 
       if (fotoArchivo) {
-        const ext  = fotoArchivo.name.split(".").pop() ?? "jpg";
-        const path = `${user.id}/foto.${ext}`;
+        const archivoFinal = await comprimirImagen(fotoArchivo, 400, 0.85);
+        const path = `${user.id}/foto.jpg`;
         console.log("Subiendo foto...", path);
         const { error: upErr, data: uploadData } = await supabase.storage
-          .from("artistas").upload(path, fotoArchivo, { upsert: true, cacheControl: "3600" });
+          .from("artistas").upload(path, archivoFinal, { upsert: true, cacheControl: "3600" });
         console.log("Upload result:", uploadData, upErr);
         if (upErr) throw upErr;
         const { data: { publicUrl } } = supabase.storage.from("artistas").getPublicUrl(path);

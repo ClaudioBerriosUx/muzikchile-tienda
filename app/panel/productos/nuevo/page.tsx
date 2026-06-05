@@ -13,6 +13,48 @@ import { createClient } from "@/lib/supabase/client";
 
 const ZONAS = ["Chile", "Latinoamérica", "EE.UU.", "Europa", "Mundial"];
 
+const comprimirImagen = (archivo: File, maxWidth = 800, calidad = 0.85): Promise<File> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(archivo);
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+
+      let width  = img.width;
+      let height = img.height;
+
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width  = maxWidth;
+      }
+
+      canvas.width  = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(archivo); return; }
+          const comprimido = new File(
+            [blob],
+            archivo.name.replace(/\.[^.]+$/, ".jpg"),
+            { type: "image/jpeg" }
+          );
+          URL.revokeObjectURL(url);
+          resolve(comprimido);
+        },
+        "image/jpeg",
+        calidad
+      );
+    };
+
+    img.src = url;
+  });
+};
+
 const schema = z.object({
   nombre:          z.string().min(3, "Mínimo 3 caracteres"),
   descripcion:     z.string().min(10, "Mínimo 10 caracteres").max(500, "Máximo 500 caracteres"),
@@ -114,11 +156,11 @@ export default function NuevoProductoPage() {
   const uploadImages = async (artista_id: string): Promise<string[]> => {
     const urls: string[] = [];
     for (const archivo of archivos) {
-      const ext = archivo.name.split(".").pop() ?? "jpg";
-      const path = `${artista_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const archivoFinal = await comprimirImagen(archivo, 800, 0.85);
+      const path = `${artista_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
       const { error } = await supabase.storage
         .from("productos")
-        .upload(path, archivo, { cacheControl: "3600", upsert: false });
+        .upload(path, archivoFinal, { cacheControl: "3600", upsert: false });
       if (error) throw new Error(`Error subiendo imagen: ${error.message}`);
       const { data: { publicUrl } } = supabase.storage.from("productos").getPublicUrl(path);
       urls.push(publicUrl);
