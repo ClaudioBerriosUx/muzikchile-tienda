@@ -240,8 +240,10 @@ export default function PerfilPage() {
       if (fotoArchivo) {
         const ext  = fotoArchivo.name.split(".").pop() ?? "jpg";
         const path = `${user.id}/foto.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from("artistas").upload(path, fotoArchivo, { upsert: true });
+        console.log("Subiendo foto...", path);
+        const { error: upErr, data: uploadData } = await supabase.storage
+          .from("artistas").upload(path, fotoArchivo, { upsert: true, cacheControl: "3600" });
+        console.log("Upload result:", uploadData, upErr);
         if (upErr) throw upErr;
         const { data: { publicUrl } } = supabase.storage.from("artistas").getPublicUrl(path);
         fotoUrl = publicUrl;
