@@ -322,6 +322,7 @@ export default function PerfilPage() {
         nombre:          data.nombre,
         slug:            slugFinal,
         bio:             data.bio || null,
+        bio_completa:    data.bio_completa || null,
         ciudad:          data.ciudad || null,
         region:          data.region || null,
         color_acento:    colorAccento,
