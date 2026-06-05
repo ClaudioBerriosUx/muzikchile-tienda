@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Camera, ExternalLink } from "lucide-react";
+import { Camera, ExternalLink, X } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { REGIONES_CHILE, BANCOS_CHILE } from "@/lib/constants";
@@ -57,14 +57,17 @@ function slugify(texto: string) {
 }
 
 const schema = z.object({
-  nombre:          z.string().min(2, "Mínimo 2 caracteres"),
-  slug:            z.string().min(2, "Mínimo 2 caracteres").regex(/^[a-z0-9-]+$/, "Solo minúsculas, números y guiones"),
+  nombre:          z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+  slug:            z.string()
+                     .min(2, "El slug debe tener al menos 2 caracteres")
+                     .max(50, "Máximo 50 caracteres")
+                     .regex(/^[a-z0-9-]+$/, "Solo minúsculas, números y guiones"),
   bio:             z.string().max(160, "Máximo 160 caracteres").optional().or(z.literal("")),
   bio_completa:    z.string().max(2000).optional().or(z.literal("")),
   ciudad:          z.string().optional().or(z.literal("")),
   region:          z.string().optional().or(z.literal("")),
   color_acento:    z.string().optional(),
-  generos:         z.string().optional().or(z.literal("")),
+  generos:         z.array(z.string()).optional(),
   instagram:       z.string().optional().or(z.literal("")),
   spotify:         z.string().optional().or(z.literal("")),
   youtube:         z.string().optional().or(z.literal("")),
@@ -111,14 +114,17 @@ const hintStyle: React.CSSProperties = {
 };
 
 export default function PerfilPage() {
-  const supabase    = createClient();
-  const queryClient = useQueryClient();
-  const fotoRef     = useRef<HTMLInputElement>(null);
+  const supabase       = createClient();
+  const queryClient    = useQueryClient();
+  const fotoRef        = useRef<HTMLInputElement>(null);
+  const generosInputRef = useRef<HTMLInputElement>(null);
 
-  const [fotoPreview,  setFotoPreview]  = useState<string | null>(null);
-  const [fotoArchivo,  setFotoArchivo]  = useState<File | null>(null);
-  const [colorAccento, setColorAccento] = useState("#e8003d");
-  const [guardando,    setGuardando]    = useState(false);
+  const [fotoPreview,   setFotoPreview]   = useState<string | null>(null);
+  const [fotoArchivo,   setFotoArchivo]   = useState<File | null>(null);
+  const [colorAccento,  setColorAccento]  = useState("#e8003d");
+  const [guardando,     setGuardando]     = useState(false);
+  const [generosArr,    setGenerosArr]    = useState<string[]>([]);
+  const [generosInput,  setGenerosInput]  = useState("");
 
   const { data: artista, isLoading } = useQuery<Artista | null>({
     queryKey: ["panel-artista"],
@@ -131,7 +137,7 @@ export default function PerfilPage() {
     },
   });
 
-  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } =
+  const { register, handleSubmit, setValue, watch, reset, setError, formState: { errors } } =
     useForm<FormData>({ resolver: zodResolver(schema) });
 
   const nombreWatch    = watch("nombre", "");
@@ -141,7 +147,9 @@ export default function PerfilPage() {
 
   useEffect(() => {
     if (!artista) return;
-    const redes = artista.redes ?? {};
+    const redes   = artista.redes ?? {};
+    const generos = artista.generos ?? [];
+    setGenerosArr(generos);
     reset({
       nombre:          artista.nombre ?? "",
       slug:            artista.slug ?? "",
@@ -150,7 +158,7 @@ export default function PerfilPage() {
       ciudad:          artista.ciudad ?? "",
       region:          artista.region ?? "",
       color_acento:    artista.color_acento ?? "#e8003d",
-      generos:         (artista.generos ?? []).join(", "),
+      generos:         generos,
       instagram:       redes.instagram ?? "",
       spotify:         redes.spotify ?? "",
       youtube:         redes.youtube ?? "",
@@ -170,6 +178,48 @@ export default function PerfilPage() {
 
   const autoSlug = () => {
     if (!artista?.slug) setValue("slug", slugify(nombreWatch));
+  };
+
+  const handleSlugChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const valor = e.target.value
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "");
+    setValue("slug", valor, { shouldValidate: true });
+  };
+
+  const agregarGenero = (texto: string) => {
+    const limpio = texto.trim();
+    if (!limpio || generosArr.includes(limpio)) return;
+    const nuevo = [...generosArr, limpio];
+    setGenerosArr(nuevo);
+    setValue("generos", nuevo);
+  };
+
+  const removerGenero = (idx: number) => {
+    const nuevo = generosArr.filter((_, i) => i !== idx);
+    setGenerosArr(nuevo);
+    setValue("generos", nuevo);
+  };
+
+  const handleGenerosInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val.endsWith(",")) {
+      agregarGenero(val.slice(0, -1));
+      setGenerosInput("");
+    } else {
+      setGenerosInput(val);
+    }
+  };
+
+  const handleGenerosKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      agregarGenero(generosInput);
+      setGenerosInput("");
+    } else if (e.key === "Backspace" && !generosInput && generosArr.length > 0) {
+      removerGenero(generosArr.length - 1);
+    }
   };
 
   const handleFoto = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -219,7 +269,7 @@ export default function PerfilPage() {
 
       const redes_sociales = Object.fromEntries(
         ["instagram", "spotify", "youtube", "tiktok", "soundcloud", "facebook"]
-          .map((key) => [key, (data as Record<string, string>)[key] ?? ""])
+          .map((key) => [key, (data as unknown as Record<string, string>)[key] ?? ""])
           .filter(([, v]) => v)
       );
 
@@ -233,7 +283,7 @@ export default function PerfilPage() {
         color_acento:    colorAccento,
         redes:           redes_sociales,
         foto_url:        fotoUrl,
-        generos:         data.generos ? data.generos.split(",").map((s) => s.trim()).filter(Boolean) : null,
+        generos:         data.generos?.length ? data.generos : null,
         seo_titulo:      data.seo_titulo || null,
         seo_descripcion: data.seo_descripcion || null,
         banco:           data.banco || null,
@@ -253,20 +303,35 @@ export default function PerfilPage() {
       toast.success("Perfil guardado");
       queryClient.invalidateQueries({ queryKey: ["panel-artista"] });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al guardar");
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.toLowerCase().includes("slug")) {
+        setError("slug", { message: "Este slug ya está en uso" });
+        document.getElementById("slug-field")?.scrollIntoView({ behavior: "smooth" });
+      } else if (msg.toLowerCase().includes("nombre")) {
+        setError("nombre", { message: "Error en el nombre" });
+      } else {
+        toast.error(msg || "Error al guardar");
+      }
     } finally {
       setGuardando(false);
     }
   };
 
-  const inputClass = "w-full rounded-md px-3 py-2.5 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none transition-colors";
+  const inputBase = "w-full rounded-md px-3 py-2.5 text-sm border focus:outline-none transition-colors";
+  const inputStyle = (hasError: boolean) => ({
+    fontFamily: "DM Sans, sans-serif",
+    color: "#111111",
+    borderColor: hasError ? "#e8003d" : "#e8e8e8",
+    outline: "none",
+  });
+
   const labelEl = (txt: string) => (
     <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#666666", display: "block", marginBottom: "5px" }}>
       {txt}
     </label>
   );
   const errEl = (msg?: string) => msg ? (
-    <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#e8003d", marginTop: "3px" }}>{msg}</p>
+    <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#e8003d", marginTop: "4px" }}>{msg}</p>
   ) : null;
 
   if (isLoading) {
@@ -339,25 +404,32 @@ export default function PerfilPage() {
               <input
                 {...register("nombre")}
                 onBlur={autoSlug}
-                className={inputClass}
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                className={inputBase}
+                style={inputStyle(!!errors.nombre)}
                 placeholder="Tu nombre de artista"
               />
               {errEl(errors.nombre?.message)}
             </div>
-            <div>
+            <div id="slug-field">
               {labelEl("URL de tu tienda (slug)")}
-              <div className="flex items-center rounded-md border border-[#e8e8e8] overflow-hidden focus-within:border-[#e8003d] transition-colors">
-                <span className="px-3 py-2.5 text-sm bg-[#f8f7f5] border-r border-[#e8e8e8] shrink-0"
-                  style={{ fontFamily: "Barlow, sans-serif", color: "#999999" }}>
+              <div
+                className="flex items-center rounded-md border overflow-hidden transition-colors focus-within:border-[#e8003d]"
+                style={{ borderColor: errors.slug ? "#e8003d" : "#e8e8e8" }}
+              >
+                <span
+                  className="px-3 py-2.5 text-sm bg-[#f8f7f5] border-r border-[#e8e8e8] shrink-0"
+                  style={{ fontFamily: "Barlow, sans-serif", color: "#999999" }}
+                >
                   tienda.muzikchile.cl/artista/
                 </span>
                 <input
                   {...register("slug")}
+                  onChange={handleSlugChange}
                   className="flex-1 px-3 py-2.5 text-sm focus:outline-none"
                   style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
                 />
               </div>
+              <p style={hintStyle}>Solo minúsculas, números y guiones. Ej: valentina-ruz</p>
               {errEl(errors.slug?.message)}
             </div>
           </div>
@@ -375,8 +447,8 @@ export default function PerfilPage() {
               {...register("bio")}
               rows={2}
               maxLength={160}
-              className={`${inputClass} resize-none`}
-              style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+              className={`${inputBase} resize-none`}
+              style={inputStyle(!!errors.bio)}
               placeholder="Una frase que te describe..."
             />
             {errEl(errors.bio?.message)}
@@ -387,8 +459,8 @@ export default function PerfilPage() {
             <textarea
               {...register("bio_completa")}
               rows={5}
-              className={`${inputClass} resize-none`}
-              style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+              className={`${inputBase} resize-none`}
+              style={inputStyle(false)}
               placeholder="Cuéntale a tus fans quién eres..."
             />
           </div>
@@ -396,11 +468,20 @@ export default function PerfilPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               {labelEl("Ciudad")}
-              <input {...register("ciudad")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} placeholder="Santiago" />
+              <input
+                {...register("ciudad")}
+                className={inputBase}
+                style={inputStyle(false)}
+                placeholder="Santiago"
+              />
             </div>
             <div>
               {labelEl("Región")}
-              <select {...register("region")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}>
+              <select
+                {...register("region")}
+                className={inputBase}
+                style={inputStyle(false)}
+              >
                 <option value="">Selecciona tu región</option>
                 {REGIONES_CHILE.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
@@ -409,13 +490,38 @@ export default function PerfilPage() {
 
           <div>
             {labelEl("Géneros musicales")}
-            <input
-              {...register("generos")}
-              className={inputClass}
-              style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
-              placeholder="Ej: Indie folk, Nueva Canción, Acústico"
-            />
-            <p style={hintStyle}>Separa los géneros con comas. Ayuda a que te descubran más fácil.</p>
+            <div
+              className="rounded-md border p-2 min-h-[44px] flex flex-wrap gap-2 items-center cursor-text transition-colors focus-within:border-[#e8003d]"
+              style={{ borderColor: "#e8e8e8" }}
+              onClick={() => generosInputRef.current?.focus()}
+            >
+              {generosArr.map((g, i) => (
+                <span
+                  key={i}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded text-sm"
+                  style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#f0f0f0", color: "#111111" }}
+                >
+                  {g}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); removerGenero(i); }}
+                    className="flex items-center opacity-60 hover:opacity-100 transition-opacity"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
+              <input
+                ref={generosInputRef}
+                value={generosInput}
+                onChange={handleGenerosInputChange}
+                onKeyDown={handleGenerosKeyDown}
+                className="flex-1 min-w-[120px] text-sm focus:outline-none bg-transparent"
+                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                placeholder={generosArr.length === 0 ? "Agregar género..." : ""}
+              />
+            </div>
+            <p style={hintStyle}>Escribe un género y presiona Enter o coma para agregarlo.</p>
           </div>
 
           <div>
@@ -437,8 +543,8 @@ export default function PerfilPage() {
               {labelEl(lbl)}
               <input
                 {...register(key as keyof FormData)}
-                className={inputClass}
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                className={inputBase}
+                style={inputStyle(false)}
                 placeholder={placeholder}
               />
               <p style={hintStyle}>{hint}</p>
@@ -477,8 +583,8 @@ export default function PerfilPage() {
             <input
               {...register("seo_titulo")}
               maxLength={60}
-              className={inputClass}
-              style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+              className={inputBase}
+              style={inputStyle(!!errors.seo_titulo)}
               placeholder={`Ej: ${artista?.nombre ?? "Tu nombre"} | Merch oficial`}
             />
             <div className="flex items-start justify-between mt-1.5">
@@ -505,8 +611,8 @@ export default function PerfilPage() {
               {...register("seo_descripcion")}
               maxLength={160}
               rows={3}
-              className={`${inputClass} resize-none`}
-              style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+              className={`${inputBase} resize-none`}
+              style={inputStyle(!!errors.seo_descripcion)}
               placeholder="Ej: Compra merch oficial de Camila Moreno. Poleras, vinilos y más desde Santiago."
             />
             <div className="flex items-start justify-between mt-1.5">
@@ -542,25 +648,25 @@ export default function PerfilPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               {labelEl("Banco")}
-              <select {...register("banco")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}>
+              <select {...register("banco")} className={inputBase} style={inputStyle(false)}>
                 <option value="">Selecciona tu banco</option>
                 {BANCOS_CHILE.map((b) => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
             <div>
               {labelEl("RUT")}
-              <input {...register("rut")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} placeholder="12.345.678-9" />
+              <input {...register("rut")} className={inputBase} style={inputStyle(false)} placeholder="12.345.678-9" />
             </div>
             <div>
               {labelEl("Tipo de cuenta")}
-              <select {...register("tipo_cuenta")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}>
+              <select {...register("tipo_cuenta")} className={inputBase} style={inputStyle(false)}>
                 <option value="">Selecciona tipo</option>
                 {TIPOS_CUENTA.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
               {labelEl("N° de cuenta")}
-              <input {...register("cuenta_bancaria")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} placeholder="00000000000" />
+              <input {...register("cuenta_bancaria")} className={inputBase} style={inputStyle(false)} placeholder="00000000000" />
             </div>
           </div>
         </section>
