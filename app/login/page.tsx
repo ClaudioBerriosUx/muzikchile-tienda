@@ -43,6 +43,7 @@ function LoginContent() {
         .eq("user_id", user?.id)
         .single();
 
+      router.refresh();
       if (redirectTo) {
         router.push(redirectTo);
       } else if (roleData?.role === "admin") {
