@@ -113,8 +113,9 @@ export default function CuponesPage() {
       }
       queryClient.invalidateQueries({ queryKey: ["panel-cupones"] });
       setDialogOpen(false);
-    } catch {
-      toast.error("Error al guardar");
+    } catch (error) {
+      console.error('Error cupón:', error);
+      toast.error(error instanceof Error ? error.message : 'Error al guardar');
     } finally {
       setGuardando(false);
     }
