@@ -17,6 +17,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "MuzikChile Tienda",
   description: "Marketplace de música chilena",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function RootLayout({
