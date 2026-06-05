@@ -177,6 +177,10 @@ export default function PerfilPage() {
         .from("artistas").select("*").eq("user_id", user.id).single();
       return data as Artista | null;
     },
+    staleTime:          0,
+    gcTime:             0,
+    refetchOnMount:     "always",
+    refetchOnWindowFocus: true,
   });
 
   const { register, handleSubmit, setValue, watch, reset, setError, formState: { errors } } =
@@ -347,6 +351,7 @@ export default function PerfilPage() {
 
       toast.success("Perfil guardado");
       queryClient.invalidateQueries({ queryKey: ["panel-artista"] });
+      queryClient.refetchQueries({ queryKey: ["panel-artista"] });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.toLowerCase().includes("slug")) {
