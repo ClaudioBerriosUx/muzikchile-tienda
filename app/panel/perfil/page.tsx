@@ -92,7 +92,7 @@ interface Artista {
   ciudad?: string;
   region?: string;
   color_acento?: string;
-  redes_sociales?: Record<string, string>;
+  redes?: Record<string, string>;
   generos?: string[];
   seo_titulo?: string;
   seo_descripcion?: string;
@@ -141,7 +141,7 @@ export default function PerfilPage() {
 
   useEffect(() => {
     if (!artista) return;
-    const redes = artista.redes_sociales ?? {};
+    const redes = artista.redes ?? {};
     reset({
       nombre:          artista.nombre ?? "",
       slug:            artista.slug ?? "",
@@ -210,7 +210,7 @@ export default function PerfilPage() {
             .select("id")
             .eq("slug", candidato)
             .neq("id", artista?.id ?? "")
-            .single();
+            .maybeSingle();
           if (!ocupado) { slugFinal = candidato; break; }
           candidato = `${base}-${n++}`;
         }
@@ -228,11 +228,10 @@ export default function PerfilPage() {
         nombre:          data.nombre,
         slug:            slugFinal,
         bio:             data.bio || null,
-        bio_completa:    data.bio_completa || null,
         ciudad:          data.ciudad || null,
         region:          data.region || null,
         color_acento:    colorAccento,
-        redes_sociales,
+        redes:           redes_sociales,
         foto_url:        fotoUrl,
         generos:         data.generos ? data.generos.split(",").map((s) => s.trim()).filter(Boolean) : null,
         seo_titulo:      data.seo_titulo || null,
