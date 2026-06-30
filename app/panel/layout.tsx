@@ -39,7 +39,6 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           .select("id")
           .eq("user_id", user!.id)
           .maybeSingle();
-        console.log("[ensureArtista] select →", { existente, selectError });
         if (!existente) {
           const { error: insertError } = await supabase.from("artistas").insert({
             user_id: user!.id,
@@ -51,7 +50,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
             es_founder: false,
             verificado: false,
           });
-          console.log("[ensureArtista] insert →", { insertError });
+          if (insertError) console.error("[ensureArtista] insert error:", insertError);
         }
       }
 

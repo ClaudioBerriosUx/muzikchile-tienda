@@ -47,8 +47,6 @@ export default function ArtistasPage() {
         .from("artistas")
         .select("id, nombre, slug, foto_url, bio, ciudad, region, comision, es_founder, tienda_activa, verificado")
         .order("nombre");
-      console.log("admin artistas data:", data);
-      console.log("admin artistas error:", error);
       if (error) throw error;
       return (data ?? []) as Artista[];
     },

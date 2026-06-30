@@ -54,8 +54,6 @@ export default function ModerarProductosPage() {
         .order("created_at", { ascending: true });
       if (tab === "pendientes") q = q.eq("estado", "en_revision");
       const { data, error } = await q;
-      console.log("admin productos data:", data);
-      console.log("admin productos error:", error);
       if (error) throw error;
       return (data ?? []) as unknown as Producto[];
     },

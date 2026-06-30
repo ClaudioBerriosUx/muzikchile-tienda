@@ -128,6 +128,7 @@ export async function POST(request: Request) {
         },
         auto_return: "approved",
         external_reference,
+        notification_url: `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook`,
         ...(descuentoTotal > 0 ? { coupon_amount: descuentoTotal } : {}),
       }),
     });
@@ -172,11 +173,6 @@ export async function POST(request: Request) {
     });
 
     await supabase.from("ordenes").insert(ordenes);
-
-    // Incrementar usos del cupón
-    if (cuponData) {
-      await supabase.rpc("incrementar_usos_cupon", { cupon_id: cuponData.id }).maybeSingle();
-    }
 
     return NextResponse.json({
       init_point:         mpData.init_point,
