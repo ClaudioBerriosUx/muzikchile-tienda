@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-06-29
+> Actualizado: 2026-06-30
 > Branch: `main` (único branch activo)
 
 ---
@@ -15,9 +15,17 @@
 ### Carrito y checkout
 - Carrito con Zustand + localStorage (`/carrito`, `CarritoDrawer`)
 - Checkout completo con validación Zod/react-hook-form (`/checkout`)
-- Aplicación de cupones en checkout (validación en cliente + descuento en preferencia MP)
+- Aplicación de cupones en checkout (validación en cliente)
+- Fix hidratación Zustand persist: evita redirect a `/` al hacer F5 en checkout (usa `persist.hasHydrated()` / `onFinishHydration()`)
 - Preferencia de MercadoPago (`/api/mercadopago/crear-preferencia`) con cálculo de comisiones por artista
 - Páginas de resultado: éxito, error, pendiente
+- Fix modo sandbox/producción: checkout ahora lee `modo` de la respuesta del endpoint en vez de priorizar siempre `sandbox_init_point`
+- Validación de cupones públicos en checkout (política RLS `public_read_cupones_activos` para rol `anon`)
+
+### Integración MercadoPago
+- Webhook implementado (`/api/mercadopago/webhook/route.ts`): recibe IPN, consulta pago en MP, actualiza `ordenes` a `pagado`/`cancelado`, incrementa usos de cupón, descuenta stock de productos físicos
+- `notification_url` condicional: solo se envía a MP cuando `NEXT_PUBLIC_URL` es HTTPS (evita error "policy UNAUTHORIZED" en desarrollo local)
+- Flujo end-to-end probado en producción real: compra exitosa, orden creada, página de éxito
 
 ### Auth
 - Login / registro con Supabase Auth (magic link / email)
@@ -29,51 +37,51 @@
 - Listado de mis productos
 - Subir producto nuevo (con compresión de imágenes client-side, react-dropzone, validación Zod)
 - Editar producto (`/panel/productos/[id]/editar`)
-- Perfil del artista: nombre, slug, bio corta + larga, foto, redes sociales (Instagram, Spotify, YouTube, TikTok, SoundCloud), color acento, datos bancarios (banco, tipo cuenta, cuenta, RUT, región/ciudad)
+- Perfil del artista: nombre, slug, bio corta + larga, foto, redes sociales (Instagram, Spotify, YouTube, TikTok, SoundCloud), color acento, datos bancarios
 - Mis cupones: CRUD completo (crear, editar, activar/desactivar)
 - Liquidaciones: vista de historial de órdenes y pagos recibidos (solo lectura)
 
 ### Admin (`/admin`)
 - Dashboard
-- Productos: revisión de productos en_revision → aprobado/rechazado, badge de pendientes en sidebar
+- Productos: revisión `en_revision` → `aprobado`/rechazado, badge de pendientes en sidebar
 - Artistas: listado, invitar por email, editar comisión, marcar founder, activar tienda, verificar
-- Editar artista (`/admin/artistas/[id]/editar`)
+- Editar artista (`/admin/artistas/[id]/editar`) — fix carga de redes sociales (mismatch `redes_sociales` → `redes`)
 - Categorías: CRUD
 - Órdenes: listado con filtro por estado, cambio de estado
-- Cupones globales: CRUD (equivalente al panel artista pero sin artista_id)
+- Cupones globales: CRUD
 - Liquidaciones: vista de artistas con saldo pendiente, registro de pagos realizados
-- Configuración: tokens de MercadoPago (access token, public key, modo sandbox/prod) con campos enmascarados
+- Configuración: tokens de MercadoPago con campos enmascarados
+
+### Correcciones de schema (tabla `ordenes`)
+- Columnas renombradas en código para coincidir con DB real: `nombre_comprador` → `comprador_nombre`, `email_comprador` → `comprador_email`, `external_reference` → `grupo_id`
+- INSERT captura y loguea error explícito en vez de fallar silenciosamente
 
 ---
 
-## 🚧 En progreso / incompleto
+## 🚧 En progreso / bugs conocidos
 
-- **Webhook de MercadoPago**: no existe ruta `/api/mercadopago/webhook` visible en el código. Las órdenes se crean en estado `pendiente` pero no hay mecanismo para actualizarlas a `pagado` tras confirmación de MP. (verificar si hay una Supabase Edge Function haciendo esto)
-- **Email de confirmación de compra**: la página `/checkout/exito` dice "Recibirás un email con los detalles" pero no hay código de envío de email en el Route Handler ni en el cliente
-- **Console.logs de debug**: `app/admin/artistas/page.tsx` tiene `console.log("admin artistas data:", data)` y similar. Commits recientes etiquetados `debug:` indican que quedan logs de depuración en producción
-
----
-
-## ⏭️ Siguiente (lo que toca)
-
-Basado en los features marcados "Próximamente" en el código y la lógica incompleta:
-
-1. **Webhook de MercadoPago** — implementar `/api/mercadopago/webhook` que reciba notificaciones IPN, verifique el pago y actualice `ordenes.estado` a `pagado`
-2. **Limpiar console.logs de debug** — `admin/artistas/page.tsx` y cualquier otro residuo de commits `debug:`
-3. **WebPay / Transbank** — placeholders en `/checkout` y en `/admin/configuracion`, marcados "Próximamente"
-4. **Logística** — sección en `/admin/configuracion` marcada "Próximamente" (verificar qué cubre: envíos, tracking, etc.)
-5. **Integración Spotify** — badge "Próximamente: Conectar con Spotify" en `/panel/perfil`
-6. **Email transaccional** — al menos confirmación de compra al comprador y notificación al artista
+- **CRÍTICO — Cupón no se refleja en MercadoPago**: el checkout muestra el descuento correctamente (ej: $1.100 → $1.080), pero la preferencia de MP sigue mostrando el precio sin descuento. Se implementó `precioConDescuento()` en `crear-preferencia/route.ts` que modifica `unit_price` por item, pero no resolvió el problema. **Pendiente de debug**: verificar si `cuponData`/`descuentoTotal` llegan correctamente al bloque de items, o si MP está cacheando la preferencia anterior. Bloquea ventas con descuento.
+- **Email de confirmación de compra**: la página `/checkout/exito` dice "Recibirás un email" pero no hay código de envío de email en ningún Route Handler
 
 ---
 
-## ⚠️ Pendientes / bugs conocidos
+## ⏭️ Siguiente (prioridad)
 
-- **Órdenes nunca se actualizan de `pendiente` a `pagado`**: sin webhook, todos los pedidos quedan en `pendiente` indefinidamente. El panel de liquidaciones del artista muestra "pendiente de pago" aunque el cliente haya pagado.
-- **`force-dynamic` en múltiples páginas**: varios layouts y pages usan `export const dynamic = 'force-dynamic'` para evitar errores de SSG en Vercel. Esto desactiva cualquier caching a nivel de página.
-- **Guards de auth client-side**: el panel artista y admin protegen con `useEffect`, lo que produce un flash de "Verificando acceso..." antes de redirigir. Considerar protección en middleware si se optimiza UX.
-- **`artistas` sin unicidad de slug garantizada en código**: el slug se auto-genera desde el `user_id` al primer acceso; el artista puede cambiarlo manualmente. (verificar si hay unique constraint en la DB)
-- **Cupones de artista vs. cupones globales**: existen en tablas/flujos separados pero la tabla parece ser la misma (`cupones`), diferenciada por `artista_id` nulo/no nulo. Confirmar que el flujo de checkout aplica ambos correctamente.
+1. **Resolver bug de cupón en MercadoPago** — crítico, bloquea ventas con descuento. Debug: agregar log del payload exacto que se envía a MP y verificar que `descuentoTotal > 0` y `cuponData` no sean undefined en ese punto
+2. **Probar flujo completo sin cupón** — confirmar que checkout sin cupón funciona 100% en producción
+3. **Email transaccional** — confirmación de compra al comprador y notificación al artista
+4. **Limpiar console.logs de debug restantes** — verificar si quedó alguno tras la limpieza anterior
+5. **WebPay / Transbank** — placeholders en `/checkout` y `/admin/configuracion`, marcados "Próximamente"
+6. **Integración Spotify** — badge "Próximamente: Conectar con Spotify" en `/panel/perfil`
+
+---
+
+## ⚠️ Pendientes / bugs conocidos (no críticos)
+
+- **`force-dynamic` extensivo**: múltiples layouts y pages lo usan para evitar errores de SSG en Vercel. Desactiva caching a nivel de página.
+- **Guards de auth client-side**: flash de "Verificando acceso..." antes de redirigir. Considerar middleware si se optimiza UX.
+- **Slug sin unicidad garantizada en código**: se auto-genera desde `user_id` al primer acceso; el artista puede cambiarlo. (verificar unique constraint en DB)
+- **Cupones artista vs. globales**: misma tabla `cupones`, diferenciados por `artista_id` nulo/no nulo. Confirmar que el checkout aplica ambos tipos correctamente.
 
 ---
 
@@ -85,6 +93,9 @@ Basado en los features marcados "Próximamente" en el código y la lógica incom
 | `SUPABASE_SERVICE_ROLE_KEY` solo en Route Handlers | Las páginas del artista usan anon key + RLS; el Route Handler de MP necesita acceso total para leer configuración y crear órdenes |
 | Compresión de imágenes client-side (canvas) antes de subir | Reducir peso en Supabase Storage; max 800px ancho, 85% calidad JPEG |
 | `force-dynamic` extensivo | Vercel generaba páginas estáticas que rompían con `useSearchParams` y auth dinámica en Next.js 16 |
-| Inline styles + Tailwind conviviendo | Decisión de diseño del proyecto; los tokens de color/font no están en Tailwind config, se aplican directamente |
+| Inline styles + Tailwind conviviendo | Decisión de diseño; los tokens de color/font no están en Tailwind config, se aplican directamente |
+| Descuento de cupón en `unit_price` por item (no `coupon_amount`) | `coupon_amount` de MP no reducía el precio visible; el descuento se incorpora directamente en cada `unit_price` antes de crear la preferencia |
+| Comisión MuzikChile sobre precio original | El descuento del cupón lo absorbe el artista, no la plataforma |
+| `notification_url` condicional a HTTPS | MP rechaza con "policy UNAUTHORIZED" si la URL es localhost/HTTP |
 | No hay tests | Proyecto en etapa MVP/early |
 | Único branch `main` | Desarrollo directo en main, sin feature branches |
