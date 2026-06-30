@@ -54,13 +54,13 @@ export async function POST(req: NextRequest) {
             mercadopago_id: String(resourceId),
             metodo_pago:    "mercadopago",
           })
-          .eq("external_reference", externalRef)
+          .eq("grupo_id", externalRef)
           .eq("estado", "pendiente");
 
         const { data: ordenesPagadas } = await supabase
           .from("ordenes")
           .select("producto_id, cantidad, cupon_id")
-          .eq("external_reference", externalRef)
+          .eq("grupo_id", externalRef)
           .eq("estado", "pagado");
 
         // Incrementar usos del cupón (una sola vez por grupo)
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
         await supabase
           .from("ordenes")
           .update({ estado: "cancelado" })
-          .eq("external_reference", externalRef)
+          .eq("grupo_id", externalRef)
           .eq("estado", "pendiente");
       }
     }
