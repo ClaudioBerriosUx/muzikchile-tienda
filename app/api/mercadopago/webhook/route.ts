@@ -57,17 +57,43 @@ export async function POST(req: NextRequest) {
           .eq("external_reference", externalRef)
           .eq("estado", "pendiente");
 
-        const { data: ordenes } = await supabase
+        const { data: ordenesPagadas } = await supabase
           .from("ordenes")
-          .select("cupon_id")
+          .select("producto_id, cantidad, cupon_id")
           .eq("external_reference", externalRef)
-          .not("cupon_id", "is", null)
-          .limit(1);
+          .eq("estado", "pagado");
 
-        if (ordenes?.[0]?.cupon_id) {
-          await supabase.rpc("incrementar_usos_cupon", {
-            cupon_id: ordenes[0].cupon_id,
-          });
+        // Incrementar usos del cupón (una sola vez por grupo)
+        const cuponId = ordenesPagadas?.find((o) => o.cupon_id)?.cupon_id;
+        if (cuponId) {
+          await supabase.rpc("incrementar_usos_cupon", { cupon_id: cuponId });
+        }
+
+        // Descontar stock de productos físicos
+        if (ordenesPagadas?.length) {
+          const productoIds = ordenesPagadas.map((o) => o.producto_id).filter(Boolean);
+          const { data: productos } = await supabase
+            .from("productos")
+            .select("id, tipo, stock")
+            .in("id", productoIds);
+
+          const productoMap = Object.fromEntries(
+            (productos ?? []).map((p) => [p.id, p])
+          );
+
+          for (const orden of ordenesPagadas) {
+            const producto = productoMap[orden.producto_id];
+            if (producto?.tipo === "fisico" && producto.stock !== null) {
+              const nuevoStock = Math.max(0, producto.stock - orden.cantidad);
+              const { error: stockError } = await supabase
+                .from("productos")
+                .update({ stock: nuevoStock })
+                .eq("id", orden.producto_id);
+              if (stockError) {
+                console.error("Error descontando stock:", orden.producto_id, JSON.stringify(stockError));
+              }
+            }
+          }
         }
       } else if (status === "rejected" || status === "cancelled") {
         await supabase
