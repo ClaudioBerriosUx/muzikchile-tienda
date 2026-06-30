@@ -95,6 +95,20 @@ export async function POST(request: Request) {
     // External reference único para este pedido
     const external_reference = crypto.randomUUID();
 
+    // Precio por item con descuento incorporado en unit_price
+    // La comisión se calcula sobre precio original (ver más abajo)
+    const subtotalBruto = items.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
+    const precioConDescuento = (precio: number, cantidad: number): number => {
+      if (!cuponData || descuentoTotal === 0) return precio;
+      if (cuponData.tipo === "porcentaje") {
+        return Math.max(1, Math.round(precio * (1 - cuponData.valor / 100)));
+      }
+      // Monto fijo: prorratear según el peso del item en el subtotal
+      const peso = (precio * cantidad) / subtotalBruto;
+      const descuentoItem = Math.round(descuentoTotal * peso / cantidad);
+      return Math.max(1, precio - descuentoItem);
+    };
+
     // Construir preferencia de MP
     const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",
@@ -104,9 +118,9 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         items: items.map((item) => ({
-          title:      item.nombre,
-          quantity:   item.cantidad,
-          unit_price: item.precio,
+          title:       item.nombre,
+          quantity:    item.cantidad,
+          unit_price:  precioConDescuento(item.precio, item.cantidad),
           currency_id: "CLP",
           ...(item.imagen ? { picture_url: item.imagen } : {}),
         })),
@@ -133,7 +147,7 @@ export async function POST(request: Request) {
         ...(process.env.NEXT_PUBLIC_URL?.startsWith("https://")
           ? { notification_url: `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook` }
           : {}),
-        ...(descuentoTotal > 0 ? { coupon_amount: descuentoTotal } : {}),
+        // descuentoTotal ya está incorporado en unit_price de cada item
       }),
     });
 
