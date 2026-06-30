@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "PowerShell(New-Item *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(git push *)"
     ]
   }
 }

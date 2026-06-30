@@ -51,13 +51,14 @@ export default function CheckoutPage() {
   const [buscandoCupon,  setBuscandoCupon]  = useState(false);
   const [metodoPago,     setMetodoPago]     = useState<"mercadopago" | "webpay">("mercadopago");
   const [pagando,        setPagando]        = useState(false);
-  const [hidratado,      setHidratado]      = useState(() => useCarrito.persist.hasHydrated());
+  const [hidratado,      setHidratado]      = useState(false);
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
 
   useEffect(() => {
+    // persist solo existe en el cliente
     if (useCarrito.persist.hasHydrated()) {
       setHidratado(true);
       return;
