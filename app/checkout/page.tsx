@@ -117,7 +117,7 @@ export default function CheckoutPage() {
       });
       const data = await res.json();
       if (!res.ok) { toast.error(data.error ?? "Error al procesar el pago"); return; }
-      const url = data.sandbox_init_point || data.init_point;
+      const url = data.modo === "produccion" ? data.init_point : data.sandbox_init_point;
       window.location.href = url;
     } catch {
       toast.error("Error de conexión. Intenta de nuevo.");
