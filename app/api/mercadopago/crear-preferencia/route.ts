@@ -128,7 +128,11 @@ export async function POST(request: Request) {
         },
         auto_return: "approved",
         external_reference,
-        notification_url: `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook`,
+        // notification_url solo cuando la URL base es HTTPS pública
+        // (MP rechaza localhost o HTTP con "policy UNAUTHORIZED")
+        ...(process.env.NEXT_PUBLIC_URL?.startsWith("https://")
+          ? { notification_url: `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook` }
+          : {}),
         ...(descuentoTotal > 0 ? { coupon_amount: descuentoTotal } : {}),
       }),
     });
@@ -136,9 +140,9 @@ export async function POST(request: Request) {
     const mpData = await mpRes.json();
 
     if (!mpRes.ok) {
-      console.error("MercadoPago error:", mpData);
+      console.error("MercadoPago error:", JSON.stringify(mpData));
       return NextResponse.json(
-        { error: mpData.message ?? "Error al crear preferencia de pago" },
+        { error: mpData.message ?? "Error al crear preferencia de pago", cause: mpData.cause },
         { status: 400 }
       );
     }
