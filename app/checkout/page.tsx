@@ -51,14 +51,31 @@ export default function CheckoutPage() {
   const [buscandoCupon,  setBuscandoCupon]  = useState(false);
   const [metodoPago,     setMetodoPago]     = useState<"mercadopago" | "webpay">("mercadopago");
   const [pagando,        setPagando]        = useState(false);
+  const [hidratado,      setHidratado]      = useState(() => useCarrito.persist.hasHydrated());
 
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
 
   useEffect(() => {
-    if (items.length === 0) router.replace("/");
-  }, [items.length, router]);
+    if (useCarrito.persist.hasHydrated()) {
+      setHidratado(true);
+      return;
+    }
+    return useCarrito.persist.onFinishHydration(() => setHidratado(true));
+  }, []);
+
+  useEffect(() => {
+    if (hidratado && items.length === 0) router.replace("/");
+  }, [hidratado, items.length, router]);
+
+  if (!hidratado) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
+        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Cargando...</p>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
