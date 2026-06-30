@@ -176,7 +176,14 @@ export async function POST(request: Request) {
       };
     });
 
-    await supabase.from("ordenes").insert(ordenes);
+    const { error: insertError } = await supabase.from("ordenes").insert(ordenes);
+    if (insertError) {
+      console.error("Insert ordenes error:", JSON.stringify(insertError));
+      return NextResponse.json(
+        { error: `Error al registrar la orden: ${insertError.message}` },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       init_point:         mpData.init_point,
