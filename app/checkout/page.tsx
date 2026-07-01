@@ -18,10 +18,9 @@ import Header from "@/components/layout/Header";
 interface Cupon {
   id: string;
   codigo: string;
-  tipo: string;
+  tipo_descuento: string;
   valor: number;
-  monto_minimo?: number;
-  fecha_expiracion?: string;
+  expira_at?: string;
   usos_actuales: number;
   usos_maximos?: number;
 }
@@ -90,7 +89,7 @@ export default function CheckoutPage() {
 
   const calcularDescuento = (): number => {
     if (!cuponAplicado) return 0;
-    if (cuponAplicado.tipo === "porcentaje") return Math.round(subtotal * cuponAplicado.valor / 100);
+    if (cuponAplicado.tipo_descuento === "porcentaje") return Math.round(subtotal * cuponAplicado.valor / 100);
     return Math.min(cuponAplicado.valor, subtotal);
   };
 
@@ -109,12 +108,11 @@ export default function CheckoutPage() {
         .single();
 
       if (error || !data) { toast.error("Cupón inválido o no existe"); return; }
-      if (data.fecha_expiracion && new Date(data.fecha_expiracion) < new Date()) { toast.error("Este cupón ha expirado"); return; }
+      if (data.expira_at && new Date(data.expira_at) < new Date()) { toast.error("Este cupón ha expirado"); return; }
       if (data.usos_maximos && data.usos_actuales >= data.usos_maximos) { toast.error("Este cupón ya alcanzó su límite de usos"); return; }
-      if (data.monto_minimo && subtotal < data.monto_minimo) { toast.error(`Monto mínimo: ${formatCLP(data.monto_minimo)}`); return; }
 
       setCuponAplicado(data as Cupon);
-      toast.success(`Cupón aplicado: ${data.valor}${data.tipo === "porcentaje" ? "%" : ` ${formatCLP(data.valor)}`} de descuento`);
+      toast.success(`Cupón aplicado: ${data.valor}${data.tipo_descuento === "porcentaje" ? "%" : ` ${formatCLP(data.valor)}`} de descuento`);
     } finally {
       setBuscandoCupon(false);
     }
@@ -215,7 +213,7 @@ export default function CheckoutPage() {
                       <div className="flex items-center gap-2">
                         <Tag size={15} style={{ color: "#166534" }} />
                         <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#166534", fontWeight: 600 }}>
-                          {cuponAplicado.codigo} — {cuponAplicado.tipo === "porcentaje" ? `${cuponAplicado.valor}% de descuento` : `${formatCLP(cuponAplicado.valor)} de descuento`}
+                          {cuponAplicado.codigo} — {cuponAplicado.tipo_descuento === "porcentaje" ? `${cuponAplicado.valor}% de descuento` : `${formatCLP(cuponAplicado.valor)} de descuento`}
                         </span>
                       </div>
                       <button type="button" onClick={() => { setCuponAplicado(null); setCuponCodigo(""); }} className="text-xs underline" style={{ fontFamily: "Barlow, sans-serif", color: "#166534" }}>

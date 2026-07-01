@@ -62,15 +62,13 @@ export async function POST(request: Request) {
 
     const modo = settings.mp_modo ?? "sandbox";
 
-    console.log("cupon_id recibido en body:", JSON.stringify(cupon_id));
-
     // Calcular descuento por cupón
     let descuentoTotal = 0;
-    let cuponData: { id: string; tipo: string; valor: number } | null = null;
+    let cuponData: { id: string; tipo_descuento: string; valor: number } | null = null;
     if (cupon_id) {
       const { data: cupon, error: cuponError } = await supabase
         .from("cupones")
-        .select("id, tipo, valor")
+        .select("id, tipo_descuento, valor")
         .eq("id", cupon_id)
         .single();
 
@@ -81,7 +79,7 @@ export async function POST(request: Request) {
       if (cupon) {
         cuponData = cupon;
         const subtotal = items.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
-        descuentoTotal = cupon.tipo === "porcentaje"
+        descuentoTotal = cupon.tipo_descuento === "porcentaje"
           ? Math.round(subtotal * cupon.valor / 100)
           : Math.min(cupon.valor, subtotal);
       }
@@ -106,7 +104,7 @@ export async function POST(request: Request) {
     const subtotalBruto = items.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
     const precioConDescuento = (precio: number, cantidad: number): number => {
       if (!cuponData || descuentoTotal === 0) return precio;
-      if (cuponData.tipo === "porcentaje") {
+      if (cuponData.tipo_descuento === "porcentaje") {
         return Math.max(1, Math.round(precio * (1 - cuponData.valor / 100)));
       }
       // Monto fijo: prorratear según el peso del item en el subtotal
@@ -114,21 +112,6 @@ export async function POST(request: Request) {
       const descuentoItem = Math.round(descuentoTotal * peso / cantidad);
       return Math.max(1, precio - descuentoItem);
     };
-
-    console.log("=== DEBUG CUPÓN ===");
-    console.log("cuponData:", JSON.stringify(cuponData));
-    console.log("descuentoTotal:", descuentoTotal);
-    console.log("items recibidos:", JSON.stringify(items));
-    console.log("subtotalBruto:", subtotalBruto);
-    console.log("items enviados a MP:", JSON.stringify(
-      items.map((item) => ({
-        title: item.nombre,
-        quantity: item.cantidad,
-        unit_price_original: item.precio,
-        unit_price_con_descuento: precioConDescuento(item.precio, item.cantidad),
-      }))
-    ));
-    console.log("===================");
 
     // Construir preferencia de MP
     const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
