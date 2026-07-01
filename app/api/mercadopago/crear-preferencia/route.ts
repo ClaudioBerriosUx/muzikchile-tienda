@@ -62,15 +62,21 @@ export async function POST(request: Request) {
 
     const modo = settings.mp_modo ?? "sandbox";
 
+    console.log("cupon_id recibido en body:", JSON.stringify(cupon_id));
+
     // Calcular descuento por cupón
     let descuentoTotal = 0;
     let cuponData: { id: string; tipo: string; valor: number } | null = null;
     if (cupon_id) {
-      const { data: cupon } = await supabase
+      const { data: cupon, error: cuponError } = await supabase
         .from("cupones")
         .select("id, tipo, valor")
         .eq("id", cupon_id)
         .single();
+
+      if (cuponError) {
+        console.error("Error consultando cupón:", JSON.stringify(cuponError));
+      }
 
       if (cupon) {
         cuponData = cupon;
