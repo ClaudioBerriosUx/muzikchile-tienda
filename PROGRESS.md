@@ -48,7 +48,7 @@
 - Editar artista (`/admin/artistas/[id]/editar`) — fix carga de redes sociales (mismatch `redes_sociales` → `redes`)
 - Categorías: CRUD
 - Órdenes: listado con filtro por estado, cambio de estado
-- Cupones globales: CRUD
+- Cupones globales: CRUD (⚠️ probablemente roto — ver "En progreso / bugs conocidos")
 - Liquidaciones: vista de artistas con saldo pendiente, registro de pagos realizados
 - Configuración: tokens de MercadoPago con campos enmascarados
 
@@ -56,21 +56,28 @@
 - Columnas renombradas en código para coincidir con DB real: `nombre_comprador` → `comprador_nombre`, `email_comprador` → `comprador_email`, `external_reference` → `grupo_id`
 - INSERT captura y loguea error explícito en vez de fallar silenciosamente
 
+### Correcciones de schema (tabla `cupones`) — RESUELTO 2026-06-30
+- **Bug crítico de cupón en MercadoPago resuelto**: la columna real es `tipo_descuento`, no `tipo`; y `expira_at`, no `fecha_expiracion`. La columna `monto_minimo` no existe en la tabla.
+- Causa raíz: `crear-preferencia/route.ts` consultaba `select("id, tipo, valor")` → Postgres error `42703 column cupones.tipo does not exist` → `cuponData` quedaba `null` → el error se descartaba en silencio (`const { data: cupon } = await ...` sin capturar `error`) → el descuento nunca se aplicaba al `unit_price` enviado a MP.
+- El mismo mismatch existía en `app/checkout/page.tsx`: `cuponAplicado.tipo` siempre era `undefined`, por lo que el descuento mostrado en el cliente se calculaba por la rama de "monto fijo" sin que se notara (coincidencia visual, no cálculo correcto).
+- Verificado el schema real consultando la tabla `cupones` directo vía PostgREST (`GET /rest/v1/cupones`) en vez de asumir por el código.
+- Diagnóstico hecho con logs temporales en Vercel (agregados y luego retirados) en los commits `bafbd48`, `93ca60a`; fix real en `93a9858`.
+
 ---
 
 ## 🚧 En progreso / bugs conocidos
 
-- **CRÍTICO — Cupón no se refleja en MercadoPago**: el checkout muestra el descuento correctamente (ej: $1.100 → $1.080), pero la preferencia de MP sigue mostrando el precio sin descuento. Se implementó `precioConDescuento()` en `crear-preferencia/route.ts` que modifica `unit_price` por item, pero no resolvió el problema. **Pendiente de debug**: verificar si `cuponData`/`descuentoTotal` llegan correctamente al bloque de items, o si MP está cacheando la preferencia anterior. Bloquea ventas con descuento.
 - **Email de confirmación de compra**: la página `/checkout/exito` dice "Recibirás un email" pero no hay código de envío de email en ningún Route Handler
+- **`admin/cupones/page.tsx` probablemente roto**: usa columnas `tipo`, `fecha_expiracion` y `monto_minimo` en el `insert`/`update` a `cupones`, ninguna de las cuales existe en la tabla real (ver sección "Resuelto" más abajo). Cualquier intento de crear/editar un cupón global desde `/admin/cupones` debería fallar con error de Postgres 42703. No confirmado con una prueba real todavía — pendiente de arreglar igual que se hizo en checkout/crear-preferencia.
 
 ---
 
 ## ⏭️ Siguiente (prioridad)
 
-1. **Resolver bug de cupón en MercadoPago** — crítico, bloquea ventas con descuento. Debug: agregar log del payload exacto que se envía a MP y verificar que `descuentoTotal > 0` y `cuponData` no sean undefined en ese punto
-2. **Probar flujo completo sin cupón** — confirmar que checkout sin cupón funciona 100% en producción
-3. **Email transaccional** — confirmación de compra al comprador y notificación al artista
-4. **Limpiar console.logs de debug restantes** — verificar si quedó alguno tras la limpieza anterior
+1. **Confirmar con una compra real de prueba** que el descuento del cupón ahora sí llega a MercadoPago (fix ya deployado en `93a9858`)
+2. **Arreglar `admin/cupones/page.tsx`** — mismo tipo de mismatch de columnas (`tipo`/`fecha_expiracion`/`monto_minimo`) que probablemente rompe el CRUD de cupones globales
+3. **Probar flujo completo sin cupón** — confirmar que checkout sin cupón funciona 100% en producción
+4. **Email transaccional** — confirmación de compra al comprador y notificación al artista
 5. **WebPay / Transbank** — placeholders en `/checkout` y `/admin/configuracion`, marcados "Próximamente"
 6. **Integración Spotify** — badge "Próximamente: Conectar con Spotify" en `/panel/perfil`
 
@@ -99,3 +106,4 @@
 | `notification_url` condicional a HTTPS | MP rechaza con "policy UNAUTHORIZED" si la URL es localhost/HTTP |
 | No hay tests | Proyecto en etapa MVP/early |
 | Único branch `main` | Desarrollo directo en main, sin feature branches |
+| Deploy manual (`vercel --prod`), no auto-deploy por push a GitHub | El proyecto Vercel no tiene el repo Git conectado (confirmado 2026-06-30). `git push` a `main` NO dispara deploy — hay que correr `vercel --prod` explícitamente después de cada push |
