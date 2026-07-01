@@ -109,6 +109,21 @@ export async function POST(request: Request) {
       return Math.max(1, precio - descuentoItem);
     };
 
+    console.log("=== DEBUG CUPÓN ===");
+    console.log("cuponData:", JSON.stringify(cuponData));
+    console.log("descuentoTotal:", descuentoTotal);
+    console.log("items recibidos:", JSON.stringify(items));
+    console.log("subtotalBruto:", subtotalBruto);
+    console.log("items enviados a MP:", JSON.stringify(
+      items.map((item) => ({
+        title: item.nombre,
+        quantity: item.cantidad,
+        unit_price_original: item.precio,
+        unit_price_con_descuento: precioConDescuento(item.precio, item.cantidad),
+      }))
+    ));
+    console.log("===================");
+
     // Construir preferencia de MP
     const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",
