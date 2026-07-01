@@ -111,7 +111,8 @@ export default function CuponesPage() {
       setDialogOpen(false);
     } catch (error) {
       console.error('Error cupón:', error);
-      toast.error(error instanceof Error ? error.message : 'Error al guardar');
+      const message = (error as { message?: string })?.message;
+      toast.error(message ? `Error al guardar: ${message}` : 'Error al guardar');
     } finally {
       setGuardando(false);
     }

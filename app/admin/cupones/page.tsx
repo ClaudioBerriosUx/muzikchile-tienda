@@ -15,12 +15,11 @@ import StatusBadge from "@/components/ui/StatusBadge";
 interface Cupon {
   id: string;
   codigo: string;
-  tipo: string;
+  tipo_descuento: string;
   valor: number;
-  monto_minimo?: number;
   usos_actuales: number;
   usos_maximos?: number;
-  fecha_expiracion?: string;
+  expira_at?: string;
   activo: boolean;
   artista_id?: string | null;
   artistas?: { nombre: string } | { nombre: string }[] | null;
@@ -30,12 +29,11 @@ interface FormState {
   codigo: string;
   tipo: string;
   valor: string;
-  monto_minimo: string;
   usos_maximos: string;
-  fecha_expiracion: string;
+  expira_at: string;
 }
 
-const FORM_VACIO: FormState = { codigo: "", tipo: "porcentaje", valor: "", monto_minimo: "", usos_maximos: "", fecha_expiracion: "" };
+const FORM_VACIO: FormState = { codigo: "", tipo: "porcentaje", valor: "", usos_maximos: "", expira_at: "" };
 
 function nombreArtista(c: Cupon): string {
   if (!c.artista_id) return "Global";
@@ -69,11 +67,10 @@ export default function CuponesPage() {
     setEditando(cupon ?? null);
     setForm(cupon ? {
       codigo: cupon.codigo,
-      tipo: cupon.tipo,
+      tipo: cupon.tipo_descuento,
       valor: String(cupon.valor),
-      monto_minimo: cupon.monto_minimo ? String(cupon.monto_minimo) : "",
       usos_maximos: cupon.usos_maximos ? String(cupon.usos_maximos) : "",
-      fecha_expiracion: cupon.fecha_expiracion ? cupon.fecha_expiracion.slice(0, 10) : "",
+      expira_at: cupon.expira_at ? cupon.expira_at.slice(0, 10) : "",
     } : FORM_VACIO);
     setDialogOpen(true);
   };
@@ -84,11 +81,10 @@ export default function CuponesPage() {
     try {
       const payload = {
         codigo: form.codigo.trim().toUpperCase(),
-        tipo: form.tipo,
+        tipo_descuento: form.tipo,
         valor: Number(form.valor),
-        monto_minimo: form.monto_minimo ? Number(form.monto_minimo) : null,
         usos_maximos: form.usos_maximos ? Number(form.usos_maximos) : null,
-        fecha_expiracion: form.fecha_expiracion || null,
+        expira_at: form.expira_at || null,
         artista_id: null,
       };
       if (editando) {
@@ -102,8 +98,9 @@ export default function CuponesPage() {
       }
       queryClient.invalidateQueries({ queryKey: ["admin-cupones"] });
       setDialogOpen(false);
-    } catch {
-      toast.error("Error al guardar");
+    } catch (error) {
+      const message = (error as { message?: string })?.message;
+      toast.error(message ? `Error al guardar: ${message}` : "Error al guardar");
     } finally {
       setGuardando(false);
     }
@@ -140,7 +137,7 @@ export default function CuponesPage() {
         <table className="w-full text-sm">
           <thead style={{ backgroundColor: "#f8f7f5" }}>
             <tr>
-              {["Código", "Tipo", "Valor", "Mínimo", "Usos", "Expira", "Artista", "Estado", ""].map((h) => (
+              {["Código", "Tipo", "Valor", "Usos", "Expira", "Artista", "Estado", ""].map((h) => (
                 <th key={h} className="text-left px-4 py-3 text-xs uppercase tracking-wide" style={{ fontFamily: "Barlow, sans-serif", color: "#666666", fontWeight: 600 }}>
                   {h}
                 </th>
@@ -152,19 +149,16 @@ export default function CuponesPage() {
               <tr key={c.id} style={{ borderTop: i > 0 ? "1px solid #f0f0f0" : undefined }}>
                 <td className="px-4 py-3 font-mono font-bold" style={{ color: "#111111" }}>{c.codigo}</td>
                 <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
-                  {c.tipo === "porcentaje" ? "%" : "$"}
+                  {c.tipo_descuento === "porcentaje" ? "%" : "$"}
                 </td>
                 <td className="px-4 py-3" style={{ fontFamily: "DM Sans, sans-serif", color: "#e8003d", fontWeight: 700 }}>
-                  {c.tipo === "porcentaje" ? `${c.valor}%` : formatCLP(c.valor)}
-                </td>
-                <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
-                  {c.monto_minimo ? formatCLP(c.monto_minimo) : "—"}
+                  {c.tipo_descuento === "porcentaje" ? `${c.valor}%` : formatCLP(c.valor)}
                 </td>
                 <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
                   {c.usos_actuales}{c.usos_maximos ? ` / ${c.usos_maximos}` : ""}
                 </td>
                 <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
-                  {c.fecha_expiracion ? new Date(c.fecha_expiracion).toLocaleDateString("es-CL") : "—"}
+                  {c.expira_at ? new Date(c.expira_at).toLocaleDateString("es-CL") : "—"}
                 </td>
                 <td className="px-4 py-3">
                   <span className="text-xs px-2 py-0.5 rounded" style={{
@@ -231,16 +225,12 @@ export default function CuponesPage() {
               <input type="number" value={form.valor} onChange={set("valor")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }} placeholder={form.tipo === "porcentaje" ? "10" : "5000"} />
             </div>
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>Monto mínimo (CLP)</label>
-              <input type="number" value={form.monto_minimo} onChange={set("monto_minimo")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }} placeholder="Opcional" />
-            </div>
-            <div>
               <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>Usos máximos</label>
               <input type="number" value={form.usos_maximos} onChange={set("usos_maximos")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }} placeholder="Ilimitado" />
             </div>
             <div className="col-span-2">
               <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>Fecha de expiración</label>
-              <input type="date" value={form.fecha_expiracion} onChange={set("fecha_expiracion")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }} />
+              <input type="date" value={form.expira_at} onChange={set("expira_at")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }} />
             </div>
           </div>
           <DialogFooter>
