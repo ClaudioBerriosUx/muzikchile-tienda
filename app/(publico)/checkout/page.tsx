@@ -65,7 +65,7 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
-    if (hidratado && items.length === 0) router.replace("/");
+    if (hidratado && items.length === 0) router.replace("/tienda");
   }, [hidratado, items.length, router]);
 
   if (!hidratado) {

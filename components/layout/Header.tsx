@@ -36,7 +36,14 @@ export default function Header() {
   return (
     <header
       className="sticky top-0 z-50 flex items-center justify-between gap-4 px-4 md:px-6"
-      style={{ backgroundColor: "#111111", height: ALTURA }}
+      style={{
+        backgroundColor: "#000000",
+        height: ALTURA,
+        // La franja roja del Channel. Va como border-bottom y no como elemento
+        // aparte para no alterar los 64px: con box-sizing border-box (preflight
+        // de Tailwind) el borde queda DENTRO de la altura.
+        borderBottom: "2px solid #CC0000",
+      }}
     >
       {/* Logo */}
       <Link

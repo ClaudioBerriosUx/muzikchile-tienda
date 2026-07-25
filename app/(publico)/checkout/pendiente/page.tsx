@@ -26,7 +26,7 @@ export default function PendientePage() {
         </p>
 
         <Link
-          href="/"
+          href="/tienda"
           className="inline-block px-8 py-3 rounded-md border font-semibold"
           style={{ fontFamily: "Barlow, sans-serif", borderColor: "#111111", color: "#111111" }}
         >

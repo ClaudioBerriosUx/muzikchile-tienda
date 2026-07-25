@@ -64,7 +64,7 @@ function ExitoContent() {
         </p>
 
         <Link
-          href="/"
+          href="/tienda"
           className="inline-block px-8 py-3 rounded-md text-white font-semibold"
           style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#e8003d" }}
         >

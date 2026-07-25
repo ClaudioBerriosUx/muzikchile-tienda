@@ -38,7 +38,7 @@ export default function CarritoPage() {
             Agrega productos desde la tienda para comenzar.
           </p>
           <Link
-            href="/"
+            href="/tienda"
             className="mt-2 px-8 py-3 rounded-md text-white font-semibold"
             style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#e8003d" }}
           >
@@ -165,7 +165,7 @@ export default function CarritoPage() {
                 </Link>
 
                 <Link
-                  href="/"
+                  href="/tienda"
                   className="flex items-center justify-center w-full h-11 rounded-md border mt-2 transition-colors"
                   style={{ fontFamily: "Barlow, sans-serif", borderColor: "#111111", color: "#111111" }}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8f7f5")}

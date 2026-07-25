@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Package, Newspaper, Music, Tag,
   ShoppingBag, Ticket, Wallet, Settings, LogOut,
@@ -13,8 +14,6 @@ import Sidebar from "@/components/layout/Sidebar";
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
-  const [pendientes, setPendientes] = useState(0);
-  const [pendientesPub, setPendientesPub] = useState(0);
 
   useEffect(() => {
     async function checkAuth() {
@@ -38,24 +37,53 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         return;
       }
 
-      const [{ count }, { count: countPub }] = await Promise.all([
-        supabase
-          .from("productos")
-          .select("id", { count: "exact", head: true })
-          .eq("estado", "en_revision"),
-        supabase
-          .from("publicaciones")
-          .select("id", { count: "exact", head: true })
-          .eq("estado", "pendiente"),
-      ]);
-
-      setPendientes(count ?? 0);
-      setPendientesPub(countPub ?? 0);
       setAuthorized(true);
     }
 
     checkAuth();
   }, [router]);
+
+  /**
+   * Los contadores de los badges van por React Query, no por useState en el
+   * efecto de auth: así las mutaciones de moderación los refrescan solos.
+   *
+   * Las queryKeys NO son arbitrarias — son las que las páginas de moderación ya
+   * invalidan al aprobar/rechazar/devolver:
+   *   - `admin/productos`     invalida ["admin-count-revision"]
+   *   - `admin/publicaciones` invalida ["admin-count-publicaciones-pendientes"]
+   *
+   * Antes el badge se calculaba una sola vez al montar el layout y se quedaba
+   * pegado hasta recargar la página. (La invalidación de productos ya existía y
+   * refrescaba el dashboard, que consume la misma key; solo el sidebar se
+   * quedaba fuera.)
+   */
+  const { data: pendientes = 0 } = useQuery({
+    queryKey: ["admin-count-revision"],
+    queryFn: async () => {
+      const supabase = createClient();
+      const { count, error } = await supabase
+        .from("productos")
+        .select("id", { count: "exact", head: true })
+        .eq("estado", "en_revision");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: authorized,
+  });
+
+  const { data: pendientesPub = 0 } = useQuery({
+    queryKey: ["admin-count-publicaciones-pendientes"],
+    queryFn: async () => {
+      const supabase = createClient();
+      const { count, error } = await supabase
+        .from("publicaciones")
+        .select("id", { count: "exact", head: true })
+        .eq("estado", "pendiente");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: authorized,
+  });
 
   const handleSignOut = async () => {
     const supabase = createClient();

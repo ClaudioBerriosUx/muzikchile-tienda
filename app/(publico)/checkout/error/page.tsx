@@ -35,7 +35,7 @@ export default function ErrorPage() {
             Volver al carrito
           </Link>
           <Link
-            href="/"
+            href="/tienda"
             className="inline-block px-8 py-3 rounded-md border font-semibold"
             style={{ fontFamily: "Barlow, sans-serif", borderColor: "#111111", color: "#111111" }}
           >

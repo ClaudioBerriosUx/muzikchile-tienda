@@ -80,7 +80,7 @@ export default function CarritoDrawer() {
               Agrega productos de tus artistas favoritos
             </p>
             <Link
-              href="/"
+              href="/tienda"
               onClick={cerrar}
               className="mt-2 px-6 py-2.5 rounded-md text-white text-sm font-semibold"
               style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#e8003d" }}
