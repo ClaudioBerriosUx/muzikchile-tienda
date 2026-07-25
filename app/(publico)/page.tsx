@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { C, F } from "@/lib/portada";
+import SenalProvider from "./_portada/SenalProvider";
 import Hero from "./_portada/Hero";
 import VideosDestacados from "./_portada/VideosDestacados";
 import UltimasNoticias from "./_portada/UltimasNoticias";
@@ -23,41 +24,49 @@ export const metadata: Metadata = {
 export default function PortadaPage() {
   return (
     <div style={{ backgroundColor: C.negro }}>
-      <Hero />
+      {/*
+        Hero y VideosDestacados comparten estado: al abrir un destacado hay que
+        callar la señal en vivo, o suenan las dos a la vez. El provider los
+        envuelve a los dos; `UltimasNoticias` queda fuera porque no participa
+        (y así sigue siendo Server Component).
+      */}
+      <SenalProvider>
+        <Hero />
 
-      {/* ── Conecta ── */}
-      <section style={{ backgroundColor: C.negroSuave }} className="py-16">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
-          <h1
-            style={{
-              fontFamily: F.oswald,
-              fontSize: "clamp(30px, 5vw, 52px)",
-              fontWeight: 700,
-              letterSpacing: "0.01em",
-              lineHeight: 1.1,
-              color: C.blanco,
-              textTransform: "uppercase",
-            }}
-          >
-            Conéctate con la música chilena
-          </h1>
+        {/* ── Conecta ── */}
+        <section style={{ backgroundColor: C.negroSuave }} className="py-16">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
+            <h1
+              style={{
+                fontFamily: F.oswald,
+                fontSize: "clamp(30px, 5vw, 52px)",
+                fontWeight: 700,
+                letterSpacing: "0.01em",
+                lineHeight: 1.1,
+                color: C.blanco,
+                textTransform: "uppercase",
+              }}
+            >
+              Conéctate con la música chilena
+            </h1>
 
-          <p
-            className="mt-5"
-            style={{
-              fontFamily: F.dmSans,
-              fontSize: "16px",
-              lineHeight: 1.7,
-              color: C.gris,
-            }}
-          >
-            Nos mueve la pasión por los cantantes chilenos. Descubre el talento de
-            los artistas chilenos, llevándote lo mejor del sonido local.
-          </p>
-        </div>
-      </section>
+            <p
+              className="mt-5"
+              style={{
+                fontFamily: F.dmSans,
+                fontSize: "16px",
+                lineHeight: 1.7,
+                color: C.gris,
+              }}
+            >
+              Nos mueve la pasión por los cantantes chilenos. Descubre el talento de
+              los artistas chilenos, llevándote lo mejor del sonido local.
+            </p>
+          </div>
+        </section>
 
-      <VideosDestacados />
+        <VideosDestacados />
+      </SenalProvider>
 
       <UltimasNoticias />
     </div>

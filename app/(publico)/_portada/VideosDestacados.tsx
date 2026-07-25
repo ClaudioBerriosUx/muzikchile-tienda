@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Play, X, MapPin } from "lucide-react";
 import { C, F, idYoutube, thumbYoutube, thumbYoutubeFallback } from "@/lib/portada";
+import { useSenal } from "./SenalProvider";
 
 /**
  * Los videos viven en el Supabase del CHANNEL, que es otro proyecto. Se leen
@@ -227,6 +228,25 @@ function VideoCard({
 
 export default function VideosDestacados() {
   const [seleccionado, setSeleccionado] = useState<VideoChannel | null>(null);
+  const { silenciar, restaurar } = useSenal();
+
+  /**
+   * Abrir/cerrar se manejan acá y no con un efecto sobre `seleccionado`:
+   * llamar setState dentro de un efecto dispara renders en cascada
+   * (react-hooks/set-state-in-effect).
+   *
+   * Todos los caminos de cierre del modal —botón, clic fuera y ESC— pasan por
+   * su prop `onClose`, así que basta con envolverla una vez.
+   */
+  const abrir = (video: VideoChannel) => {
+    setSeleccionado(video);
+    silenciar();
+  };
+
+  const cerrar = () => {
+    setSeleccionado(null);
+    restaurar();
+  };
 
   const { data: videos = [], isLoading, isError } = useQuery({
     queryKey: ["portada-videos-destacados"],
@@ -289,14 +309,14 @@ export default function VideosDestacados() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {videos.map((v) => (
-              <VideoCard key={v.id} video={v} onSelect={() => setSeleccionado(v)} />
+              <VideoCard key={v.id} video={v} onSelect={() => abrir(v)} />
             ))}
           </div>
         )}
       </div>
 
       {seleccionado && (
-        <VideoModal video={seleccionado} onClose={() => setSeleccionado(null)} />
+        <VideoModal video={seleccionado} onClose={cerrar} />
       )}
     </section>
   );
