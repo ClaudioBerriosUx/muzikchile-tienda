@@ -43,6 +43,7 @@ export type Database = {
           comision: number
           created_at: string
           cuenta_bancaria: string | null
+          es_editorial: boolean
           es_founder: boolean
           foto_url: string | null
           generos: string[] | null
@@ -76,6 +77,7 @@ export type Database = {
           comision?: number
           created_at?: string
           cuenta_bancaria?: string | null
+          es_editorial?: boolean
           es_founder?: boolean
           foto_url?: string | null
           generos?: string[] | null
@@ -109,6 +111,7 @@ export type Database = {
           comision?: number
           created_at?: string
           cuenta_bancaria?: string | null
+          es_editorial?: boolean
           es_founder?: boolean
           foto_url?: string | null
           generos?: string[] | null

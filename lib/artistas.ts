@@ -15,7 +15,7 @@ export const traerArtistaPorSlug = cache(async (slug: string) => {
 
   const { data, error } = await supabase
     .from("artistas")
-    .select("id, nombre, slug, bio, foto_url, seo_titulo, seo_descripcion")
+    .select("id, nombre, slug, bio, foto_url, seo_titulo, seo_descripcion, es_editorial")
     .eq("slug", slug)
     // maybeSingle y no single: "no existe" no es un error que loguear.
     .maybeSingle();

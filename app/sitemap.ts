@@ -45,6 +45,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { data: artistas, error } = await supabase
     .from("artistas")
     .select("slug, created_at")
+    // Los perfiles editoriales (la redacción) viven en `artistas` pero no son
+    // artistas: /artista/[slug] les responde 404, así que no pueden ir en el
+    // sitemap. Sin este filtro entrarían, porque están marcados verificado=true.
+    .eq("es_editorial", false)
     .or("tienda_activa.eq.true,verificado.eq.true")
     .order("created_at", { ascending: false });
 

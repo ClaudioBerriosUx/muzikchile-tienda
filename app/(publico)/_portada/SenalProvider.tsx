@@ -3,15 +3,16 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 /**
- * Estado compartido entre el hero (señal en vivo) y los videos destacados.
+ * Estado compartido entre el hero (señal en vivo) y los videos destacados:
+ * al abrir un destacado hay que pausar la señal, o suenan las dos a la vez.
  *
- * El hero es un iframe de tv.muzikchile.cl: otro origen, así que no se le puede
- * pedir que pause por postMessage ni tocar su <video>. La única forma de callar
- * su audio desde acá es sacarlo de la página — se le cambia el `src` a
- * about:blank y se restaura al cerrar el modal.
+ * Este provider solo lleva el estado. Quién lo traduce a una acción concreta es
+ * el Hero, que envía `muzik_pause` / `muzik_play` al iframe por postMessage
+ * (ver `protocolo-senal.ts`).
  *
- * Efecto secundario asumido: al restaurar, la señal recarga desde cero. Da
- * igual, es una transmisión en vivo; no hay posición que retomar.
+ * Antes se hacía cambiando el `src` a about:blank, que descargaba el
+ * reproductor y lo obligaba a recargar. El Channel expone control por
+ * postMessage, así que ya no hace falta.
  */
 interface Senal {
   silenciada: boolean;

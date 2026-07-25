@@ -76,18 +76,6 @@ function VideoModal({
       aria-modal="true"
       aria-label={`${video.artist ?? ""} — ${video.tracktitle ?? "video"}`}
     >
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="Cerrar"
-        className="absolute top-4 right-4 w-10 h-10 rounded-md flex items-center justify-center transition-colors"
-        style={{ backgroundColor: "rgba(255,255,255,0.08)", color: C.blanco }}
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = C.rojo)}
-        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.08)")}
-      >
-        <X size={20} />
-      </button>
-
       <div
         className="w-full max-w-5xl"
         onClick={(e) => e.stopPropagation()}
@@ -104,6 +92,39 @@ function VideoModal({
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
+
+          {/*
+            Cerrar. Va DENTRO del contenedor del video (esquina del modal, no
+            del viewport) y con z-20 para quedar sobre el iframe.
+
+            44x44 es el mínimo táctil recomendado; antes medía 40 y tenía fondo
+            blanco translúcido al 8%, que sobre el overlay negro al 92% no se
+            distinguía — de ahí que pareciera que el botón no existía. Ahora es
+            fondo oscuro con borde claro, que contrasta tanto sobre el video
+            como sobre un thumbnail claro.
+          */}
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar video"
+            className="absolute top-3 right-3 z-20 w-11 h-11 rounded-full flex items-center justify-center transition-colors"
+            style={{
+              backgroundColor: "rgba(0,0,0,0.65)",
+              border: "1px solid rgba(255,255,255,0.35)",
+              color: C.blanco,
+              backdropFilter: "blur(4px)",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = C.rojo;
+              e.currentTarget.style.borderColor = C.rojo;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.65)";
+              e.currentTarget.style.borderColor = "rgba(255,255,255,0.35)";
+            }}
+          >
+            <X size={22} />
+          </button>
         </div>
 
         <div className="mt-4">

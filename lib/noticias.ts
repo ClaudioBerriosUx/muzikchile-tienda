@@ -26,14 +26,24 @@ export interface NoticiaLista {
 
 export interface NoticiaDetalle extends NoticiaLista {
   cuerpo: string | null;
-  artistas: { nombre: string; slug: string; foto_url: string | null } | null;
+  /**
+   * El autor. `es_editorial` distingue a la redacción MuzikChile de un artista
+   * real: los editoriales no tienen ficha pública, así que su atribución no se
+   * enlaza.
+   */
+  artistas: {
+    nombre: string;
+    slug: string;
+    foto_url: string | null;
+    es_editorial: boolean;
+  } | null;
 }
 
 const CAMPOS_LISTA =
   "id, titular, bajada, imagen_url, slug, categoria, created_at, artistas(nombre, slug)";
 
 const CAMPOS_DETALLE =
-  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, created_at, artistas(nombre, slug, foto_url)";
+  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, created_at, artistas(nombre, slug, foto_url, es_editorial)";
 
 function cliente() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

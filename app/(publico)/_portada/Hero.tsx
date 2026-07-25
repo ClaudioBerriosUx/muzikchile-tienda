@@ -1,16 +1,90 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Maximize2, Pause } from "lucide-react";
 import { C, F } from "@/lib/portada";
 import { useSenal } from "./SenalProvider";
+import {
+  MODO_INTERRUPCION,
+  MSG_READY,
+  ORIGEN_CHANNEL,
+  REQUIERE_HANDSHAKE,
+  enviarAlChannel,
+} from "./protocolo-senal";
 
 /** El reproductor vive en el Channel; acá solo se embebe. */
 const SRC_SEÑAL = "https://tv.muzikchile.cl/tv?embedded=true";
 
 export default function Hero() {
   const contenedor = useRef<HTMLDivElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
   const { silenciada } = useSenal();
+
+  /**
+   * ¿El iframe ya puede recibir órdenes?
+   *
+   * Con el protocolo legacy arranca en true: el listener del Channel se monta
+   * junto con su componente y nunca anuncia nada. Si se esperara un
+   * `muzik-embed-ready` que hoy no llega, no se enviaría ni un comando.
+   *
+   * Con el protocolo embed arranca en false y se levanta al recibir el ready.
+   */
+  const listo = useRef(!REQUIERE_HANDSHAKE);
+
+  /** Última intención pedida mientras el iframe todavía no estaba listo. */
+  const pendiente = useRef<boolean | null>(null);
+
+  // Handshake del iframe (solo relevante con el protocolo embed).
+  useEffect(() => {
+    const alRecibir = (evento: MessageEvent) => {
+      // Nunca confiar en un mensaje sin verificar de dónde viene.
+      if (evento.origin !== ORIGEN_CHANNEL) return;
+
+      const tipo =
+        typeof evento.data === "object" && evento.data !== null
+          ? (evento.data as { type?: string }).type
+          : evento.data;
+
+      if (tipo !== MSG_READY) return;
+
+      listo.current = true;
+
+      // Si el usuario abrió un destacado antes de que el iframe estuviera
+      // listo, la orden no se pierde: se aplica ahora.
+      if (pendiente.current !== null) {
+        enviarAlChannel(
+          iframeRef.current,
+          pendiente.current ? "interrumpir" : "reanudar"
+        );
+        pendiente.current = null;
+      }
+    };
+
+    window.addEventListener("message", alRecibir);
+    return () => window.removeEventListener("message", alRecibir);
+  }, []);
+
+  /**
+   * Traduce el estado compartido a una orden concreta al reproductor.
+   *
+   * Antes esto se hacía cambiando el `src` a about:blank, lo que descargaba el
+   * reproductor y lo obligaba a recargar al volver. Con postMessage el iframe
+   * nunca se recarga.
+   *
+   * Este efecto sí corresponde: sincroniza estado de React con un sistema
+   * externo (el reproductor del otro origen). No hace setState, así que no
+   * dispara renders en cascada.
+   */
+  useEffect(() => {
+    if (!listo.current) {
+      // Se guarda la última intención, no una cola: si el usuario abre y cierra
+      // varios videos antes del ready, solo importa cómo debe quedar al final.
+      pendiente.current = silenciada;
+      return;
+    }
+
+    enviarAlChannel(iframeRef.current, silenciada ? "interrumpir" : "reanudar");
+  }, [silenciada]);
 
   const pantallaCompleta = () => {
     const el = contenedor.current;
@@ -62,9 +136,10 @@ export default function Hero() {
         >
           <div className="relative w-full" style={{ aspectRatio: "16 / 9" }}>
             <iframe
-              // Cambiar el src a about:blank descarga la señal y con ella su
-              // audio; al volver a SRC_SEÑAL el iframe la recarga.
-              src={silenciada ? "about:blank" : SRC_SEÑAL}
+              ref={iframeRef}
+              // El src es fijo: la pausa va por postMessage, así que el
+              // reproductor nunca se descarga ni se recarga.
+              src={SRC_SEÑAL}
               title="Señal en vivo de MuzikChile TV"
               className="absolute inset-0 w-full h-full"
               style={{ border: 0 }}
@@ -72,12 +147,13 @@ export default function Hero() {
               allowFullScreen
             />
 
-            {/* Sin esto, el hero se ve como un rectángulo negro roto mientras
-                el modal está abierto. */}
+            {/* Semitransparente, no opaco: ahora el reproductor sigue montado y
+                se ve el cuadro congelado detrás. Taparlo del todo haría parecer
+                que se descargó, que es justo lo que dejó de pasar. */}
             {silenciada && (
               <div
                 className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none"
-                style={{ backgroundColor: C.negro }}
+                style={{ backgroundColor: "rgba(0,0,0,0.72)" }}
               >
                 <span
                   className="w-12 h-12 rounded-full flex items-center justify-center"
@@ -95,7 +171,9 @@ export default function Hero() {
                     textAlign: "center",
                   }}
                 >
-                  Señal en pausa
+                  {/* El texto sigue al modo activo para no mentir: hoy la señal
+                      se pausa de verdad; en modo "silenciar" seguiría corriendo. */}
+                  {MODO_INTERRUPCION === "pausar" ? "Señal en pausa" : "Señal silenciada"}
                   <br />
                   <span style={{ color: C.grisTenue, letterSpacing: "0.08em" }}>
                     mientras ves el video

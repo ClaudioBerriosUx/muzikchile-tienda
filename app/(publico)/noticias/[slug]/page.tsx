@@ -4,10 +4,100 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { C, F } from "@/lib/portada";
 import { etiquetaCategoria } from "@/lib/publicaciones";
-import { traerNoticiaPorSlug, fechaLarga } from "@/lib/noticias";
+import { traerNoticiaPorSlug, fechaLarga, type NoticiaDetalle } from "@/lib/noticias";
 import { BASE_URL } from "@/lib/site";
 
 type Props = { params: Promise<{ slug: string }> };
+
+type Autor = NonNullable<NoticiaDetalle["artistas"]>;
+
+/**
+ * Atribución del autor.
+ *
+ * Para un artista es la puerta de entrada a su ficha, así que va enlazada.
+ * Para la redacción NO se enlaza: los perfiles editoriales viven en `artistas`
+ * por conveniencia del modelo, pero no tienen ficha pública — /artista/[slug]
+ * les responde 404, y enlazarlos sería mandar al lector a un 404.
+ *
+ * El contenido se arma una vez y se envuelve según el caso, para no duplicarlo.
+ */
+function AtribucionAutor({ autor }: { autor: Autor }) {
+  const contenido = (
+    <>
+      {autor.foto_url ? (
+        <img
+          src={autor.foto_url}
+          alt={autor.nombre}
+          className="w-11 h-11 rounded-full object-cover shrink-0"
+          style={{ border: `2px solid ${C.rojo}` }}
+        />
+      ) : (
+        <span
+          className="w-11 h-11 rounded-full shrink-0 flex items-center justify-center"
+          style={{
+            backgroundColor: C.rojo,
+            color: C.blanco,
+            fontFamily: F.bebas,
+            fontSize: "20px",
+          }}
+        >
+          {autor.nombre.charAt(0).toUpperCase()}
+        </span>
+      )}
+
+      <span className="min-w-0">
+        <span
+          className="block"
+          style={{ fontFamily: F.dmSans, fontSize: "12px", color: C.grisTenue }}
+        >
+          {autor.es_editorial ? "Escrito por" : "Publicado por"}
+        </span>
+        <span
+          className="block truncate"
+          style={{
+            fontFamily: F.barlowC,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            fontSize: "17px",
+            color: C.blanco,
+          }}
+        >
+          {autor.nombre}
+        </span>
+      </span>
+
+      {/* Solo los artistas tienen ficha que visitar. */}
+      {!autor.es_editorial && (
+        <span
+          className="ml-auto shrink-0"
+          style={{
+            fontFamily: F.barlowC,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            fontSize: "12px",
+            color: C.rojoClaro,
+          }}
+        >
+          Ver ficha →
+        </span>
+      )}
+    </>
+  );
+
+  const clases =
+    "group flex items-center gap-3 mt-8 p-4 rounded-lg border transition-colors";
+  const estilo = { borderColor: C.borde, backgroundColor: C.negroSuave };
+
+  if (autor.es_editorial) {
+    return <div className={clases} style={estilo}>{contenido}</div>;
+  }
+
+  return (
+    <Link href={`/artista/${autor.slug}`} className={clases} style={estilo}>
+      {contenido}
+    </Link>
+  );
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -48,7 +138,7 @@ export default async function NoticiaPage({ params }: Props) {
   // No existe, o existe pero no está publicada: para el público es lo mismo.
   if (!noticia) notFound();
 
-  const artista = noticia.artistas;
+  const autor = noticia.artistas;
 
   return (
     <div style={{ backgroundColor: C.negro }} className="min-h-screen">
@@ -134,73 +224,8 @@ export default async function NoticiaPage({ params }: Props) {
           </p>
         )}
 
-        {/* Atribución: cada noticia es puerta de entrada al artista */}
-        {artista && (
-          <Link
-            href={`/artista/${artista.slug}`}
-            className="group flex items-center gap-3 mt-8 p-4 rounded-lg border transition-colors"
-            style={{ borderColor: C.borde, backgroundColor: C.negroSuave }}
-          >
-            {artista.foto_url ? (
-              <img
-                src={artista.foto_url}
-                alt={artista.nombre}
-                className="w-11 h-11 rounded-full object-cover shrink-0"
-                style={{ border: `2px solid ${C.rojo}` }}
-              />
-            ) : (
-              <span
-                className="w-11 h-11 rounded-full shrink-0 flex items-center justify-center"
-                style={{
-                  backgroundColor: C.rojo,
-                  color: C.blanco,
-                  fontFamily: F.bebas,
-                  fontSize: "20px",
-                }}
-              >
-                {artista.nombre.charAt(0).toUpperCase()}
-              </span>
-            )}
-
-            <span className="min-w-0">
-              <span
-                className="block"
-                style={{
-                  fontFamily: F.dmSans,
-                  fontSize: "12px",
-                  color: C.grisTenue,
-                }}
-              >
-                Publicado por
-              </span>
-              <span
-                className="block truncate"
-                style={{
-                  fontFamily: F.barlowC,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.08em",
-                  fontSize: "17px",
-                  color: C.blanco,
-                }}
-              >
-                {artista.nombre}
-              </span>
-            </span>
-
-            <span
-              className="ml-auto shrink-0"
-              style={{
-                fontFamily: F.barlowC,
-                textTransform: "uppercase",
-                letterSpacing: "0.1em",
-                fontSize: "12px",
-                color: C.rojoClaro,
-              }}
-            >
-              Ver ficha →
-            </span>
-          </Link>
-        )}
+        {/* Atribución del autor: enlazada solo si es un artista real. */}
+        {autor && <AtribucionAutor autor={autor} />}
 
         {/* Cuerpo */}
         {noticia.cuerpo && (

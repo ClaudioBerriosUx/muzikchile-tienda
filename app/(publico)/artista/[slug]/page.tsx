@@ -12,7 +12,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // Misma consulta que usa la página: `cache()` la resuelve una sola vez por request.
   const artista = await traerArtistaPorSlug(slug);
 
-  if (!artista) return {};
+  // Los editoriales no tienen ficha pública: la página responde 404.
+  if (!artista || artista.es_editorial) return {};
 
   const titulo = artista.seo_titulo ||
     `${artista.nombre} | Merch en MuzikChile`;
@@ -47,15 +48,20 @@ export default async function ArtistaPage({ params }: Props) {
    * devolvía HTTP 200 con un "Artista no encontrado" pintado en el cliente
    * (soft 404), y esta ruta está en el sitemap.
    *
-   * Solo se comprueba EXISTENCIA, no visibilidad: no se filtra por
-   * `tienda_activa` ni `verificado`. Ver la nota en el reporte — hoy hay
-   * artistas con ambos flags en false cuyas fichas se enlazan desde las
-   * noticias, y filtrarlos rompería esos enlaces.
+   * Se comprueba EXISTENCIA y que no sea un perfil editorial. NO se filtra por
+   * `tienda_activa` ni `verificado`: hoy hay artistas con ambos flags en false
+   * cuyas fichas se enlazan desde las noticias, y filtrarlos rompería esos
+   * enlaces.
+   *
+   * Los perfiles editoriales (la redacción MuzikChile) viven en `artistas` por
+   * conveniencia del modelo de datos, pero NO son artistas: no tienen tienda ni
+   * biografía musical, y esta página los mostraría con la UI de tienda de
+   * artista. Para el público no existen como ficha.
    *
    * El detalle lo sigue renderizando `ArtistaClient`, igual que antes.
    */
   const artista = await traerArtistaPorSlug(slug);
-  if (!artista) notFound();
+  if (!artista || artista.es_editorial) notFound();
 
   return <ArtistaClient slug={slug} />;
 }
