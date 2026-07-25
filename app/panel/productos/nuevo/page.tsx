@@ -10,50 +10,10 @@ import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { X, Upload } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { comprimirImagen } from "@/lib/imagen";
 
 const ZONAS = ["Chile", "Latinoamérica", "EE.UU.", "Europa", "Mundial"];
 
-const comprimirImagen = (archivo: File, maxWidth = 800, calidad = 0.85): Promise<File> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(archivo);
-
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-
-      let width  = img.width;
-      let height = img.height;
-
-      if (width > maxWidth) {
-        height = Math.round((height * maxWidth) / width);
-        width  = maxWidth;
-      }
-
-      canvas.width  = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) { resolve(archivo); return; }
-          const comprimido = new File(
-            [blob],
-            archivo.name.replace(/\.[^.]+$/, ".jpg"),
-            { type: "image/jpeg" }
-          );
-          URL.revokeObjectURL(url);
-          resolve(comprimido);
-        },
-        "image/jpeg",
-        calidad
-      );
-    };
-
-    img.src = url;
-  });
-};
 
 const schema = z.object({
   nombre:          z.string().min(3, "Mínimo 3 caracteres"),
@@ -182,7 +142,9 @@ export default function NuevoProductoPage() {
         descripcion:  data.descripcion,
         tipo:         data.tipo,
         precio:       data.precio,
-        stock:        data.tipo === "fisico" ? (data.stock ?? null) : null,
+        // Los digitales no llevan inventario: 999 es el sentinel de "ilimitado".
+        // La columna es NOT NULL, así que no se puede enviar null.
+        stock:        data.tipo === "fisico" ? (data.stock ?? 0) : 999,
         imagenes,
         zonas_envio:  data.zonas_envio,
         estado:       "en_revision",

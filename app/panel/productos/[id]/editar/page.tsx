@@ -251,7 +251,9 @@ export default function EditarProductoPage() {
           descripcion:  data.descripcion,
           tipo:         data.tipo,
           precio:       data.precio,
-          stock:        data.tipo === "fisico" ? (data.stock ?? null) : null,
+          // Los digitales no llevan inventario: 999 es el sentinel de "ilimitado".
+          // La columna es NOT NULL, así que no se puede enviar null.
+          stock:        data.tipo === "fisico" ? (data.stock ?? 0) : 999,
           imagenes,
           zonas_envio:  data.zonas_envio,
           estado:       "en_revision",

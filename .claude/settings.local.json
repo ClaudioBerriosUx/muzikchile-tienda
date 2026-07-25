@@ -3,7 +3,10 @@
     "allow": [
       "PowerShell(New-Item *)",
       "Bash(npx tsc *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(npx vercel *)"
     ]
   }
 }

@@ -6,7 +6,6 @@ import { Suspense, useState, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import Header from "@/components/layout/Header";
 import FilterChips from "@/components/ui/FilterChips";
 import ProductCard from "@/components/ui/ProductCard";
 
@@ -144,7 +143,6 @@ function HomePageContent() {
 
   return (
     <>
-      <Header />
       <main className="min-h-screen bg-white">
         {/* Hero */}
         <section className="py-16 text-center" style={{ backgroundColor: "#f8f7f5" }}>
@@ -234,7 +232,6 @@ export default function HomePage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-white">
-        <Header />
       </div>
     }>
       <HomePageContent />

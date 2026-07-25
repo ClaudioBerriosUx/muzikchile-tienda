@@ -20,36 +20,56 @@ function RegistroContent() {
   useEffect(() => {
     const supabase = createClient();
 
-    // Caso 1: Supabase implicit flow — access_token llega en el hash (#)
-    const hash = window.location.hash;
-    if (hash && hash.length > 1) {
-      const params = new URLSearchParams(hash.slice(1));
-      const access_token = params.get("access_token");
-      const refresh_token = params.get("refresh_token") ?? "";
-      if (access_token) {
-        supabase.auth
-          .setSession({ access_token, refresh_token })
-          .then(({ error }) => setEstado(error ? "invalido" : "valido"));
+    /**
+     * Tipos de token que puede traer el enlace, en orden de intento.
+     * - magiclink: login sin contraseña
+     * - invite:    invitación de admin desde /admin/artistas
+     * - recovery:  recuperación de contraseña desde /recuperar
+     *
+     * Se prueban en cadena porque el enlace no dice de qué tipo es. Un
+     * verifyOtp fallido no consume el token, que es lo que ya asumía la
+     * versión anterior al encadenar magiclink → invite.
+     */
+    const TIPOS_TOKEN = ["magiclink", "invite", "recovery"] as const;
+
+    async function verificarEnlace() {
+      // Caso 1: implicit flow — access_token llega en el hash (#)
+      const hash = window.location.hash;
+      if (hash && hash.length > 1) {
+        const params = new URLSearchParams(hash.slice(1));
+        const access_token = params.get("access_token");
+        const refresh_token = params.get("refresh_token") ?? "";
+        if (access_token) {
+          const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+          setEstado(error ? "invalido" : "valido");
+          return;
+        }
+      }
+
+      // Caso 2: PKCE flow — ?code= (es lo que manda resetPasswordForEmail
+      // cuando el cliente usa PKCE, que es el default de createBrowserClient)
+      const code = searchParams.get("code");
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        setEstado(error ? "invalido" : "valido");
         return;
       }
-    }
 
-    // Caso 2: PKCE flow — token_hash largo en query string
-    const token_hash = searchParams.get("token_hash") ?? searchParams.get("token");
-    if (token_hash) {
-      supabase.auth
-        .verifyOtp({ token_hash, type: "magiclink" })
-        .then(({ error }) => {
+      // Caso 3: token_hash en query string
+      const token_hash = searchParams.get("token_hash") ?? searchParams.get("token");
+      if (token_hash) {
+        for (const type of TIPOS_TOKEN) {
+          const { error } = await supabase.auth.verifyOtp({ token_hash, type });
           if (!error) { setEstado("valido"); return; }
-          // Reintenta con type "invite" (invitaciones admin)
-          supabase.auth
-            .verifyOtp({ token_hash, type: "invite" })
-            .then(({ error: e2 }) => setEstado(e2 ? "invalido" : "valido"));
-        });
-      return;
+        }
+        setEstado("invalido");
+        return;
+      }
+
+      setEstado("invalido");
     }
 
-    setEstado("invalido");
+    verificarEnlace();
   }, []);
 
   const crearPassword = async () => {

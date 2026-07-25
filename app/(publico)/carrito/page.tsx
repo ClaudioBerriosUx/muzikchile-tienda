@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic';
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Minus, Plus, X, ShoppingCart } from "lucide-react";
-import Header from "@/components/layout/Header";
 import { useCarrito } from "@/lib/stores/carrito";
 import { formatCLP } from "@/lib/constants";
 
@@ -22,7 +21,6 @@ export default function CarritoPage() {
   if (!montado) {
     return (
       <>
-        <Header />
         <main className="min-h-screen bg-white" />
       </>
     );
@@ -31,7 +29,6 @@ export default function CarritoPage() {
   if (items.length === 0) {
     return (
       <>
-        <Header />
         <main className="min-h-screen bg-white flex flex-col items-center justify-center gap-4 px-6">
           <ShoppingCart size={48} className="text-[#cccccc]" />
           <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
@@ -56,7 +53,6 @@ export default function CarritoPage() {
 
   return (
     <>
-      <Header />
       <main className="min-h-screen bg-white">
         <div className="max-w-5xl mx-auto px-6 py-10">
           <h1 className="mb-8" style={{ fontFamily: "Oswald, sans-serif", fontSize: "32px", fontWeight: "700", color: "#111111" }}>

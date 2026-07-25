@@ -36,11 +36,12 @@ function LoginContent() {
       if (error) { toast.error(error.message); return; }
 
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error("No se pudo recuperar la sesión"); return; }
 
       const { data: roleData } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", user?.id)
+        .eq("user_id", user.id)
         .single();
 
       router.refresh();

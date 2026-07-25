@@ -32,11 +32,12 @@ interface Artista {
 
 interface Liquidacion {
   id: string;
-  artista_id: string;
+  artista_id: string | null;
   monto: number;
-  fecha: string;
-  comprobante_url?: string;
-  nota?: string;
+  fecha_transferencia: string | null;
+  numero_comprobante?: string | null;
+  comprobante_url?: string | null;
+  nota?: string | null;
   created_at: string;
   artistas?: { nombre: string } | null;
 }
@@ -142,14 +143,15 @@ export default function LiquidacionesPage() {
       }
 
       const montoTotal = (artistaPagar as Artista & { monto: number }).monto;
-      await supabase.from("liquidaciones").insert({
+      const { error: liqErr } = await supabase.from("liquidaciones").insert({
         artista_id: artistaPagar.id,
         monto: montoTotal,
-        fecha: fechaPago,
-        comprobante: comprobante || null,
+        fecha_transferencia: fechaPago,
+        numero_comprobante: comprobante || null,
         comprobante_url: comprobanteUrl,
         nota: nota || null,
       });
+      if (liqErr) throw liqErr;
 
       toast.success(`Pago registrado para ${artistaPagar.nombre}`);
       queryClient.invalidateQueries({ queryKey: ["admin-liquidaciones-artistas"] });
@@ -278,16 +280,18 @@ export default function LiquidacionesPage() {
                     {formatCLP(l.monto)}
                   </td>
                   <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
-                    {new Date(l.fecha).toLocaleDateString("es-CL")}
+                    {l.fecha_transferencia
+                      ? new Date(l.fecha_transferencia).toLocaleDateString("es-CL")
+                      : "—"}
                   </td>
                   <td className="px-4 py-3">
                     {l.comprobante_url ? (
                       <a href={l.comprobante_url} target="_blank" rel="noopener noreferrer" className="text-xs underline" style={{ color: "#3b82f6" }}>
                         Ver archivo
                       </a>
-                    ) : (l as Liquidacion & { comprobante?: string }).comprobante ? (
+                    ) : l.numero_comprobante ? (
                       <span className="text-xs font-mono" style={{ color: "#666666" }}>
-                        {(l as Liquidacion & { comprobante?: string }).comprobante}
+                        {l.numero_comprobante}
                       </span>
                     ) : "—"}
                   </td>

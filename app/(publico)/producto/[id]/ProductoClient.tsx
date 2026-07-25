@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import Header from "@/components/layout/Header";
 import ProductCard from "@/components/ui/ProductCard";
 import { useCarrito } from "@/lib/stores/carrito";
 import { formatCLP } from "@/lib/constants";
@@ -96,7 +95,6 @@ export default function ProductoClient({ id }: { id: string }) {
   if (isLoading) {
     return (
       <>
-        <Header />
         <div className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-2 gap-12">
           <div className="aspect-square rounded-lg animate-pulse" style={{ backgroundColor: "#f0f0f0" }} />
           <div className="flex flex-col gap-4">
@@ -112,7 +110,6 @@ export default function ProductoClient({ id }: { id: string }) {
   if (!producto) {
     return (
       <>
-        <Header />
         <div className="min-h-screen flex items-center justify-center">
           <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "24px", color: "#111111" }}>
             Producto no encontrado
@@ -141,7 +138,6 @@ export default function ProductoClient({ id }: { id: string }) {
 
   return (
     <>
-      <Header />
 
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">

@@ -3,13 +3,19 @@ interface Props {
 }
 
 const ESTILOS: Record<string, { bg: string; text: string; label: string }> = {
+  // productos
   en_revision: { bg: "#fef9c3", text: "#854d0e", label: "En revisión" },
   aprobado:    { bg: "#dcfce7", text: "#166534", label: "Aprobado" },
   rechazado:   { bg: "#fee2e2", text: "#991b1b", label: "Rechazado" },
+  // órdenes
   pendiente:   { bg: "#dbeafe", text: "#1e40af", label: "Pendiente" },
   pagado:      { bg: "#dcfce7", text: "#166534", label: "Pagado" },
   enviado:     { bg: "#fed7aa", text: "#9a3412", label: "Enviado" },
   entregado:   { bg: "#dcfce7", text: "#166534", label: "Entregado" },
+  // publicaciones ('pendiente' se reutiliza de arriba)
+  borrador:    { bg: "#f3f4f6", text: "#374151", label: "Borrador" },
+  publicada:   { bg: "#dcfce7", text: "#166534", label: "Publicada" },
+  devuelta:    { bg: "#ffedd5", text: "#9a3412", label: "Devuelta" },
 };
 
 export default function StatusBadge({ estado }: Props) {

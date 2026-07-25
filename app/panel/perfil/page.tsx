@@ -10,6 +10,7 @@ import { Camera, ExternalLink, X } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { REGIONES_CHILE, BANCOS_CHILE } from "@/lib/constants";
+import { comprimirImagen } from "@/lib/imagen";
 import ColorPicker from "@/components/ui/ColorPicker";
 
 const TIPOS_CUENTA = ["Cuenta Corriente", "Cuenta Vista", "Cuenta de Ahorro", "Cuenta RUT"];
@@ -48,47 +49,6 @@ const REDES_CONFIG = [
   },
 ];
 
-const comprimirImagen = (archivo: File, maxWidth = 400, calidad = 0.85): Promise<File> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(archivo);
-
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-
-      let width  = img.width;
-      let height = img.height;
-
-      if (width > maxWidth) {
-        height = Math.round((height * maxWidth) / width);
-        width  = maxWidth;
-      }
-
-      canvas.width  = width;
-      canvas.height = height;
-
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) { resolve(archivo); return; }
-          const comprimido = new File(
-            [blob],
-            archivo.name.replace(/\.[^.]+$/, ".jpg"),
-            { type: "image/jpeg" }
-          );
-          URL.revokeObjectURL(url);
-          resolve(comprimido);
-        },
-        "image/jpeg",
-        calidad
-      );
-    };
-
-    img.src = url;
-  });
-};
 
 function slugify(texto: string) {
   return texto.toLowerCase()

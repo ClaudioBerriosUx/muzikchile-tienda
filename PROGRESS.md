@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-06-30
+> Actualizado: 2026-07-25
 > Branch: `main` (único branch activo)
 
 ---
@@ -48,7 +48,7 @@
 - Editar artista (`/admin/artistas/[id]/editar`) — fix carga de redes sociales (mismatch `redes_sociales` → `redes`)
 - Categorías: CRUD
 - Órdenes: listado con filtro por estado, cambio de estado
-- Cupones globales: CRUD (⚠️ probablemente roto — ver "En progreso / bugs conocidos")
+- Cupones globales: CRUD (columnas corregidas en `72e9b63`; validación de tipos reforzada el 2026-07-25)
 - Liquidaciones: vista de artistas con saldo pendiente, registro de pagos realizados
 - Configuración: tokens de MercadoPago con campos enmascarados
 
@@ -63,19 +63,200 @@
 - Verificado el schema real consultando la tabla `cupones` directo vía PostgREST (`GET /rest/v1/cupones`) en vez de asumir por el código.
 - Diagnóstico hecho con logs temporales en Vercel (agregados y luego retirados) en los commits `bafbd48`, `93ca60a`; fix real en `93a9858`.
 
+### Saneamiento de esquema — 2026-07-25
+- **Tipos de Supabase generados**: `lib/supabase/types.ts` (`npx supabase gen types typescript --linked`, 8 tablas). `lib/supabase/{client,server}.ts` tipados con `<Database>`. Ahora un nombre de columna inventado es error de compilación, no bug silencioso en producción.
+- **Fix ficha pública de artista**: `app/artista/[slug]/ArtistaClient.tsx` leía `redes_sociales`; la columna real es `redes`. Las redes sociales nunca se renderizaron en ninguna ficha pública. Confirmado contra el esquema real: `redes: Json`, `redes_sociales` no existe.
+- **Fix `liquidaciones` (mismo patrón que el bug de cupones)**: el código usaba `fecha` y `comprobante`; las columnas reales son `fecha_transferencia` y `numero_comprobante`. Afectaba a `panel/liquidaciones` (select) y `admin/liquidaciones` (insert + historial).
+  - El insert de admin además **no capturaba el error** (`await supabase...insert({...})` sin destructurar `error`), así que registrar un pago mostraba el toast "Pago registrado" mientras Postgres rechazaba con 42703. Misma causa raíz que el bug de cupones de 2026-06-30. Agregado `if (liqErr) throw liqErr`.
+  - El historial de admin usaba `select("*")` + `as unknown as`, por lo que tsc no lo detectaba: `l.fecha` renderizaba `Invalid Date`.
+- **Fix `productos.stock` en digitales**: la columna es NOT NULL, pero `panel/productos/{nuevo,[id]/editar}` enviaban `null` para productos digitales → violación de NOT NULL al crear/editar cualquier digital. Se adoptó `999` como sentinel de "ilimitado", que es la convención ya presente en los 3 digitales de producción. Importante: `ProductoClient` desactiva "Agregar al carrito" con `stock === 0` sin exceptuar digitales, así que 0 los dejaría sin poder comprarse.
+- **Fix nullability en `login`**: `.eq("user_id", user?.id)` podía filtrar por `undefined`; agregado guard.
+- **`supabase/migrations/` creado**, con la política documentada en
+  `supabase/README-migraciones.md`: todo cambio de esquema va por migración, y los
+  tipos se regeneran en el mismo commit. El README vive fuera de `migrations/`
+  porque el CLI emite un warning por cada archivo de ahí que no sea una migración.
+  ⚠️ El baseline todavía no existe — ver abajo.
+- **`admin/cupones` cerrado** (estaba listado como roto en pendientes; ya no lo estaba):
+  - El mismatch de columnas se había arreglado en el commit `72e9b63`. El archivo usa `tipo_descuento` y `expira_at`, no menciona `monto_minimo`, y sus tres write paths (`insert`, `update`, `toggleActivo`) ya capturaban el error exponiendo el mensaje real de Postgres en el toast. La entrada de "bugs conocidos" llevaba semanas describiendo un bug inexistente.
+  - **Eliminado el `as unknown as Cupon[]`** que anulaba la validación de tipos. Reemplazado por un tipo derivado de `Database["public"]["Tables"]["cupones"]["Row"]`, lo que además corrigió tres nullabilities mal declaradas (`usos_maximos`, `expira_at`, `descripcion` son `| null`, no opcionales).
+  - Comprobado que la protección muerde: agregando `monto_minimo` al `select` a propósito, tsc falla con `column 'monto_minimo' does not exist on 'cupones'`. Ese es exactamente el bug que costó las sesiones de depuración de junio.
+  - **Renombrado `FormState.tipo` → `tipo_descuento`.** Era solo un campo del formulario local, pero `tipo` es literalmente el nombre que causó el bug original de junio; tenerlo vivo en el mismo archivo era dejar el cuchillo en la cuna. Ahora el nombre del campo, el del payload y el de la columna coinciden.
+
+### Módulo de publicaciones · Tanda A — base de datos (2026-07-25)
+
+**Estreno del pipeline de migraciones.** Primera migración versionada del proyecto:
+`supabase/migrations/20260725190514_crear_publicaciones.sql`, aplicada con
+`db push` y con los tipos regenerados en el mismo cambio.
+
+Tabla `publicaciones` (17 campos): nace lista para los tres tipos
+(`noticia`, `convocatoria`, `fecha_abierta`) aunque en esta fase solo se usa
+`noticia`; `fecha_cierre`, `ciudad` y `genero` quedan nullable para los tipos
+futuros. FK a `artistas` con `ON DELETE CASCADE`, CHECK en `tipo`, `estado`
+(`borrador` → `pendiente` → `publicada` | `devuelta`) y `visibilidad`, más
+`char_length(titular) <= 80`. Índices en `artista_id`, `estado` y `tipo` — no en
+`slug`, porque el `UNIQUE` ya crea uno.
+
+Detalles de implementación:
+- Usa `has_role(uuid, app_role)`, que **ya existía** en el proyecto, en vez de
+  crear un `is_admin()` nuevo.
+- La función de `updated_at` se llama `publicaciones_set_updated_at()` y no un
+  nombre genérico: no se pudo verificar si ya existe una reutilizable (leer el
+  esquema remoto exige Docker), y un `CREATE OR REPLACE` genérico podría haber
+  pisado una función existente.
+
+#### Las 9 políticas RLS
+
+| Política | Qué protege |
+|---|---|
+| `select_publico` | anon y autenticados leen solo `publicada` + `publica` |
+| `select_propias` | el artista ve todas sus filas en cualquier estado (su panel necesita borradores y devueltas) |
+| `select_solo_artistas` | lo publicado con visibilidad restringida solo lo ven artistas y admins |
+| `select_admin` | el admin ve todo — sin esto no podría moderar lo pendiente |
+| `insert_propias` | solo crea a su propio nombre, y solo como `borrador` o `pendiente` |
+| `update_propias` | solo edita lo suyo y solo en `borrador`/`devuelta`; nunca puede escribir `publicada` |
+| `update_admin` | el admin mueve cualquier fila a cualquier estado |
+| `delete_propias` | solo borra borradores propios: enviada a revisión, deja rastro |
+| `delete_admin` | el admin borra cualquiera |
+
+#### Dos restricciones agregadas más allá del encargo
+
+Sin ellas la moderación sería decorativa:
+
+1. **El `INSERT` limita `estado` a `borrador`/`pendiente`.** El default de la
+   columna no protege nada: un cliente puede mandar `estado: 'publicada'`
+   explícito e insertar ya publicado, saltándose la moderación entera.
+2. **El `UPDATE` propio lleva `WITH CHECK` además de `USING`.** `USING` mira la
+   fila *antes* (no puede tocar lo publicado); `WITH CHECK` mira la fila *después*
+   y es lo que impide autopublicarse. Con solo `USING`, un artista pasaba de
+   `borrador` a `publicada` en una sola llamada.
+
+#### Verificado / pendiente de verificar
+
+- ✅ RLS probado en vivo con la anon key: `SELECT` responde `200 []`, `INSERT` es
+  rechazado con `42501 new row violates row-level security policy` (HTTP 401).
+- ⚠️ **Las políticas de artista y admin NO están probadas end-to-end.** Requieren
+  sesión autenticada real de cada rol. La prueba concreta: entrar como artista,
+  crear una publicación e intentar `update` con `estado: 'publicada'` — debe
+  fallar con 42501. Y como admin, confirmar que sí ve las filas `pendiente`.
+- ⚠️ No se pudieron leer las políticas RLS existentes de `productos`/`artistas`
+  para contrastar estilo: `db dump` exige Docker, `inspect db` solo da
+  estadísticas y el CLI no tiene runner de SQL genérico. La consistencia se
+  infirió de `has_role` + el enum `app_role`, que sí son verificables.
+
+Sin UI en esta tanda: la del artista llegó en la Tanda B (abajo).
+
+---
+
+### Módulo de publicaciones · Tanda B — UI del artista (2026-07-25)
+
+Solo el lado del artista. La moderación del admin y el feed público son tandas
+siguientes.
+
+**Rutas creadas**
+
+| Ruta | Qué hace |
+|---|---|
+| `/panel/publicaciones` | Listado propio: portada, titular, categoría, fecha y `StatusBadge`. Si el estado es `devuelta`, muestra el `comentario_moderacion` del admin en un bloque destacado. Editar solo aparece en `borrador`/`devuelta`. |
+| `/panel/publicaciones/nueva` | Creación |
+| `/panel/publicaciones/[id]/editar` | Edición |
+
+**Archivos nuevos**
+- `app/panel/publicaciones/PublicacionForm.tsx` — formulario compartido por
+  creación y edición. Dropzone de una imagen con preview, `comprimirImagen(archivo, 1200, 0.85)`,
+  contador de caracteres restantes del titular, validación Zod, y **dos botones
+  de envío**: "Guardar borrador" (`estado: 'borrador'`) y "Enviar a revisión"
+  (`estado: 'pendiente'`). Nunca escribe `'publicada'` — el RLS lo rechazaría.
+- `lib/publicaciones.ts` — `CATEGORIAS_NOTICIA` (lanzamiento / show / prensa /
+  general), `generarSlug()`, `esEditable()`, `TITULAR_MAX`.
+
+**Modificados**
+- `components/ui/StatusBadge.tsx` — agregados `borrador`, `publicada` y
+  `devuelta`. No estaba en el encargo pero era necesario: sin esas claves los
+  estados caían al fallback gris mostrando la cadena cruda en minúscula.
+  Aditivo, no toca las claves de productos ni de órdenes.
+- `app/panel/PanelShell.tsx` — ítem "Mis publicaciones" en el sidebar.
+
+#### Decisiones de diseño
+
+- **El slug NO se regenera al editar.** Si el artista corrige el titular, la URL
+  pública no cambia; regenerarla rompería enlaces ya compartidos. El slug se
+  genera una sola vez, al crear.
+- **`generarSlug` agrega sufijo aleatorio de 4 chars.** `publicaciones.slug` es
+  UNIQUE y dos artistas pueden titular igual (o el mismo artista repetir
+  titular): sin sufijo, el segundo insert falla por violación de unicidad.
+- **Guard doble, UI + RLS.** La página de edición bloquea `pendiente` y
+  `publicada` con un mensaje explicativo. El RLS `update_propias` rechazaría el
+  update igual, pero fallar recién al guardar —después de que el artista
+  reescribió todo— es una pésima forma de enterarse.
+- **`maybeSingle()` en vez de `single()`** al cargar una publicación por id: si
+  no es del artista, el RLS simplemente no devuelve la fila. Eso es un "no existe
+  para ti", no un error que valga mostrar como fallo.
+- **Imágenes en el bucket `productos`, subcarpeta `{artista_id}/publicaciones/`.**
+  Reutiliza el bucket existente en vez de depender de uno nuevo que habría que
+  crear a mano en el dashboard.
+- **El listado filtra por `artista_id` explícito** aunque el RLS ya lo garantiza.
+  Defensa en profundidad: si alguien afloja la política, la query sigue acotada.
+
+#### ⚠️ PENDIENTE: prueba end-to-end del RLS con sesión de artista real
+
+**Sigue sin verificarse que un artista no pueda autopublicarse.** Lo único
+probado hasta ahora es la ruta anon (SELECT `200 []`, INSERT rechazado con
+42501). Las políticas de artista y admin necesitan sesión autenticada de cada
+rol.
+
+La prueba clave es sobre el `WITH CHECK` de `update_propias`: con una
+publicación en `borrador` (donde el `USING` sí deja pasar), forzar desde la
+consola del navegador un `PATCH` a `estado: 'publicada'`.
+
+- **Esperado**: `42501 new row violates row-level security policy`.
+- **Si en cambio devuelve la fila actualizada**, la moderación es evitable y hay
+  que arreglar la política antes de construir el panel de admin encima.
+
+Conviene también probar el aislamiento entre artistas: con una segunda cuenta,
+un `PATCH` contra el id de la primera debe devolver `[]` (el RLS ni la ve), no un
+error de permisos.
+
+Los pasos exactos con el snippet de consola quedaron en el reporte de la Tanda B.
+
 ---
 
 ## 🚧 En progreso / bugs conocidos
 
 - **Email de confirmación de compra**: la página `/checkout/exito` dice "Recibirás un email" pero no hay código de envío de email en ningún Route Handler
-- **`admin/cupones/page.tsx` probablemente roto**: usa columnas `tipo`, `fecha_expiracion` y `monto_minimo` en el `insert`/`update` a `cupones`, ninguna de las cuales existe en la tabla real (ver sección "Resuelto" más abajo). Cualquier intento de crear/editar un cupón global desde `/admin/cupones` debería fallar con error de Postgres 42703. No confirmado con una prueba real todavía — pendiente de arreglar igual que se hizo en checkout/crear-preferencia.
 
 ---
 
 ## ⏭️ Siguiente (prioridad)
 
-1. **Confirmar con una compra real de prueba** que el descuento del cupón ahora sí llega a MercadoPago (fix ya deployado en `93a9858`)
-2. **Arreglar `admin/cupones/page.tsx`** — mismo tipo de mismatch de columnas (`tipo`/`fecha_expiracion`/`monto_minimo`) que probablemente rompe el CRUD de cupones globales
+0. **Baseline de esquema** (pendiente de 2026-07-25). El pipeline ya funciona
+   (`crear_publicaciones` aplicada y trackeada), pero **falta la captura del
+   esquema anterior a él**: `artistas`, `productos`, `ordenes`, `cupones`,
+   `liquidaciones`, `categorias`, `user_roles`, `app_settings`, `has_role` y todas
+   sus políticas RLS existen solo en el servidor. Para cambios aditivos no molesta;
+   para alterar tablas existentes conviene tenerlo antes. `npx supabase db pull` no
+   sirve acá: exige Docker Desktop, que es un elefante para esta pulga.
+
+   Alternativa sin Docker (Windows/Scoop):
+   ```bash
+   scoop install postgresql
+
+   pg_dump --schema-only --no-owner --no-privileges \
+     "postgresql://postgres:[PASSWORD]@db.rgskspvuvzwmvmsccoez.supabase.co:5432/postgres" \
+     > supabase/schema_baseline.sql
+   ```
+   Password en Dashboard → Settings → Database.
+
+   **Guardar como referencia, no como migración ejecutable** — por eso va en `supabase/schema_baseline.sql` y no en `supabase/migrations/`. Un archivo en `migrations/` sería marcado como aplicado por `db push` y enmascararía para siempre la ausencia del baseline real. (De hecho el `db pull` fallido de 2026-07-25 dejó una migración de 0 bytes que hubo que borrar por exactamente eso.)
+
+   Si la conexión directa falla por IPv6 (el host `db.<ref>.supabase.co` es IPv6-only en proyectos nuevos), usar el pooler en modo sesión: host `aws-0-us-west-2.pooler.supabase.com:5432`, usuario `postgres.rgskspvuvzwmvmsccoez`.
+
+1. **Probar el RLS de `publicaciones` con sesión de artista real** — bloquea la
+   tanda de moderación del admin. Si el `WITH CHECK` de `update_propias` tiene un
+   hueco, el artista puede autopublicarse y la moderación entera es decorativa:
+   mejor descubrirlo antes de construir el panel de admin encima. Ver el detalle
+   en "Tanda B" más arriba.
+
+2. **Confirmar con una compra real de prueba** que el descuento del cupón ahora sí llega a MercadoPago (fix ya deployado en `93a9858`)
 3. **Probar flujo completo sin cupón** — confirmar que checkout sin cupón funciona 100% en producción
 4. **Email transaccional** — confirmación de compra al comprador y notificación al artista
 5. **WebPay / Transbank** — placeholders en `/checkout` y `/admin/configuracion`, marcados "Próximamente"

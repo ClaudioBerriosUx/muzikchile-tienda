@@ -11,29 +11,22 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { formatCLP } from "@/lib/constants";
 import StatusBadge from "@/components/ui/StatusBadge";
+import type { Database } from "@/lib/supabase/types";
 
-interface Cupon {
-  id: string;
-  codigo: string;
-  tipo_descuento: string;
-  valor: number;
-  usos_actuales: number;
-  usos_maximos?: number;
-  expira_at?: string;
-  activo: boolean;
-  artista_id?: string | null;
+// Derivado del esquema real: si una columna cambia, esto rompe en compilación.
+type Cupon = Database["public"]["Tables"]["cupones"]["Row"] & {
   artistas?: { nombre: string } | { nombre: string }[] | null;
-}
+};
 
 interface FormState {
   codigo: string;
-  tipo: string;
+  tipo_descuento: string;
   valor: string;
   usos_maximos: string;
   expira_at: string;
 }
 
-const FORM_VACIO: FormState = { codigo: "", tipo: "porcentaje", valor: "", usos_maximos: "", expira_at: "" };
+const FORM_VACIO: FormState = { codigo: "", tipo_descuento: "porcentaje", valor: "", usos_maximos: "", expira_at: "" };
 
 function nombreArtista(c: Cupon): string {
   if (!c.artista_id) return "Global";
@@ -59,7 +52,7 @@ export default function CuponesPage() {
         .select("*, artistas(nombre)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as unknown as Cupon[];
+      return data ?? [];
     },
   });
 
@@ -67,7 +60,7 @@ export default function CuponesPage() {
     setEditando(cupon ?? null);
     setForm(cupon ? {
       codigo: cupon.codigo,
-      tipo: cupon.tipo_descuento,
+      tipo_descuento: cupon.tipo_descuento,
       valor: String(cupon.valor),
       usos_maximos: cupon.usos_maximos ? String(cupon.usos_maximos) : "",
       expira_at: cupon.expira_at ? cupon.expira_at.slice(0, 10) : "",
@@ -81,7 +74,7 @@ export default function CuponesPage() {
     try {
       const payload = {
         codigo: form.codigo.trim().toUpperCase(),
-        tipo_descuento: form.tipo,
+        tipo_descuento: form.tipo_descuento,
         valor: Number(form.valor),
         usos_maximos: form.usos_maximos ? Number(form.usos_maximos) : null,
         expira_at: form.expira_at || null,
@@ -213,16 +206,16 @@ export default function CuponesPage() {
             </div>
             <div>
               <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>Tipo</label>
-              <select value={form.tipo} onChange={set("tipo")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }}>
+              <select value={form.tipo_descuento} onChange={set("tipo_descuento")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }}>
                 <option value="porcentaje">Porcentaje (%)</option>
                 <option value="fijo">Monto fijo ($)</option>
               </select>
             </div>
             <div>
               <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>
-                Valor {form.tipo === "porcentaje" ? "(%)" : "(CLP)"}
+                Valor {form.tipo_descuento === "porcentaje" ? "(%)" : "(CLP)"}
               </label>
-              <input type="number" value={form.valor} onChange={set("valor")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }} placeholder={form.tipo === "porcentaje" ? "10" : "5000"} />
+              <input type="number" value={form.valor} onChange={set("valor")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }} placeholder={form.tipo_descuento === "porcentaje" ? "10" : "5000"} />
             </div>
             <div>
               <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>Usos máximos</label>

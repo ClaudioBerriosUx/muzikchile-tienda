@@ -20,11 +20,11 @@ interface Orden {
 interface Liquidacion {
   id: string;
   monto: number;
-  fecha: string;
-  comprobante?: string;
-  comprobante_url?: string;
-  nota?: string;
-  created_at: string;
+  fecha_transferencia: string | null;
+  numero_comprobante?: string | null;
+  comprobante_url?: string | null;
+  nota?: string | null;
+  created_at: string | null;
 }
 
 export default function LiquidacionesPage() {
@@ -63,7 +63,7 @@ export default function LiquidacionesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("liquidaciones")
-        .select("id, monto, fecha, comprobante, comprobante_url, nota, created_at")
+        .select("id, monto, fecha_transferencia, numero_comprobante, comprobante_url, nota, created_at")
         .eq("artista_id", artista!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -177,7 +177,9 @@ export default function LiquidacionesPage() {
                 {liquidaciones.map((l, i) => (
                   <tr key={l.id} style={{ borderTop: i > 0 ? "1px solid #f0f0f0" : undefined }}>
                     <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
-                      {new Date(l.fecha).toLocaleDateString("es-CL")}
+                      {l.fecha_transferencia
+                        ? new Date(l.fecha_transferencia).toLocaleDateString("es-CL")
+                        : "—"}
                     </td>
                     <td className="px-4 py-3 font-bold" style={{ fontFamily: "DM Sans, sans-serif", color: "#22c55e" }}>
                       {formatCLP(l.monto)}
@@ -188,8 +190,8 @@ export default function LiquidacionesPage() {
                           className="text-xs underline" style={{ color: "#3b82f6" }}>
                           Ver comprobante
                         </a>
-                      ) : l.comprobante ? (
-                        <span className="text-xs font-mono" style={{ color: "#666666" }}>{l.comprobante}</span>
+                      ) : l.numero_comprobante ? (
+                        <span className="text-xs font-mono" style={{ color: "#666666" }}>{l.numero_comprobante}</span>
                       ) : "—"}
                     </td>
                     <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>

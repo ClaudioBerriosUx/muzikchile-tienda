@@ -13,7 +13,6 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useCarrito } from "@/lib/stores/carrito";
 import { formatCLP } from "@/lib/constants";
-import Header from "@/components/layout/Header";
 
 interface Cupon {
   id: string;
@@ -148,7 +147,6 @@ export default function CheckoutPage() {
 
   return (
     <>
-      <Header />
       <main className="min-h-screen bg-white">
         <div className="max-w-5xl mx-auto px-6 py-10">
           <h1 className="mb-8" style={{ fontFamily: "Oswald, sans-serif", fontSize: "32px", fontWeight: "700", color: "#111111" }}>

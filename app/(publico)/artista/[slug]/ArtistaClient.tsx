@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import Header from "@/components/layout/Header";
 import ProductCard from "@/components/ui/ProductCard";
 
 interface RedesSociales {
@@ -26,7 +25,7 @@ interface Artista {
   foto_url?: string;
   bio?: string;
   bio_completa?: string;
-  redes_sociales?: RedesSociales;
+  redes?: RedesSociales;
   verificado?: boolean;
 }
 
@@ -86,7 +85,6 @@ export default function ArtistaClient({ slug }: { slug: string }) {
   if (isLoading) {
     return (
       <>
-        <Header />
         <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
           <div className="animate-pulse" style={{ fontFamily: "Barlow, sans-serif", color: "#666" }}>
             Cargando artista...
@@ -99,7 +97,6 @@ export default function ArtistaClient({ slug }: { slug: string }) {
   if (!artista) {
     return (
       <>
-        <Header />
         <div className="min-h-screen flex items-center justify-center">
           <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "24px", color: "#111111" }}>
             Artista no encontrado
@@ -114,7 +111,6 @@ export default function ArtistaClient({ slug }: { slug: string }) {
 
   return (
     <>
-      <Header />
 
       <div style={{ height: "6px", backgroundColor: acento }} />
 
@@ -180,9 +176,9 @@ export default function ArtistaClient({ slug }: { slug: string }) {
               </p>
             )}
 
-            {artista.redes_sociales && (
+            {artista.redes && (
               <div className="flex flex-wrap gap-2 mt-4">
-                {Object.entries(artista.redes_sociales).map(([red, value]) =>
+                {Object.entries(artista.redes).map(([red, value]) =>
                   value ? (
                     <a
                       key={red}
