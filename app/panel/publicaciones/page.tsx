@@ -1,15 +1,23 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { Plus, Pencil, Newspaper } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus, Pencil, Newspaper, Trash2, ExternalLink } from "lucide-react";
+import { toast } from "sonner";
+import {
+  Dialog, DialogContent, DialogHeader,
+  DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { etiquetaCategoria, esEditable } from "@/lib/publicaciones";
+import { borrarImagenDePublicacion } from "@/lib/storage";
 
 interface Publicacion {
   id: string;
   titular: string;
+  slug: string;
   categoria: string | null;
   estado: string;
   comentario_moderacion: string | null;
@@ -17,8 +25,23 @@ interface Publicacion {
   created_at: string;
 }
 
+/**
+ * Estados que el artista puede borrar. Coincide con el RLS
+ * `publicaciones_delete_propias`, que permite 'borrador' y 'devuelta'.
+ *
+ * Si se cambia acá sin cambiar la política, el botón aparecería y el borrado
+ * fallaría; si se cambia la política sin tocar esto, el artista no podría usar
+ * un permiso que sí tiene.
+ */
+function esBorrable(estado: string): boolean {
+  return estado === "borrador" || estado === "devuelta";
+}
+
 export default function MisPublicacionesPage() {
   const supabase = createClient();
+  const queryClient = useQueryClient();
+  const [aBorrar, setABorrar] = useState<Publicacion | null>(null);
+  const [borrando, setBorrando] = useState(false);
 
   const { data: artista } = useQuery({
     queryKey: ["panel-artista"],
@@ -41,7 +64,7 @@ export default function MisPublicacionesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("publicaciones")
-        .select("id, titular, categoria, estado, comentario_moderacion, imagen_url, created_at")
+        .select("id, titular, slug, categoria, estado, comentario_moderacion, imagen_url, created_at")
         .eq("artista_id", artista!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -49,6 +72,32 @@ export default function MisPublicacionesPage() {
     },
     enabled: !!artista?.id,
   });
+
+  const borrar = async () => {
+    if (!aBorrar) return;
+    setBorrando(true);
+    try {
+      const { error } = await supabase
+        .from("publicaciones")
+        .delete()
+        .eq("id", aBorrar.id);
+      if (error) throw error;
+
+      // La imagen se borra DESPUÉS y sin bloquear: si falla, queda un archivo
+      // huérfano, que es mucho mejor que una publicación sin imagen.
+      await borrarImagenDePublicacion(supabase, aBorrar.imagen_url);
+
+      toast.success("Publicación eliminada");
+      queryClient.invalidateQueries({ queryKey: ["panel-publicaciones"] });
+      setABorrar(null);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "No se pudo eliminar la publicación"
+      );
+    } finally {
+      setBorrando(false);
+    }
+  };
 
   return (
     <div>
@@ -162,8 +211,13 @@ export default function MisPublicacionesPage() {
                     </div>
                   )}
 
-                  <div className="flex gap-2 mt-3">
-                    {esEditable(p.estado) ? (
+                  {/*
+                    Acciones. Cada botón aparece solo si el RLS lo permitiría:
+                    ofrecer uno que la política va a rechazar es prometer algo
+                    que no se puede cumplir.
+                  */}
+                  <div className="flex gap-2 mt-3 flex-wrap items-center">
+                    {esEditable(p.estado) && (
                       <Link
                         href={`/panel/publicaciones/${p.id}/editar`}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs transition-colors"
@@ -172,14 +226,41 @@ export default function MisPublicacionesPage() {
                         <Pencil size={12} />
                         Editar
                       </Link>
-                    ) : (
+                    )}
+
+                    {/* Ya publicada: no se edita, pero sí se puede ver. */}
+                    {p.estado === "publicada" && (
+                      <Link
+                        href={`/noticias/${p.slug}`}
+                        target="_blank"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs transition-colors"
+                        style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#444444" }}
+                      >
+                        <ExternalLink size={12} />
+                        Ver publicada
+                      </Link>
+                    )}
+
+                    {esBorrable(p.estado) && (
+                      <button
+                        onClick={() => setABorrar(p)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs transition-colors"
+                        style={{ fontFamily: "Barlow, sans-serif", borderColor: "#fecaca", color: "#e8003d" }}
+                      >
+                        <Trash2 size={12} />
+                        Eliminar
+                      </button>
+                    )}
+
+                    {/* Explicación de por qué no hay acciones de edición. */}
+                    {!esEditable(p.estado) && (
                       <span
                         className="text-xs"
                         style={{ fontFamily: "Barlow, sans-serif", color: "#999999" }}
                       >
                         {p.estado === "pendiente"
-                          ? "En revisión — no se puede editar mientras la revisamos"
-                          : "Publicada — escríbenos si necesitas cambiarla"}
+                          ? "En revisión — no se puede editar ni eliminar mientras la revisamos"
+                          : "Publicada — escríbenos si necesitas cambiarla o retirarla"}
                       </span>
                     )}
                   </div>
@@ -189,6 +270,44 @@ export default function MisPublicacionesPage() {
           ))}
         </div>
       )}
+
+      {/* Confirmación de borrado */}
+      <Dialog open={!!aBorrar} onOpenChange={() => !borrando && setABorrar(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: "Oswald, sans-serif" }}>
+              ¿Eliminar esta publicación?
+            </DialogTitle>
+            <DialogDescription style={{ fontFamily: "Barlow, sans-serif" }}>
+              {aBorrar?.titular
+                ? `“${aBorrar.titular}” se eliminará junto con su imagen. No se puede deshacer.`
+                : "No se puede deshacer."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <button
+              onClick={() => setABorrar(null)}
+              disabled={borrando}
+              className="px-4 py-2 rounded border text-sm"
+              style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#444444" }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={borrar}
+              disabled={borrando}
+              className="px-4 py-2 rounded text-white text-sm"
+              style={{
+                fontFamily: "Barlow, sans-serif",
+                backgroundColor: borrando ? "#f0a0b0" : "#e8003d",
+                cursor: borrando ? "not-allowed" : "pointer",
+              }}
+            >
+              {borrando ? "Eliminando..." : "Sí, eliminar"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

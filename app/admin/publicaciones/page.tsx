@@ -2,11 +2,17 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, Undo2, Newspaper } from "lucide-react";
+import { CheckCircle, Undo2, Newspaper, Trash2, EyeOff, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { etiquetaCategoria } from "@/lib/publicaciones";
+import { borrarImagenDePublicacion } from "@/lib/storage";
+import {
+  Dialog, DialogContent, DialogHeader,
+  DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import Link from "next/link";
 import type { Database } from "@/lib/supabase/types";
 
 type PublicacionRow = Database["public"]["Tables"]["publicaciones"]["Row"];
@@ -33,6 +39,8 @@ export default function ModerarPublicacionesPage() {
   const [mostrarDevolucion, setMostrarDevolucion] = useState(false);
   const [comentario, setComentario] = useState("");
   const [procesando, setProcesando] = useState(false);
+  const [aBorrar, setABorrar] = useState<Publicacion | null>(null);
+  const [borrando, setBorrando] = useState(false);
 
   const { data: publicaciones = [], isLoading } = useQuery<Publicacion[]>({
     queryKey: ["admin-publicaciones", tab, filtroEstado],
@@ -136,6 +144,67 @@ export default function ModerarPublicacionesPage() {
       seleccionar(null);
     }
     setProcesando(false);
+  };
+
+  /**
+   * Despublicar: saca la publicación del público sin borrarla.
+   *
+   * Vuelve a 'devuelta' (no a 'borrador') cuando hay motivo, para que el
+   * artista vea por qué se retiró y pueda corregirla. Sin motivo va a
+   * 'borrador', que es un retiro silencioso.
+   *
+   * Lo permite `publicaciones_update_admin`, que no restringe estados.
+   */
+  const despublicar = async () => {
+    if (!seleccionada) return;
+    setProcesando(true);
+    const supabase = createClient();
+
+    const motivo = comentario.trim();
+    const { error } = await supabase
+      .from("publicaciones")
+      .update({
+        estado: motivo ? "devuelta" : "borrador",
+        comentario_moderacion: motivo || null,
+      })
+      .eq("id", seleccionada.id);
+
+    if (error) {
+      toast.error(`Error al despublicar: ${error.message}`);
+    } else {
+      toast.success(
+        motivo
+          ? "Retirada del público y devuelta al artista"
+          : "Retirada del público como borrador"
+      );
+      invalidar();
+      seleccionar(null);
+    }
+    setProcesando(false);
+  };
+
+  /** Borrado definitivo. Lo permite `publicaciones_delete_admin`. */
+  const borrar = async () => {
+    if (!aBorrar) return;
+    setBorrando(true);
+    const supabase = createClient();
+
+    const { error } = await supabase
+      .from("publicaciones")
+      .delete()
+      .eq("id", aBorrar.id);
+
+    if (error) {
+      toast.error(`Error al eliminar: ${error.message}`);
+    } else {
+      // Best-effort, después de borrar la fila. Ver lib/storage.ts.
+      await borrarImagenDePublicacion(supabase, aBorrar.imagen_url);
+      toast.success("Publicación eliminada");
+      invalidar();
+      setABorrar(null);
+      seleccionar(null);
+    }
+    setBorrando(false);
   };
 
   const fecha = (iso: string) =>
@@ -376,20 +445,121 @@ export default function ModerarPublicacionesPage() {
                 )}
               </div>
             ) : (
-              <p
-                className="mt-8 pt-6 border-t border-[#e8e8e8]"
-                style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#999999" }}
-              >
-                {seleccionada.estado === "borrador"
-                  ? "Es un borrador del artista: todavía no la envía a revisión."
-                  : seleccionada.estado === "devuelta"
-                    ? "Devuelta al artista. Volverá a la cola cuando la reenvíe."
-                    : "Ya está publicada."}
-              </p>
+              <div className="mt-8 pt-6 border-t border-[#e8e8e8]">
+                <p
+                  className="mb-4"
+                  style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#999999" }}
+                >
+                  {seleccionada.estado === "borrador"
+                    ? "Es un borrador del artista: todavía no la envía a revisión."
+                    : seleccionada.estado === "devuelta"
+                      ? "Devuelta al artista. Volverá a la cola cuando la reenvíe."
+                      : "Está publicada y visible para el público."}
+                </p>
+
+                {/* Publicada: ver en el sitio y retirarla sin borrarla. */}
+                {seleccionada.estado === "publicada" && (
+                  <div className="flex flex-col gap-3">
+                    <Link
+                      href={`/noticias/${seleccionada.slug}`}
+                      target="_blank"
+                      className="w-full h-11 rounded-md border flex items-center justify-center gap-2 transition-colors"
+                      style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#444444" }}
+                    >
+                      <ExternalLink size={16} /> Ver en el sitio
+                    </Link>
+
+                    <div className="border border-[#e8e8e8] rounded-lg p-4">
+                      <p className="mb-2 text-sm" style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }}>
+                        Retirar del público. Motivo <strong>opcional</strong>: si lo
+                        escribes, vuelve al artista como devuelta; si lo dejas vacío,
+                        pasa a borrador en silencio.
+                      </p>
+                      <textarea
+                        value={comentario}
+                        onChange={(e) => setComentario(e.target.value)}
+                        rows={3}
+                        placeholder="Motivo (opcional)"
+                        className="w-full rounded-md px-3 py-2 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none resize-none"
+                        style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                      />
+                      <button
+                        onClick={despublicar}
+                        disabled={procesando}
+                        className="w-full h-10 mt-3 rounded-md font-semibold flex items-center justify-center gap-2 border"
+                        style={{
+                          fontFamily: "Barlow, sans-serif",
+                          backgroundColor: "#ffffff",
+                          borderColor: "#f59e0b",
+                          color: "#9a3412",
+                          cursor: procesando ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        <EyeOff size={15} /> Despublicar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Borrado definitivo: disponible en cualquier estado. */}
+                <button
+                  onClick={() => setABorrar(seleccionada)}
+                  className="w-full h-10 mt-3 rounded-md flex items-center justify-center gap-2 border transition-colors"
+                  style={{
+                    fontFamily: "Barlow, sans-serif",
+                    fontSize: "14px",
+                    borderColor: "#fecaca",
+                    color: "#e8003d",
+                    backgroundColor: "#ffffff",
+                  }}
+                >
+                  <Trash2 size={15} /> Eliminar definitivamente
+                </button>
+              </div>
             )}
           </div>
         )}
       </div>
+
+      {/* Confirmación de borrado */}
+      <Dialog open={!!aBorrar} onOpenChange={() => !borrando && setABorrar(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle style={{ fontFamily: "Oswald, sans-serif" }}>
+              ¿Eliminar definitivamente?
+            </DialogTitle>
+            <DialogDescription style={{ fontFamily: "Barlow, sans-serif" }}>
+              {aBorrar
+                ? `“${aBorrar.titular}” de ${aBorrar.artistas?.nombre ?? "—"} se eliminará junto con su imagen. No se puede deshacer.`
+                : "No se puede deshacer."}
+              {aBorrar?.estado === "publicada" &&
+                " Si solo quieres retirarla del público, usa Despublicar."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <button
+              onClick={() => setABorrar(null)}
+              disabled={borrando}
+              className="px-4 py-2 rounded border text-sm"
+              style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#444444" }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={borrar}
+              disabled={borrando}
+              className="px-4 py-2 rounded text-white text-sm"
+              style={{
+                fontFamily: "Barlow, sans-serif",
+                backgroundColor: borrando ? "#f0a0b0" : "#e8003d",
+                cursor: borrando ? "not-allowed" : "pointer",
+              }}
+            >
+              {borrando ? "Eliminando..." : "Sí, eliminar"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
