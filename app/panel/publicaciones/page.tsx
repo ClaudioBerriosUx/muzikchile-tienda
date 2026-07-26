@@ -26,15 +26,35 @@ interface Publicacion {
 }
 
 /**
- * Estados que el artista puede borrar. Coincide con el RLS
- * `publicaciones_delete_propias`, que permite 'borrador' y 'devuelta'.
+ * El artista puede borrar CUALQUIER publicación suya, en todos los estados.
+ * Coincide con el RLS `publicaciones_delete_propias`, que desde la migración
+ * 20260726013914 solo exige propiedad (`artista_id`), sin filtrar por estado.
  *
- * Si se cambia acá sin cambiar la política, el botón aparecería y el borrado
- * fallaría; si se cambia la política sin tocar esto, el artista no podría usar
- * un permiso que sí tiene.
+ * Se deja como función y no como `true` suelto para que quede el punto único
+ * donde mirar si la política vuelve a cambiar: si acá se restringe sin tocar el
+ * RLS, el artista pierde un permiso que sí tiene; si se amplía el RLS sin tocar
+ * esto, el botón no aparecería.
+ *
+ * Borrar NO es lo mismo que editar: editar sigue limitado a borrador/devuelta
+ * (ver `esEditable`), porque una publicada solo debe cambiar pasando por
+ * moderación.
  */
-function esBorrable(estado: string): boolean {
-  return estado === "borrador" || estado === "devuelta";
+function esBorrable(): boolean {
+  return true;
+}
+
+/**
+ * La advertencia cambia según lo que se pierde al borrar. Una publicada tiene
+ * URL viva y lectores; un borrador no le importa a nadie más que al autor.
+ */
+function textoConfirmacion(estado: string, titular: string): string {
+  if (estado === "publicada") {
+    return `“${titular}” está publicada y visible en el sitio. Si la eliminas, su enlace dejará de funcionar y desaparecerá para siempre. ¿Seguro?`;
+  }
+  if (estado === "pendiente") {
+    return `“${titular}” está en revisión. Si la eliminas, se cancelará su revisión.`;
+  }
+  return `“${titular}” se eliminará junto con su imagen. No se puede deshacer.`;
 }
 
 export default function MisPublicacionesPage() {
@@ -241,7 +261,7 @@ export default function MisPublicacionesPage() {
                       </Link>
                     )}
 
-                    {esBorrable(p.estado) && (
+                    {esBorrable() && (
                       <button
                         onClick={() => setABorrar(p)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs transition-colors"
@@ -252,15 +272,18 @@ export default function MisPublicacionesPage() {
                       </button>
                     )}
 
-                    {/* Explicación de por qué no hay acciones de edición. */}
+                    {/*
+                      Por qué no se puede EDITAR. Eliminar sí se puede siempre,
+                      así que el texto ya no habla de eso.
+                    */}
                     {!esEditable(p.estado) && (
                       <span
                         className="text-xs"
                         style={{ fontFamily: "Barlow, sans-serif", color: "#999999" }}
                       >
                         {p.estado === "pendiente"
-                          ? "En revisión — no se puede editar ni eliminar mientras la revisamos"
-                          : "Publicada — escríbenos si necesitas cambiarla o retirarla"}
+                          ? "En revisión — no se puede editar mientras la revisamos"
+                          : "Publicada — para cambiar el texto, pídenos que la devolvamos a edición"}
                       </span>
                     )}
                   </div>
@@ -276,11 +299,13 @@ export default function MisPublicacionesPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle style={{ fontFamily: "Oswald, sans-serif" }}>
-              ¿Eliminar esta publicación?
+              {aBorrar?.estado === "publicada"
+                ? "¿Eliminar una noticia publicada?"
+                : "¿Eliminar esta publicación?"}
             </DialogTitle>
             <DialogDescription style={{ fontFamily: "Barlow, sans-serif" }}>
-              {aBorrar?.titular
-                ? `“${aBorrar.titular}” se eliminará junto con su imagen. No se puede deshacer.`
+              {aBorrar
+                ? textoConfirmacion(aBorrar.estado, aBorrar.titular)
                 : "No se puede deshacer."}
             </DialogDescription>
           </DialogHeader>
