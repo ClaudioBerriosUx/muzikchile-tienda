@@ -17,6 +17,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import CarritoDrawer from "@/components/ui/CarritoDrawer";
+import Logo from "./Logo";
 import { NAV_LINKS, ACCESO_ARTISTAS_HREF } from "./nav-links";
 
 /**
@@ -45,15 +46,8 @@ export default function Header() {
         borderBottom: "2px solid #CC0000",
       }}
     >
-      {/* Logo */}
-      <Link
-        href="/"
-        className="flex items-center gap-1 shrink-0"
-        style={{ fontFamily: "Oswald, sans-serif", fontWeight: 700, fontSize: "22px" }}
-      >
-        <span className="text-white">MuzikChile</span>
-        <span style={{ color: "#e8003d" }}>·</span>
-      </Link>
+      {/* Logo — 40px de alto deja 12px de aire arriba y abajo en los 64px del header */}
+      <Logo alto={40} prioridad />
 
       {/* Navegación desktop */}
       <NavigationMenu className="hidden md:flex flex-1 justify-start">

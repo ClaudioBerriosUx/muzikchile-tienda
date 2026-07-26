@@ -6,7 +6,8 @@
       "Bash(git push *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(npx vercel *)"
+      "Bash(npx vercel *)",
+      "Bash(node -p \"require\\('C:/Users/raice/OneDrive/Documentos/muzikchile-tienda/node_modules/next/package.json'\\).version\")"
     ]
   }
 }

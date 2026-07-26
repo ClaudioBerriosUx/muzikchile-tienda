@@ -220,6 +220,68 @@ Los pasos exactos con el snippet de consola quedaron en el reporte de la Tanda B
 
 ---
 
+### Branding oficial · Tanda BASE — logo, favicon y tokens (2026-07-26)
+
+Solo la base: los tokens quedan **definidos y sin aplicar**. Migrar tarjetas,
+badges y botones a la paleta nueva es la tanda siguiente.
+
+**Tokens de color** — fuente de verdad en `app/globals.css`, bloque
+`TOKENS DE MARCA`. Los 12 tokens (rojo/azul de marca, superficies, texto) con la
+semántica documentada uno por uno: **rojo = acción y marca, azul = información**.
+Se exponen por dos vías, ambas apuntando a las mismas CSS variables:
+
+- **Tailwind v4**: un `@theme` aditivo genera `bg-brand-rojo`,
+  `text-texto-secundario`, `border-borde`, etc. No pisa las escalas de shadcn del
+  `@theme inline` que ya existía.
+- **TypeScript**: `MARCA` en `lib/portada.ts`, con cada clave apuntando a su
+  `var(--…)` — sin un solo hex duplicado. Existe porque el proyecto estila mucho
+  inline, donde no entran clases de Tailwind; es el mismo puente que ya usaba `F`
+  para las tipografías.
+
+`C` (paleta del Channel) queda intacta y marcada como heredada: código nuevo usa
+`MARCA`, no `C`.
+
+**Archivos de marca**
+- `public/muzi_logo_V3-2-CgzsvQpL.svg` → `public/logo.svg`
+- `public/favicon-32x32.png` → `app/icon.png` (convención de archivo de Next 16)
+- **Borrado `app/favicon.ico`** (el stock de Next). Convivía con `icon.png`
+  emitiendo su propio `<link>`, y cuál ganaba quedaba a criterio del navegador.
+
+**Logo** — nuevo `components/layout/Logo.tsx`, en `Header` (40px, `priority` por
+LCP) y `Footer` (44px). El tamaño se fija con `height` + `width: "auto"`: preserva
+la proporción y evita el warning de dev por modificar una sola dimensión. Como el
+`src` termina en `.svg`, Next 16 lo sirve sin optimizar solo, así que **no** hace
+falta `dangerouslyAllowSVG`.
+
+#### Tres hallazgos sobre el SVG entregado
+
+1. **No contiene la M en círculo.** El círculo con degradado existe en el archivo
+   pero en coordenadas fuera del `viewBox` (`cx=-923`, `cx=-1652`), donde el SVG
+   lo recorta. Lo visible es el lockup "MUZIK" con la estrella. El icono circular
+   solo existe como PNG (el favicon). Si se quiere el círculo en la web, hay que
+   pedir un SVG aparte.
+2. **El wordmark es blanco** (`fill="#FFFFFF"`). Sobre fondo claro desaparece.
+   Header y Footer son negros, así que ahí funciona — pero **no se puede reusar
+   tal cual en `/login`, `/registro` ni `/recuperar`**, que tienen fondo claro y
+   hoy siguen con su wordmark en texto.
+3. **~90% del archivo es descarte de Illustrator**: otras versiones del logo,
+   degradados amarillos y `<text>` con las fuentes `'Null-Free'` y
+   `'Prime-Regular'`, que nadie tiene instaladas. Todo eso cae fuera del `viewBox`
+   y no se renderiza, pero infla el archivo a 14KB y viaja en cada carga. Además,
+   el 21% superior del `viewBox` está vacío (la tinta más alta empieza en y≈35 de
+   167), por eso el alto es 40px y no 36. Se dejó **tal cual se entregó**; limpiarlo
+   es un cambio de un par de líneas que no toca el dibujo.
+
+**Verificado en el navegador**: logo visible en header y footer,
+`<link rel="icon" href="/icon.png" sizes="420x420" type="image/png">` en el
+`<head>`, `/icon.png` y `/logo.svg` responden 200, y `/favicon.ico` responde 404
+(ya no hay icono en competencia). `tsc --noEmit` limpio y `npm run build` OK.
+
+⚠️ El PNG mide **420×420**, no 32×32 como sugiere el nombre original. Es mejor
+así (pestañas retina, marcadores, PWA); no se tocó.
+
+---
+
 ## 🚧 En progreso / bugs conocidos
 
 - **Email de confirmación de compra**: la página `/checkout/exito` dice "Recibirás un email" pero no hay código de envío de email en ningún Route Handler

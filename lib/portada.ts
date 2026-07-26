@@ -1,9 +1,55 @@
 /**
+ * Tokens de marca de MuzikChile — el sistema al que migra todo el sitio.
+ *
+ * Apuntan a las CSS variables de `app/globals.css`, que son la fuente de
+ * verdad: acá NO va ningún hex. Este objeto existe solo porque el proyecto
+ * estila mucho inline (`style={{ color: ... }}`), donde no se pueden usar
+ * clases de Tailwind; es el mismo puente que ya usa `F` para las tipografías.
+ *
+ * Semántica (ver el bloque de comentarios en `globals.css`):
+ *   ROJO = acción y marca · AZUL = información
+ *
+ * ⚠️ Definidos, todavía no aplicados. `C` (abajo) sigue vigente en la portada
+ * y `#e8003d` en la tienda; reemplazarlos es una tanda aparte.
+ */
+export const MARCA = {
+  /** Rojo de marca del logo. Identidad: franjas, sellos, titulares. */
+  rojo:         "var(--brand-rojo)",
+  /** Rojo vivo de interacción: botones, hover, foco, acentos urgentes. */
+  rojoAccion:   "var(--brand-rojo-accion)",
+  /** Azul marino del logo. Contrapeso del rojo en fondos de marca. */
+  azul:         "var(--brand-azul)",
+  /** Acento informativo: "ver más", verificado, chips de categoría. */
+  azulInfo:     "var(--brand-azul-info)",
+  /** Celeste de apoyo: destacados livianos, gráficos. */
+  azulCeleste:  "var(--brand-azul-celeste)",
+
+  /** Fondo base de la página, casi negro. */
+  bgBase:       "var(--bg-base)",
+  /** Superficie elevada: secciones, barras, contenedores. */
+  bgSuperficie: "var(--bg-superficie)",
+  /** Superficie de tarjeta: lo que flota sobre todo. */
+  bgTarjeta:    "var(--bg-tarjeta)",
+  /** Borde y separadores entre superficies. */
+  borde:        "var(--borde)",
+
+  /** Texto principal sobre fondo oscuro. */
+  texto:        "var(--texto-principal)",
+  /** Texto secundario: bajadas, metadatos, labels. */
+  textoSec:     "var(--texto-secundario)",
+  /** Texto tenue: placeholders, deshabilitados, pies de foto. */
+  textoTenue:   "var(--texto-tenue)",
+} as const;
+
+/**
  * Tokens de la portada, calcados del diseño del Channel.
  *
  * Están hardcodeados a propósito: son los valores exactos del original, no un
  * sistema de diseño derivado. No inventar variantes ni "normalizarlos" contra
  * la paleta de la tienda (#e8003d), que es otra cosa.
+ *
+ * 🔜 Paleta heredada: la migración a `MARCA` (arriba) los va a ir reemplazando.
+ * Para código nuevo usar `MARCA`, no `C`.
  */
 export const C = {
   negro:        "#000000",

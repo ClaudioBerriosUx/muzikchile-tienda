@@ -133,6 +133,77 @@
   --font-sub: "Barlow", sans-serif;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   TOKENS DE MARCA — fuente de verdad del color de MuzikChile
+
+   Sacados del logo oficial (la M en círculo con degradado rojo → azul).
+   Este bloque es el ÚNICO lugar donde vive un color de marca: cualquier
+   componente nuevo consume `var(--brand-rojo)`, nunca el hex literal.
+
+   Regla semántica, para no elegir por gusto:
+     ROJO  = acción y marca  → botones primarios, CTAs, estado activo, acentos
+     AZUL  = información     → avisos, enlaces informativos, datos, badges neutros
+
+   ⚠️ Están DEFINIDOS pero todavía no aplicados: tarjetas, badges y botones
+   siguen con los hex antiguos (#e8003d de la tienda, #CC0000 de la portada).
+   La migración componente por componente es una tanda aparte — no mezclar.
+
+   Los mismos valores se exponen a TypeScript en `lib/portada.ts` (export
+   `MARCA`) para el código que estila inline, y a Tailwind más abajo vía
+   `@theme` (clases `bg-brand-rojo`, `text-texto-secundario`, etc.).
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* ── Rojo: marca y acción ─────────────────────────────────────────────── */
+  /** Rojo de marca, tomado del degradado del logo. Identidad: franjas, sellos. */
+  --brand-rojo: #BF0411;
+  /** Rojo vivo de interacción: botones, hover, foco y acentos urgentes. */
+  --brand-rojo-accion: #D93A48;
+
+  /* ── Azul: información ────────────────────────────────────────────────── */
+  /** Azul marino, otro extremo del degradado. Contrapeso del rojo en fondos. */
+  --brand-azul: #001D7E;
+  /** Acento informativo: "ver más", sello de verificado, chips de categoría. */
+  --brand-azul-info: #2E5FA8;
+  /** Celeste de apoyo: destacados livianos, gráficos, hover sobre azul. */
+  --brand-azul-celeste: #009BDB;
+
+  /* ── Superficies (tema oscuro) ────────────────────────────────────────── */
+  /** Fondo base de la página: casi negro con tinte frío. El nivel más profundo. */
+  --bg-base: #0B0D12;
+  /** Superficie elevada sobre el fondo: secciones, barras, contenedores. */
+  --bg-superficie: #14171F;
+  /** Superficie de tarjeta: el nivel más alto, lo que "flota" sobre todo. */
+  --bg-tarjeta: #1E222C;
+  /** Borde y separadores entre superficies. */
+  --borde: #23262F;
+
+  /* ── Texto ────────────────────────────────────────────────────────────── */
+  /** Texto principal sobre fondo oscuro: cuerpo, titulares. */
+  --texto-principal: #EDE9E3;
+  /** Texto secundario: bajadas, metadatos, labels. */
+  --texto-secundario: #8A8A92;
+  /** Texto tenue: placeholders, deshabilitados, pies de foto. */
+  --texto-tenue: #5A5A62;
+}
+
+/* Expone los tokens de marca como utilidades de Tailwind v4 (`bg-brand-rojo`,
+   `text-texto-secundario`, `border-borde`…). Es aditivo: no pisa ninguna de las
+   escalas de shadcn declaradas en el `@theme inline` de arriba. */
+@theme {
+  --color-brand-rojo: var(--brand-rojo);
+  --color-brand-rojo-accion: var(--brand-rojo-accion);
+  --color-brand-azul: var(--brand-azul);
+  --color-brand-azul-info: var(--brand-azul-info);
+  --color-brand-azul-celeste: var(--brand-azul-celeste);
+  --color-bg-base: var(--bg-base);
+  --color-bg-superficie: var(--bg-superficie);
+  --color-bg-tarjeta: var(--bg-tarjeta);
+  --color-borde: var(--borde);
+  --color-texto-principal: var(--texto-principal);
+  --color-texto-secundario: var(--texto-secundario);
+  --color-texto-tenue: var(--texto-tenue);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

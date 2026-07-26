@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import Logo from "./Logo";
 import { NAV_LINKS, ACCESO_ARTISTAS_HREF } from "./nav-links";
 import { C, F } from "@/lib/portada";
 
@@ -55,20 +56,7 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto px-6 py-12 grid gap-10 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {/* Marca */}
         <div>
-          <Link href="/" className="inline-flex items-baseline gap-0.5">
-            <span
-              style={{
-                fontFamily: F.bebas,
-                fontSize: "34px",
-                letterSpacing: "0.06em",
-                color: C.blanco,
-                lineHeight: 1,
-              }}
-            >
-              MUZIK
-            </span>
-            <span style={{ color: C.rojo, fontSize: "34px", lineHeight: 1 }}>·</span>
-          </Link>
+          <Logo alto={44} />
 
           <p className="mt-3 max-w-xs" style={{ ...linkStyle, lineHeight: 1.6 }}>
             Plataforma de la comunidad de artistas chilenos: videos, noticias,
