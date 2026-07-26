@@ -355,3 +355,77 @@
   pointer-events: none;
   color: #aaaaaa;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Halo del badge "Sonando ahora" (Hero de la portada)
+
+   Anima SOLO la opacidad, lento y en un rango angosto (0.15 → 0.35): sugiere
+   emisión activa sin llamar la atención. No usa el `animate-pulse` de Tailwind
+   porque ese fija `opacity` en el keyframe (1 → .5), lo que pisaría la opacidad
+   base del halo y lo dejaría mucho más marcado de lo que se busca.
+
+   El color no va acá: lo pone el componente con el token de marca, y este
+   elemento solo modula su opacidad.
+   ────────────────────────────────────────────────────────────────────────── */
+@keyframes halo-senal {
+  0%, 100% { opacity: 0.15; }
+  50%      { opacity: 0.35; }
+}
+
+.halo-senal {
+  opacity: 0.25;
+  animation: halo-senal 2.4s ease-in-out infinite;
+}
+
+/* Un punto que late es justo el tipo de movimiento que conviene respetar. */
+@media (prefers-reduced-motion: reduce) {
+  .halo-senal {
+    animation: none;
+    opacity: 0.25;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Grano de película (components/ui/GrainOverlay.tsx)
+
+   Solo el movimiento vive acá; la opacidad, el modo de fusión y el z-index son
+   perillas del componente. La animación tiene que estar en CSS y no inline
+   porque necesita el @media de prefers-reduced-motion, que un `style` no puede
+   expresar.
+
+   `steps(1, end)` es lo que da el salto seco de fotograma: cada keyframe se
+   mantiene quieto y salta al siguiente, en vez de deslizarse. Un deslizamiento
+   suave parecería niebla moviéndose, no grano.
+   ────────────────────────────────────────────────────────────────────────── */
+@keyframes grano {
+  0%,  100% { transform: translate(0, 0); }
+  10%       { transform: translate(-2%, -3%); }
+  20%       { transform: translate(-4%,  2%); }
+  30%       { transform: translate( 2%, -4%); }
+  40%       { transform: translate(-1%,  3%); }
+  50%       { transform: translate(-3%,  1%); }
+  60%       { transform: translate( 3%,  2%); }
+  70%       { transform: translate(-2%, -2%); }
+  80%       { transform: translate( 1%,  4%); }
+  90%       { transform: translate(-4%, -1%); }
+}
+
+.grano-overlay {
+  animation: grano 8s steps(1, end) infinite;
+  will-change: transform;
+}
+
+/*
+  Una capa de ruido temblando a pantalla completa es exactamente el tipo de
+  movimiento que puede marear. Sin animación queda un grano estático, que sigue
+  dando la textura sin el temblor.
+
+  `will-change: auto` no es decorativo: sin animación, promover la capa a la GPU
+  gasta memoria para nada.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .grano-overlay {
+    animation: none;
+    will-change: auto;
+  }
+}

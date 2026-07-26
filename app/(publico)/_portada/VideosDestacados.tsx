@@ -230,8 +230,8 @@ function VideoCard({
             style={{
               borderColor: C.rojo,
               color: C.rojoClaro,
-              fontFamily: F.barlowC,
-              fontSize: "12px",
+              fontFamily: F.dmSans,
+              fontSize: "10px",
               letterSpacing: "0.06em",
               textTransform: "uppercase",
             }}

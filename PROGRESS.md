@@ -280,6 +280,66 @@ falta `dangerouslyAllowSVG`.
 ⚠️ El PNG mide **420×420**, no 32×32 como sugiere el nombre original. Es mejor
 así (pestañas retina, marcadores, PWA); no se tocó.
 
+### Portada · Composición B2 — el reproductor solo arriba (2026-07-26)
+
+Solo `app/(publico)/page.tsx`. No se tocó `Hero.tsx`, `VideosDestacados.tsx` ni
+`UltimasNoticias.tsx`.
+
+**El orden del DOM no cambió** — Hero → Conecta → Videos → Noticias, igual que
+antes. Lo que hacía que el H1 se leyera como bajada del reproductor eran los
+fondos: la sección "Conecta" era `negroSuave`, el mismo color en que termina el
+degradado del Hero, así que compartían banda y se agrupaban como un bloque. El
+corte visual caía recién en `VideosDestacados`, que es `negro`.
+
+Agrupación antes: `[Hero + H1] | [Videos]` · ahora: `[Hero] | [H1 + Videos]`.
+
+El cambio real fue mover ese corte, no reordenar componentes:
+- **"Conecta" pasó a `C.negro`**, el mismo fondo de `VideosDestacados`, para que
+  las dos secciones se lean como una sola zona encabezada por el H1.
+- **Padding asimétrico deliberado**: `pt-24 pb-4` (antes `py-16`). Con los
+  `pb-14` del Hero arriba y los `pt-14` de `VideosDestacados` abajo da 152px de
+  respiro tras el reproductor y 72px hasta "VIDEOS DESTACADOS" — proporción
+  ~2:1, que es lo que agrupa el H1 hacia abajo. Medido en el DOM, no estimado.
+
+El H1 conserva su estilo (Oswald, `clamp(30px, 5vw, 52px)`, centrado).
+
+⚠️ **Pendiente estético menor**: el degradado del Hero va de `negro` a
+`negroSuave`, o sea que llega a su punto **más claro** justo donde ahora
+queremos el corte a negro. El escalón #0a0a0a → #000000 es casi imperceptible,
+pero invertir el degradado del Hero haría que se funda con el respiro negro.
+No se hizo: exige tocar `Hero.tsx` y es un cambio de color, los dos fuera del
+encargo de esta tanda.
+
+### Footer · Redes sociales oficiales (2026-07-26)
+
+Las 4 URLs eran placeholders inventados (`/muzikchile` en las cuatro
+plataformas); ninguna resolvía a una cuenta real. Reemplazadas por las oficiales.
+Dos no son adivinables desde el nombre de la marca, así que **no se deducen, se
+copian de la plataforma**: Instagram es `muzikchilecl`, y el usuario de Spotify
+es un id numérico (`31vwdbu464l2bt3lqquh76gwhuda`), no un handle.
+
+Los 4 iconos y sus SVG inline ya existían de la tanda del Channel — solo cambió
+el destino y el comportamiento: blanco en reposo, **hover a `--brand-rojo`**,
+transición 200ms, icono 16px → 20px. Siguen con `target="_blank"` +
+`rel="noopener noreferrer"`, y el `aria-label` pasó a "MuzikChile en X" para que
+tenga sentido leído solo por un lector de pantalla.
+
+**Primer consumo real de los tokens de marca** (la tanda anterior los dejó solo
+definidos). Dos detalles que costaron entender y conviene no repetir:
+
+- **El hover va por clases, no por `onMouseEnter`.** `Footer.tsx` es Server
+  Component: un handler de eventos no cruza esa frontera. El botón "Acceso
+  artistas" del Header sí usa `onMouseEnter`, pero ese archivo es `"use client"`.
+- **El color tuvo que salir del `style` inline.** Un estilo inline le gana en
+  especificidad a `hover:`, así que mientras `color` siguiera ahí el hover no se
+  veía. En el inline quedó solo el borde.
+
+El Header **no tiene iconos de redes** — su franja roja del Channel es un
+`border-bottom`, no una barra de iconos. No había nada que aplicar ahí.
+
+Verificado con hover real del mouse: el icono bajo el cursor computa
+`rgb(191, 4, 17)` y los otros tres siguen en blanco.
+
 ---
 
 ## 🚧 En progreso / bugs conocidos

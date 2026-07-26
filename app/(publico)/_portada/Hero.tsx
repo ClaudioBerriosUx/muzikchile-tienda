@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Maximize2, Pause } from "lucide-react";
-import { C, F } from "@/lib/portada";
+import { C, F, MARCA } from "@/lib/portada";
 import { useSenal } from "./SenalProvider";
 import {
   MODO_INTERRUPCION,
@@ -105,26 +105,65 @@ export default function Hero() {
       }}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-14">
-        {/* Badge EN VIVO */}
-        <div className="flex justify-center mb-6">
+        {/*
+          Badge "Sonando ahora".
+
+          Alineado a la izquierda, a ras del borde del reproductor: los dos
+          cuelgan del mismo contenedor, así que basta con no centrarlo.
+
+          El halo y el punto son el mismo rojo de marca; lo que los distingue es
+          la opacidad, que `.halo-senal` modula en `globals.css`. Por eso el halo
+          no lleva un `rgba()` propio: el hex vive solo en el token.
+        */}
+        <div
+          className="mb-6"
+          style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}
+        >
           <span
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border"
             style={{
-              borderColor: C.rojo,
-              backgroundColor: "rgba(204,0,0,0.08)",
-              fontFamily: F.barlowC,
-              fontSize: "13px",
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              color: C.blanco,
+              position: "relative",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "8px",
+              height: "8px",
             }}
+            aria-hidden
           >
             <span
-              className="w-2 h-2 rounded-full animate-pulse"
-              style={{ backgroundColor: C.rojo }}
-              aria-hidden
+              className="halo-senal"
+              style={{
+                position: "absolute",
+                width: "14px",
+                height: "14px",
+                borderRadius: "50%",
+                backgroundColor: MARCA.rojo,
+              }}
             />
-            En vivo — señal online
+            <span
+              style={{
+                position: "relative",
+                width: "7px",
+                height: "7px",
+                borderRadius: "50%",
+                backgroundColor: MARCA.rojo,
+              }}
+            />
+          </span>
+
+          <span
+            style={{
+              color: MARCA.texto,
+              fontSize: "12px",
+              letterSpacing: "1px",
+              fontWeight: 500,
+              fontFamily: F.dmSans,
+              // Las mayúsculas las pone el CSS: en el JSX el texto queda legible
+              // y traducible, y no hay que reescribirlo si el estilo cambia.
+              textTransform: "uppercase",
+            }}
+          >
+            Sonando ahora
           </span>
         </div>
 
