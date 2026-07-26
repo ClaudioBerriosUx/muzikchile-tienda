@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { Upload, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { comprimirImagen } from "@/lib/imagen";
+import { sanitizarHtml } from "@/lib/sanitizar";
+import EditorContenido from "@/components/contenido/EditorContenido";
 import {
   CATEGORIAS_NOTICIA,
   CATEGORIA_VALUES,
@@ -60,10 +62,18 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
   const [archivo, setArchivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState<EstadoDestino | null>(null);
 
+  /**
+   * El cuerpo que se le pasa al editor al montar. Se fija una sola vez: si
+   * cambiara en cada tecleo, TipTap recrearía el documento y el cursor saltaría
+   * al inicio.
+   */
+  const [cuerpoInicial] = useState(publicacion?.cuerpo ?? "");
+
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -122,6 +132,19 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
     try {
       const imagen_url = archivo ? await subirImagen() : publicacion!.imagen_url;
 
+      /**
+       * Se sanitiza ANTES de guardar, no solo al mostrar.
+       *
+       * ⚠️ Esto NO es la barrera de seguridad: corre en el navegador, y quien
+       * quiera saltárselo puede escribir directo a PostgREST con su token. La
+       * defensa real sigue siendo la sanitización del renderizador, que corre
+       * en el servidor y no se puede evitar.
+       *
+       * Sirve igual: evita guardar basura por un pegado desde Word o desde otra
+       * página, y deja la base limpia.
+       */
+      const cuerpoLimpio = sanitizarHtml(data.cuerpo);
+
       if (editando) {
         const { error } = await supabase
           .from("publicaciones")
@@ -129,7 +152,7 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
             categoria: data.categoria,
             titular:   data.titular,
             bajada:    data.bajada || null,
-            cuerpo:    data.cuerpo,
+            cuerpo:    cuerpoLimpio,
             imagen_url,
             estado,
             // El slug NO se regenera: la URL pública de la publicación no debe
@@ -144,7 +167,7 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
           categoria:   data.categoria,
           titular:     data.titular,
           bajada:      data.bajada || null,
-          cuerpo:      data.cuerpo,
+          cuerpo:      cuerpoLimpio,
           imagen_url,
           slug:        generarSlug(data.titular),
           estado,
@@ -255,12 +278,17 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
           {/* Cuerpo */}
           <div>
             <label className={labelClass} style={labelStyle}>Contenido</label>
-            <textarea
-              {...register("cuerpo")}
-              rows={10}
-              className={`${inputClass} resize-none`}
-              style={fieldStyle}
+            {/*
+              El editor no es un <input>, así que no se registra con
+              `register()`: se controla con setValue. `shouldValidate` mantiene
+              vivo el mensaje de error mientras se escribe.
+            */}
+            <EditorContenido
+              valor={cuerpoInicial}
               placeholder="Cuenta la noticia..."
+              onChange={(html) =>
+                setValue("cuerpo", html, { shouldValidate: true, shouldDirty: true })
+              }
             />
             {errorEl(errors.cuerpo?.message)}
           </div>

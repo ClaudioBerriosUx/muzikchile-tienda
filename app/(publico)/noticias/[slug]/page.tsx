@@ -5,7 +5,9 @@ import { ArrowLeft } from "lucide-react";
 import { C, F } from "@/lib/portada";
 import { etiquetaCategoria } from "@/lib/publicaciones";
 import { traerNoticiaPorSlug, fechaLarga, type NoticiaDetalle } from "@/lib/noticias";
+import { aTextoPlano } from "@/lib/embeds";
 import { BASE_URL } from "@/lib/site";
+import ContenidoNoticia from "@/components/contenido/ContenidoNoticia";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -106,9 +108,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!noticia) return { title: "Noticia no encontrada | MuzikChile" };
 
   const titulo = noticia.titular;
+
+  /**
+   * El cuerpo es HTML con shortcodes: hay que reducirlo a texto plano antes de
+   * usarlo como descripción. Si no, el meta queda con las etiquetas y los
+   * `[youtube:ID]` visibles en Google y en las tarjetas al compartir.
+   */
   const descripcion =
-    noticia.bajada ??
-    noticia.cuerpo?.slice(0, 160) ??
+    noticia.bajada?.trim() ||
+    (noticia.cuerpo ? aTextoPlano(noticia.cuerpo, 160) : "") ||
     `Publicado por ${noticia.artistas?.nombre ?? "un artista"} en MuzikChile`;
 
   return {
@@ -227,20 +235,13 @@ export default async function NoticiaPage({ params }: Props) {
         {/* Atribución del autor: enlazada solo si es un artista real. */}
         {autor && <AtribucionAutor autor={autor} />}
 
-        {/* Cuerpo */}
-        {noticia.cuerpo && (
-          <div
-            className="mt-8 whitespace-pre-wrap"
-            style={{
-              fontFamily: F.dmSans,
-              fontSize: "16px",
-              lineHeight: 1.8,
-              color: C.grisClaro,
-            }}
-          >
-            {noticia.cuerpo}
-          </div>
-        )}
+        {/*
+          Cuerpo. Antes era `whitespace-pre-wrap` con texto plano; ahora pasa
+          por ContenidoNoticia, que sanitiza el HTML en el servidor y expande
+          los embeds. El texto plano de las noticias existentes se envuelve en
+          párrafos automáticamente, así que no se rompe.
+        */}
+        <ContenidoNoticia cuerpo={noticia.cuerpo} />
 
         {/* Cierre */}
         <div
