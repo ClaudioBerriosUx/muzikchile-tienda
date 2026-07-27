@@ -13,22 +13,22 @@ export default function PendientePage() {
 
         <h1
           className="mb-3"
-          style={{ fontFamily: "Oswald, sans-serif", fontSize: "36px", fontWeight: "700", color: "#111111" }}
+          style={{ fontFamily: "var(--font-titulo)", fontSize: "36px", color: "#111111" }}
         >
           Pago en revisión
         </h1>
 
-        <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "16px", color: "#666666" }}>
+        <p style={{ fontFamily: "var(--font-body)", fontSize: "16px", color: "#666666" }}>
           Recibirás un email cuando se confirme tu pago.
         </p>
-        <p className="mt-1 mb-8" style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#999999" }}>
+        <p className="mt-1 mb-8" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#999999" }}>
           Este proceso puede tardar algunos minutos.
         </p>
 
         <Link
           href="/tienda"
           className="inline-block px-8 py-3 rounded-md border font-semibold"
-          style={{ fontFamily: "Barlow, sans-serif", borderColor: "#111111", color: "#111111" }}
+          style={{ fontFamily: "var(--font-body)", borderColor: "#111111", color: "#111111" }}
         >
           Ir al inicio
         </Link>

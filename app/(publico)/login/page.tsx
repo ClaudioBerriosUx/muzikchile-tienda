@@ -70,20 +70,20 @@ function LoginContent() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <span style={{ fontFamily: "Oswald, sans-serif", fontSize: "24px", fontWeight: "700" }}>
+          <span style={{ fontFamily: "var(--font-titulo)", fontSize: "26px", letterSpacing: "0.02em" }}>
             <span style={{ color: "#111111" }}>MuzikChile</span>
             <span style={{ color: "#e8003d" }}>·</span>
           </span>
         </div>
 
-        <h1 className="mb-6" style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", fontWeight: "600", color: "#111111" }}>
+        <h1 className="mb-6" style={{ fontFamily: "var(--font-titulo)", fontSize: "20px", color: "#111111" }}>
           Accede a tu cuenta
         </h1>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
           {/* Email */}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="email" style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#444444" }}>
+            <label htmlFor="email" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#444444" }}>
               Email
             </label>
             <input
@@ -92,16 +92,16 @@ function LoginContent() {
               autoComplete="email"
               {...register("email")}
               className="w-full rounded-md px-3 py-2.5 text-sm border transition-colors focus:outline-none"
-              style={{ fontFamily: "DM Sans, sans-serif", borderColor: errors.email ? "#e8003d" : "#e8e8e8", color: "#111111" }}
+              style={{ fontFamily: "var(--font-body)", borderColor: errors.email ? "#e8003d" : "#e8e8e8", color: "#111111" }}
               onFocus={(e) => { if (!errors.email) e.currentTarget.style.borderColor = "#e8003d"; }}
               onBlur={(e)  => { if (!errors.email) e.currentTarget.style.borderColor = "#e8e8e8"; }}
             />
-            {errors.email && <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#e8003d" }}>{errors.email.message}</span>}
+            {errors.email && <span style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#e8003d" }}>{errors.email.message}</span>}
           </div>
 
           {/* Contraseña */}
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="password" style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#444444" }}>
+            <label htmlFor="password" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#444444" }}>
               Contraseña
             </label>
             <input
@@ -110,18 +110,18 @@ function LoginContent() {
               autoComplete="current-password"
               {...register("password")}
               className="w-full rounded-md px-3 py-2.5 text-sm border transition-colors focus:outline-none"
-              style={{ fontFamily: "DM Sans, sans-serif", borderColor: errors.password ? "#e8003d" : "#e8e8e8", color: "#111111" }}
+              style={{ fontFamily: "var(--font-body)", borderColor: errors.password ? "#e8003d" : "#e8e8e8", color: "#111111" }}
               onFocus={(e) => { if (!errors.password) e.currentTarget.style.borderColor = "#e8003d"; }}
               onBlur={(e)  => { if (!errors.password) e.currentTarget.style.borderColor = "#e8e8e8"; }}
             />
-            {errors.password && <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#e8003d" }}>{errors.password.message}</span>}
+            {errors.password && <span style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#e8003d" }}>{errors.password.message}</span>}
           </div>
 
           <button
             type="submit"
             disabled={loading}
             className="w-full h-11 rounded-md font-semibold transition-colors mt-1"
-            style={{ fontFamily: "Barlow, sans-serif", backgroundColor: loading ? "#f0a0b0" : "#e8003d", color: "#ffffff", cursor: loading ? "not-allowed" : "pointer" }}
+            style={{ fontFamily: "var(--font-body)", backgroundColor: loading ? "#f0a0b0" : "#e8003d", color: "#ffffff", cursor: loading ? "not-allowed" : "pointer" }}
             onMouseEnter={(e) => { if (!loading) e.currentTarget.style.backgroundColor = "#c5002e"; }}
             onMouseLeave={(e) => { if (!loading) e.currentTarget.style.backgroundColor = "#e8003d"; }}
           >
@@ -132,7 +132,7 @@ function LoginContent() {
         <p className="text-center mt-4">
           <a
             href="/recuperar"
-            style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666" }}
+            style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "#e8003d")}
             onMouseLeave={(e) => (e.currentTarget.style.color = "#666666")}
           >
@@ -148,7 +148,7 @@ export default function LoginPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Cargando...</p>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Cargando...</p>
       </div>
     }>
       <LoginContent />

@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-07-25
+> Actualizado: 2026-07-27
 > Branch: `main` (único branch activo)
 
 ---
@@ -339,6 +339,290 @@ El Header **no tiene iconos de redes** — su franja roja del Channel es un
 
 Verificado con hover real del mouse: el icono bajo el cursor computa
 `rgb(191, 4, 17)` y los otros tres siguen en blanco.
+
+### Tipografía definitiva · Anton + DM Sans (2026-07-27)
+
+**Dos familias, dos roles, un solo lugar donde se decide.** Anton para todos los
+titulares (h1–h4), DM Sans para todo el cuerpo. Se eliminaron Bebas Neue,
+Oswald, Barlow, Barlow Condensed y Geist Sans.
+
+**Dónde vive la configuración** — `app/globals.css`, bloque `TIPOGRAFÍA`:
+`--font-titulo` y `--font-body`. Las familias se cargan en `app/layout.tsx` con
+next/font (`--font-anton`, `--font-dm-sans`); el mapeo rol → familia es lo único
+que hay que tocar para cambiar la tipografía del sitio entero. Se consume por
+tres vías, todas apuntando ahí: la regla de `@layer base`, las utilidades
+`font-sans` / `font-heading` de Tailwind, y `F.titulo` / `F.body` en
+`lib/portada.ts` para el estilo inline.
+
+**Se borró el `@import` de Google Fonts de `globals.css`.** Pedía Oswald, Barlow
+y DM Sans por red en cada carga, en paralelo con las mismas familias
+self-hosted por next/font. Ahora no hay ningún request a fonts.googleapis.com.
+
+#### La regla central lleva `!important`, y es a propósito
+
+```css
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-titulo) !important;
+  font-weight: 400 !important;
+}
+```
+
+Sin `!important` esto no puede ser central en este proyecto: media web estila
+con `style={{ fontFamily }}` inline, y un estilo inline le gana a cualquier
+selector por especificidad. Un `!important` de autor sí le gana al inline
+(importancia > especificidad en el orden de la cascada). Consecuencia práctica:
+**un heading nuevo no necesita declarar tipografía.** Si querés jerarquía,
+cambiás el `fontSize`.
+
+El `font-weight: 400 !important` no es decorativo: **Anton solo tiene un peso.**
+Pedirle 600/700 hace que el navegador lo engorde sintéticamente y se ve
+emborronado. La regla neutraliza de una los `font-bold` y `fontWeight: 700`
+sueltos que quedaban repartidos por el sitio.
+
+#### El barrido
+
+Codemod sobre 52 archivos: **654 declaraciones `fontFamily`** migradas de
+literales (`"Oswald, sans-serif"`, `"Barlow, sans-serif"`, `"DM Sans, sans-serif"`)
+a los tokens `var(--font-titulo)` / `var(--font-body)`. El reparto se decidió
+por la etiqueta que envuelve cada declaración, no por el valor viejo: 79 a
+titulares (h1–h4 + `DialogTitle` / `SheetTitle`, que Radix renderiza como `h2`)
+y 575 a cuerpo. Además se retiraron **60 `fontWeight` de titulares**, que la
+regla global dejaba inertes y solo confundían al leer el código.
+
+Reemplazar el valor y no borrar la propiedad fue deliberado: si se borraban los
+literales sin más, al quitar Barlow del `@import` esos 383 sitios caían a la
+sans del sistema, no a DM Sans.
+
+**Los `<p>` / `<div>` / `<span>` que usaban Oswald pasaron a DM Sans**, no a
+Anton: nombres de producto en tarjetas, números de métricas, iniciales de
+avatar, estados vacíos. Son cuerpo, aunque el original les diera aire de
+titular. Única excepción: el logotipo "MuzikChile·" de `/login`, `/registro` y
+`/recuperar`, que es marca y quedó en Anton (sin el `fontWeight: 700`, que
+habría sido falso bold).
+
+**Casos especiales revisados**
+- El H1 "CONÉCTATE CON LA MÚSICA CHILENA" pasó de Oswald a Anton.
+- `.contenido-noticia` (renderizador público) y `.editor-contenido` (TipTap):
+  titulares en Anton, cuerpo en DM Sans. Al editor se le quitó el
+  `font-weight: 600`.
+- El badge "Sonando ahora" **no se tocó**: ya usaba `F.dmSans` → `F.body`, o
+  sea exactamente la misma fuente que antes.
+
+**Geist Mono se mantuvo**: la utilidad `font-mono` se usa en 4 lugares reales
+(códigos de cupón, N° de comprobante). Geist Sans sí se fue — estaba cargada
+pero no la referenciaba nadie (`--font-sans: var(--font-sans)` era circular).
+
+⚠️ **No se verificó en navegador.** `tsc --noEmit` limpio, `npm run lint` sin
+regresiones (52 problemas, idénticos a los de HEAD) y `npm run build` OK, pero
+la revisión visual —incluida la de acentos y ñ— quedó pendiente. El subset
+`latin` de Google cubre U+00C0–U+00FF, así que á/é/í/ó/ú/ñ deberían estar; hay
+que confirmarlo mirando.
+
+---
+
+### Popup de suscripción al boletín + tabla `suscriptores` (2026-07-27)
+
+Recrea el popup del Channel (mismo comportamiento) con diseño nuevo y los tres
+agujeros de seguridad del original cerrados.
+
+#### No es un modal, y eso cambia el código
+
+Tarjeta flotante blanca anclada abajo a la derecha (380px en escritorio; de
+borde a borde con margen bajo 640px), **sin overlay**: la página sigue visible
+y usable. Entra con un slide-in corto de 16px + fade
+(`.entrada-popup` en `globals.css`, con su `prefers-reduced-motion`).
+
+Esa decisión arrastra tres consecuencias en el código que **no son detalles
+sueltos** y conviene no "corregir" sin entenderlas:
+
+- **No roba el foco al aparecer.** Un modal sí debe hacerlo; una tarjeta que
+  interrumpe sin bloquear, no — te sacaría del campo o del video que estás
+  usando.
+- **No captura Escape.** Esa tecla le pertenece a lo que sí bloquea (el modal
+  de video de la portada). Si la tomara, una pulsación cerraría las dos cosas.
+- **No hay "clic fuera".** Fuera de la tarjeta está la página; hacer clic ahí
+  es navegar, no cerrar. El único cierre es la ✕.
+
+Por lo mismo es un `<aside>` con `aria-labelledby` y **no** un
+`role="dialog" aria-modal="true"`: anunciarla como diálogo modal le mentiría a
+un lector de pantalla sobre el estado de la página.
+
+**z-index 40**, elegido contra los que ya existen: por encima del grano de
+película (15) para que no le tiña el blanco, y por debajo del header sticky
+(50) y del modal de video (100). Un aviso del boletín nunca debe ponerse
+delante de la navegación ni de algo que la persona abrió a propósito.
+
+**Migración** `20260727030917_crear_suscriptores.sql`, aplicada con `db push` y
+tipos regenerados en el mismo cambio.
+
+Tabla mínima a propósito: `id`, `email` (UNIQUE), `estado`
+(`activo`/`inactivo`, con CHECK), `origen`, `created_at`. **Sin IP, sin user
+agent, sin referrer**: el público es internacional (RGPD) y el dato que no se
+recoge es el que no hay que proteger, exportar ni borrar después.
+
+RLS asimétrica: **INSERT público** (`with check (true)` — es un formulario sin
+sesión), **SELECT/UPDATE/DELETE solo admin** vía `has_role`. Que anon no pueda
+leer es lo que evita que la tabla sea un directorio de correos consultable con
+la anon key, que es pública por diseño.
+
+#### Los tres agujeros cerrados
+
+1. **Validación de email real.** `lib/suscriptores.ts` —
+   `/^[^\s@]+@[^\s@.]+(\.[^\s@.]+)*\.[a-z]{2,}$/i` más tope de 254 chars. El
+   original hacía `email.includes("@")`. Vive fuera del componente para poder
+   ejercitarse sin abrir un navegador; **17/17 casos pasan**, incluidos los que
+   el chequeo viejo dejaba entrar: `a@b`, `@dominio.cl`, `hola @ mail.cl`,
+   `juan@.cl`, `juan@dominio.c`.
+2. **Honeypot.** Input `name="empresa"` con `display:none`, `tabIndex={-1}`,
+   `autoComplete="off"` y `aria-hidden`. Si viene con valor, **finge éxito y no
+   inserta nada**: responder "error" le enseñaría al bot cuál campo lo delató.
+   El `autoComplete="off"` no es adorno — un autofill del gestor de contraseñas
+   sería un falso positivo que bloquearía a una persona real.
+3. **Duplicados por el UNIQUE, no por chequeo previo.** Se intenta el INSERT y
+   se captura el `23505`; se muestra "Este email ya está suscrito" en ámbar (no
+   en rojo: no hizo nada mal) y se marca como suscrito para no volver a
+   molestar. Un "¿ya existe?" previo sería a la vez imposible (anon no puede
+   leer) y una condición de carrera.
+
+**Falta, documentado en el componente y en la migración**: rate limiting por IP
+(la que más falta hace — hoy nada impide 10.000 altas desde un script),
+captcha/Turnstile y doble opt-in con token. Las tres necesitan servidor;
+ninguna se puede expresar como política RLS.
+
+#### Verificado contra la base real (anon key, vía PostgREST)
+
+| Prueba | Resultado |
+|---|---|
+| INSERT anon | `201` ✅ |
+| INSERT duplicado | `23505 duplicate key value violates unique constraint` ✅ |
+| SELECT anon | `[]` — el RLS no deja leer la lista ✅ |
+| INSERT con `estado: 'superadmin'` | `23514 violates check constraint` ✅ |
+
+Las filas de prueba se borraron después (la tabla quedó vacía).
+
+⚠️ El honeypot, el disparo (15s / 30% de scroll / cooldown de 7 días en
+localStorage) y el diseño de la tarjeta están verificados **por lectura del
+código y por build, no manejando la UI**: la comprobación en navegador no se
+llegó a hacer.
+
+**Otros archivos**
+- `components/ui/PopupSuscripcion.tsx` — montado solo en la portada.
+- `app/globals.css` — keyframes `entrada-popup` (tercera animación del archivo
+  que respeta `prefers-reduced-motion`, junto a `halo-senal` y `grano`).
+- `app/(publico)/privacidad/page.tsx` — plantilla honesta: describe lo que el
+  sitio hace hoy y lleva un aviso visible de "borrador" más un TODO con lo que
+  falta resolver con asesoría legal (responsable del tratamiento, correo real,
+  base legal, plazos, encargados, transferencias internacionales).
+  El correo `contacto@muzikchile.cl` es **placeholder**.
+- `app/admin/suscriptores/page.tsx` — listado de solo lectura con buscador,
+  contador de activos y exportación a CSV (con BOM, para que Excel en Windows
+  no destroce los acentos). Entrada nueva en el sidebar de `AdminShell`.
+
+### Portada · Reestructura de "Últimas noticias" (2026-07-27)
+
+Solo `_portada/UltimasNoticias.tsx`. **La lógica de datos no se tocó**: mismo
+`traerNoticias()`, mismos filtros, mismo `limit(3)`. Lo único que cambió en la
+query es que ahora también trae `categoria`, para el badge.
+
+**Antes**: destacada a la izquierda con `lg:row-span-2` + dos horizontales
+apiladas a la derecha, en `grid-cols-2` parejo.
+**Ahora**: `grid-cols-[55fr_45fr]` — destacada 55%, columna derecha 45% con las
+dos horizontales **más una cuarta tarjeta CTA** al archivo (`/noticias`), sin
+imagen, con flecha que se corre y se enciende en el hover.
+
+Piezas nuevas: `Badge` (categoría), `Autor` (antes `Artista`), `SinImagen` y la
+constante `TARJETA` con el estilo de borde/fondo que comparten las cuatro.
+
+#### Detalles que costaron y conviene no deshacer
+
+- **Las dos columnas se igualan solas.** No hay alto fijo: grid estira los items
+  por defecto (`align-items: stretch`), y el bloque de texto de la destacada
+  lleva `flex-1` para absorber el sobrante.
+- **El CTA lleva `mt-auto`.** Así el hueco, cuando la destacada es más alta,
+  queda ARRIBA del CTA y no entre las dos noticias. Es lo que mantiene el
+  bloque alineado por abajo.
+- **El color de la flecha va por clases, no en el `style` inline.** Un estilo
+  inline le gana en especificidad a `hover:`; mientras `color` estuviera ahí, el
+  cambio de tono no se veía. Mismo tropiezo que ya documentó el Footer con los
+  iconos de redes.
+- **El badge no se pinta si la categoría es desconocida.** `etiquetaCategoria`
+  devuelve `"—"` en ese caso, y un badge con un guion es peor que ningún badge.
+
+#### Dos cosas que son de DATOS, no de layout
+
+1. **Las 8 noticias son `categoria: 'general'`**, así que los tres badges dicen
+   "GENERAL". SHOW / PRENSA / LANZAMIENTO aparecerán cuando alguien las
+   clasifique; el vocabulario ya existe en `lib/publicaciones.ts`.
+2. **Las dos noticias más recientes tienen `bajada` vacía** (0 chars) desde la
+   migración del Channel. Como la destacada es justamente la más reciente, hoy
+   **la tarjeta grande no muestra párrafo**: sale imagen + autor + fecha +
+   titular y nada más. No es un bug del layout.
+
+#### Sobre las imágenes (verificado, no se tocó)
+
+Las 8 `imagen_url` son válidas y responden 200, pero apuntan al **proyecto
+Supabase del Channel** (`yxqhtljhoceopnbcwdiy`, bucket `blog-images`), no al de
+la Tienda. La migración trajo las filas y no copió los archivos. ⚠️ Si ese
+proyecto se pausa, se borra o el bucket deja de ser público, la portada pierde
+las 8 imágenes y no hay copia de este lado. Van por `<img>` plano, sin
+optimizar: la destacada son 350KB de PNG.
+
+Descartado de paso: **no hay ningún componente de subida de archivos en la
+portada.** El texto "Imagen destacada / browse files" de una captura reportada
+no existe ni en el código, ni en los datos, ni en `node_modules`, ni en el HTML
+renderizado; los tres dropzones del proyecto viven en `/panel/**` y están en
+español. Quedó sin explicar de dónde salía esa captura.
+
+### Portada · El grano de película ahora sí tiembla (2026-07-27)
+
+**El diagnóstico importa más que el arreglo: la animación NUNCA estuvo rota.**
+Los `@keyframes grano` existían, la clase se aplicaba y `getAnimations()`
+reportaba `running`. El problema era el número de steps.
+
+`steps(1, end)` congela cada keyframe durante todo su intervalo: 10 keyframes
+en 8s = **un salto cada 800ms**. Y como el ruido es estadísticamente uniforme
+—se ve igual en todas partes—, un salto por segundo sobre esa textura pasa
+inadvertido. El efecto parecía estático sin estarlo.
+
+`steps(10)` subdivide CADA intervalo en 10 → ~100 posiciones en 8s, **un salto
+cada 80ms ≈ 12,5 fps**, que es el rango en que el ojo lo lee como grano de
+película. Es lo que usa la referencia.
+
+**Cambios**
+- `globals.css`: `steps(1, end)` → `steps(10)`; traslaciones de ±4% a ±8%.
+- `GrainOverlay.tsx`: capa de 200%/-50%/-50% → **300%/-110%/-50%** (los valores
+  de la referencia), y `OPACIDAD` 0.08 → 0.12. Lo segundo no es capricho: el ojo
+  detecta mucho peor el MOVIMIENTO de algo de bajo contraste que su presencia.
+
+**Por qué ±8% y no más**: las traslaciones son % del propio elemento, que mide
+300% del viewport → ±8% son ±24% de pantalla. Con los offsets actuales sobra
+50% de viewport a la izquierda y 90–110% arriba/abajo, así que ningún borde
+asoma. Pasar de ~16% sí destaparía el borde derecho.
+
+#### Verificado en el navegador (no solo en el CSS)
+
+- `getComputedStyle().transform` muestreado a lo largo del ciclo: **10 matrices
+  distintas**, barriendo ~460px en horizontal y ~180px en vertical. Con un tile
+  de ruido de 160px, cada salto (~38px) descorrelaciona un cuarto del patrón.
+- ⚠️ **Para muestrear un transform animado hay que forzar recálculo**
+  (`getBoundingClientRect()` + `requestAnimationFrame` entre lecturas). Sin eso
+  `getComputedStyle` devuelve la identidad y parece que no se mueve — me pasó, y
+  es exactamente el falso negativo que haría pensar que el arreglo no funcionó.
+- **Rendimiento: sin costo medible.** 144,1 fps con la capa vs 144,0 sin ella;
+  peor frame 7,5ms vs 7,4ms. Medido en viewport 2560×1249.
+- ⚠️ La capa son 29,9 Mpx (~114MB si se rasterizara entera; el navegador tesela
+  y no lo hace). En equipos modestos ese es el primer dial a bajar: volver a
+  `200%/-50%/-50%` cuesta menos de la mitad y **alcanza de sobra** para las
+  traslaciones actuales, sin tocar los keyframes.
+
+`prefers-reduced-motion` sigue dejando el grano estático (regla verificada en el
+CSS compilado: `.grano-overlay{will-change:auto;animation:none}`), pero no se
+ejerció activando la preferencia en el navegador.
+
+⚠️ **Turbopack sirvió CSS rancio durante la verificación**: tras editar
+`globals.css`, el dev server reiniciaba en 533ms reusando el chunk viejo y
+seguía entregando `step-end`. Hubo que borrar `.next`. Si un cambio de CSS "no
+aparece", sospechar de esto antes que del código.
 
 ---
 

@@ -24,7 +24,7 @@ export default function CargandoPanel() {
       />
       <p
         style={{
-          fontFamily: "Barlow, sans-serif",
+          fontFamily: "var(--font-body)",
           fontSize: "14px",
           color: "#666666",
         }}

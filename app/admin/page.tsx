@@ -30,10 +30,10 @@ function MetricCard({
     <div className="rounded-xl border border-[#e8e8e8] p-6 bg-white">
       <div className="flex items-start justify-between">
         <div>
-          <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#666666", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#666666", textTransform: "uppercase", letterSpacing: "0.05em" }}>
             {label}
           </p>
-          <p className="mt-2" style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
+          <p className="mt-2" style={{ fontFamily: "var(--font-body)", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
             {valor}
           </p>
         </div>
@@ -144,10 +144,10 @@ export default function AdminDashboard() {
 
   return (
     <div>
-      <h1 className="mb-2" style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
+      <h1 className="mb-2" style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}>
         Dashboard Admin
       </h1>
-      <p className="mb-8" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+      <p className="mb-8" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
         Vista general de MuzikChile Tienda
       </p>
 
@@ -158,30 +158,30 @@ export default function AdminDashboard() {
       </div>
 
       <div className="rounded-xl border border-[#e8e8e8] p-6">
-        <h2 className="mb-6" style={{ fontFamily: "Oswald, sans-serif", fontSize: "18px", fontWeight: "600", color: "#111111" }}>
+        <h2 className="mb-6" style={{ fontFamily: "var(--font-titulo)", fontSize: "18px", color: "#111111" }}>
           Top 5 artistas por ventas
         </h2>
         {topArtistas.length === 0 ? (
-          <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Sin ventas registradas aún.</p>
+          <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Sin ventas registradas aún.</p>
         ) : (
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={topArtistas} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis
                 dataKey="nombre"
-                tick={{ fontFamily: "Barlow, sans-serif", fontSize: 12, fill: "#666" }}
+                tick={{ fontFamily: "var(--font-body)", fontSize: 12, fill: "#666" }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
                 tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
-                tick={{ fontFamily: "Barlow, sans-serif", fontSize: 11, fill: "#999" }}
+                tick={{ fontFamily: "var(--font-body)", fontSize: 11, fill: "#999" }}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip
                 formatter={(v) => [formatCLP(Number(v ?? 0)), "Ventas"]}
-                contentStyle={{ fontFamily: "Barlow, sans-serif", border: "1px solid #e8e8e8", borderRadius: "8px" }}
+                contentStyle={{ fontFamily: "var(--font-body)", border: "1px solid #e8e8e8", borderRadius: "8px" }}
               />
               <Bar dataKey="ventas" fill="#e8003d" radius={[4, 4, 0, 0]} />
             </BarChart>

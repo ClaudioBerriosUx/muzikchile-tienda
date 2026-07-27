@@ -120,7 +120,7 @@ export default function ModerarProductosPage() {
               onClick={() => setTab(t)}
               className="flex-1 py-3 text-sm transition-colors"
               style={{
-                fontFamily: "Barlow, sans-serif",
+                fontFamily: "var(--font-body)",
                 fontWeight: tab === t ? 600 : 400,
                 color: tab === t ? "#111111" : "#666666",
                 borderBottom: tab === t ? "2px solid #e8003d" : "2px solid transparent",
@@ -136,7 +136,7 @@ export default function ModerarProductosPage() {
         <div className="flex-1 overflow-y-auto" style={{ backgroundColor: "#f8f7f5" }}>
           {productos.length === 0 ? (
             <div className="p-8 text-center">
-              <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Sin productos en esta vista</p>
+              <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Sin productos en esta vista</p>
             </div>
           ) : (
             productos.map((p) => {
@@ -162,10 +162,10 @@ export default function ModerarProductosPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate" style={{ fontFamily: "Oswald, sans-serif", color: "#111111" }}>
+                    <p className="text-sm font-medium truncate" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
                       {p.nombre}
                     </p>
-                    <p className="text-xs mt-0.5 truncate" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                    <p className="text-xs mt-0.5 truncate" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                       {nombreArtista(p.artistas)}
                     </p>
                     <div className="mt-1"><StatusBadge estado={p.estado} /></div>
@@ -183,7 +183,7 @@ export default function ModerarProductosPage() {
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
               <Package size={40} className="mx-auto mb-3 text-[#cccccc]" />
-              <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "18px", color: "#999999" }}>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "18px", color: "#999999" }}>
                 Selecciona un producto
               </p>
             </div>
@@ -218,7 +218,7 @@ export default function ModerarProductosPage() {
             )}
 
             {/* Info producto */}
-            <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "24px", fontWeight: "700", color: "#111111" }}>
+            <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "24px", color: "#111111" }}>
               {seleccionado.nombre}
             </h2>
 
@@ -230,18 +230,18 @@ export default function ModerarProductosPage() {
                 ["Tipo", seleccionado.tipo === "digital" ? "Digital" : "Físico"],
               ].map(([label, valor]) => (
                 <div key={label}>
-                  <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#999999", textTransform: "uppercase" }}>{label}</p>
-                  <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "15px", color: "#111111", marginTop: "2px" }}>{valor}</p>
+                  <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#999999", textTransform: "uppercase" }}>{label}</p>
+                  <p style={{ fontFamily: "var(--font-body)", fontSize: "15px", color: "#111111", marginTop: "2px" }}>{valor}</p>
                 </div>
               ))}
             </div>
 
             {seleccionado.zonas_envio && seleccionado.zonas_envio.length > 0 && (
               <div className="mt-4">
-                <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#999999", textTransform: "uppercase" }}>Zonas de envío</p>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#999999", textTransform: "uppercase" }}>Zonas de envío</p>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {seleccionado.zonas_envio.map((z) => (
-                    <span key={z} className="text-xs px-2 py-0.5 rounded border" style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#f8f7f5", color: "#666666" }}>
+                    <span key={z} className="text-xs px-2 py-0.5 rounded border" style={{ fontFamily: "var(--font-body)", backgroundColor: "#f8f7f5", color: "#666666" }}>
                       {z}
                     </span>
                   ))}
@@ -251,8 +251,8 @@ export default function ModerarProductosPage() {
 
             {seleccionado.descripcion && (
               <div className="mt-4">
-                <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#999999", textTransform: "uppercase" }}>Descripción</p>
-                <p className="mt-1" style={{ fontFamily: "DM Sans, sans-serif", fontSize: "14px", color: "#444444", lineHeight: 1.6 }}>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#999999", textTransform: "uppercase" }}>Descripción</p>
+                <p className="mt-1" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#444444", lineHeight: 1.6 }}>
                   {seleccionado.descripcion}
                 </p>
               </div>
@@ -264,7 +264,7 @@ export default function ModerarProductosPage() {
                 onClick={aprobar}
                 disabled={procesando}
                 className="w-full h-11 rounded-md text-white font-semibold flex items-center justify-center gap-2 transition-colors"
-                style={{ fontFamily: "Barlow, sans-serif", backgroundColor: procesando ? "#86efac" : "#22c55e" }}
+                style={{ fontFamily: "var(--font-body)", backgroundColor: procesando ? "#86efac" : "#22c55e" }}
               >
                 <CheckCircle size={16} /> Aprobar producto
               </button>
@@ -273,13 +273,13 @@ export default function ModerarProductosPage() {
                 <button
                   onClick={() => setMostrarRechazo(true)}
                   className="w-full h-11 rounded-md font-semibold flex items-center justify-center gap-2 border transition-colors"
-                  style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#ffffff", borderColor: "#e8003d", color: "#e8003d" }}
+                  style={{ fontFamily: "var(--font-body)", backgroundColor: "#ffffff", borderColor: "#e8003d", color: "#e8003d" }}
                 >
                   <XCircle size={16} /> Rechazar producto
                 </button>
               ) : (
                 <div className="border border-[#e8e8e8] rounded-lg p-4">
-                  <p className="mb-2 text-sm" style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }}>
+                  <p className="mb-2 text-sm" style={{ fontFamily: "var(--font-body)", color: "#444444" }}>
                     Motivo del rechazo:
                   </p>
                   <textarea
@@ -288,13 +288,13 @@ export default function ModerarProductosPage() {
                     rows={3}
                     placeholder="Explica al artista por qué su producto no fue aprobado..."
                     className="w-full rounded-md px-3 py-2 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none resize-none"
-                    style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                    style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                   />
                   <div className="flex gap-2 mt-3">
                     <button
                       onClick={() => { setMostrarRechazo(false); setMotivo(""); }}
                       className="flex-1 h-9 rounded border text-sm"
-                      style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#666666" }}
+                      style={{ fontFamily: "var(--font-body)", borderColor: "#e8e8e8", color: "#666666" }}
                     >
                       Cancelar
                     </button>
@@ -302,7 +302,7 @@ export default function ModerarProductosPage() {
                       onClick={rechazar}
                       disabled={procesando || !motivo.trim()}
                       className="flex-1 h-9 rounded text-white text-sm"
-                      style={{ fontFamily: "Barlow, sans-serif", backgroundColor: !motivo.trim() || procesando ? "#f0a0b0" : "#e8003d" }}
+                      style={{ fontFamily: "var(--font-body)", backgroundColor: !motivo.trim() || procesando ? "#f0a0b0" : "#e8003d" }}
                     >
                       Enviar rechazo
                     </button>

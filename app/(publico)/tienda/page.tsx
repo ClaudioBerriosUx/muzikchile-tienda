@@ -146,13 +146,13 @@ function HomePageContent() {
       <main className="min-h-screen bg-white">
         {/* Hero */}
         <section className="py-16 text-center" style={{ backgroundColor: "#f8f7f5" }}>
-          <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#e8003d", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "12px" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#e8003d", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "12px" }}>
             Marketplace de Música Chilena
           </p>
-          <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "48px", fontWeight: "700", color: "#111111", lineHeight: 1.1, marginBottom: "12px" }}>
+          <h1 style={{ fontFamily: "var(--font-titulo)", fontSize: "48px", color: "#111111", lineHeight: 1.1, marginBottom: "12px" }}>
             El merch de tus artistas favoritos
           </h1>
-          <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "16px", color: "#666666" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "16px", color: "#666666" }}>
             {isLoading ? "Cargando productos..." : `${productos.length} productos de artistas chilenos`}
           </p>
         </section>
@@ -174,7 +174,7 @@ function HomePageContent() {
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               className="px-3 py-1.5 text-sm rounded border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none transition-colors ml-auto"
-              style={{ fontFamily: "Barlow, sans-serif", minWidth: "200px" }}
+              style={{ fontFamily: "var(--font-body)", minWidth: "200px" }}
             />
           </div>
         </div>
@@ -196,10 +196,10 @@ function HomePageContent() {
             </div>
           ) : productosFiltrados.length === 0 ? (
             <div className="text-center py-20">
-              <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "24px", color: "#111111" }}>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "24px", color: "#111111" }}>
                 Sin resultados
               </p>
-              <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666", marginTop: "8px" }}>
+              <p style={{ fontFamily: "var(--font-body)", color: "#666666", marginTop: "8px" }}>
                 Prueba con otros filtros o términos de búsqueda
               </p>
             </div>

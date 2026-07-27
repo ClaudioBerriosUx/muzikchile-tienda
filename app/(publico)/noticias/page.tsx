@@ -20,7 +20,7 @@ function BadgeCategoria({ categoria }: { categoria: string | null }) {
       style={{
         borderColor: C.rojo,
         color: C.rojoClaro,
-        fontFamily: F.barlowC,
+        fontFamily: F.body,
         fontSize: "11px",
         letterSpacing: "0.1em",
         textTransform: "uppercase",
@@ -41,7 +41,7 @@ export default async function NoticiasPage() {
         <h1
           className="pl-4 mb-3"
           style={{
-            fontFamily: F.bebas,
+            fontFamily: F.titulo,
             fontSize: "clamp(34px, 6vw, 48px)",
             letterSpacing: "0.04em",
             color: C.blanco,
@@ -53,7 +53,7 @@ export default async function NoticiasPage() {
         </h1>
         <p
           className="pl-4 mb-10"
-          style={{ fontFamily: F.dmSans, fontSize: "15px", color: C.gris }}
+          style={{ fontFamily: F.body, fontSize: "15px", color: C.gris }}
         >
           Lo que están contando los artistas de la comunidad.
         </p>
@@ -66,7 +66,7 @@ export default async function NoticiasPage() {
             <Newspaper size={36} className="mx-auto mb-4" style={{ color: C.grisTenue }} />
             <p
               style={{
-                fontFamily: F.bebas,
+                fontFamily: F.body,
                 fontSize: "24px",
                 letterSpacing: "0.04em",
                 color: C.blanco,
@@ -76,7 +76,7 @@ export default async function NoticiasPage() {
             </p>
             <p
               className="mt-2"
-              style={{ fontFamily: F.dmSans, fontSize: "14px", color: C.gris }}
+              style={{ fontFamily: F.body, fontSize: "14px", color: C.gris }}
             >
               Cuando los artistas publiquen, aparecerán acá.
             </p>
@@ -111,7 +111,7 @@ export default async function NoticiasPage() {
                   <h2
                     className="line-clamp-3"
                     style={{
-                      fontFamily: F.bebas,
+                      fontFamily: F.titulo,
                       fontSize: "24px",
                       lineHeight: 1.15,
                       letterSpacing: "0.02em",
@@ -125,7 +125,7 @@ export default async function NoticiasPage() {
                     <p
                       className="line-clamp-3"
                       style={{
-                        fontFamily: F.dmSans,
+                        fontFamily: F.body,
                         fontSize: "14px",
                         color: C.gris,
                         lineHeight: 1.6,
@@ -139,7 +139,7 @@ export default async function NoticiasPage() {
                   <div className="flex items-center gap-2 flex-wrap mt-auto pt-3">
                     <span
                       style={{
-                        fontFamily: F.barlowC,
+                        fontFamily: F.body,
                         textTransform: "uppercase",
                         letterSpacing: "0.1em",
                         fontSize: "12px",
@@ -149,7 +149,7 @@ export default async function NoticiasPage() {
                       {n.artistas?.nombre ?? "—"}
                     </span>
                     <span
-                      style={{ fontFamily: F.dmSans, fontSize: "12px", color: C.grisTenue }}
+                      style={{ fontFamily: F.body, fontSize: "12px", color: C.grisTenue }}
                     >
                       {fechaCorta(n.created_at)}
                     </span>

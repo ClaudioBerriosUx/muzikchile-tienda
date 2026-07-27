@@ -497,6 +497,30 @@ export type Database = {
           },
         ]
       }
+      suscriptores: {
+        Row: {
+          created_at: string
+          email: string
+          estado: string
+          id: string
+          origen: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          estado?: string
+          id?: string
+          origen?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          estado?: string
+          id?: string
+          origen?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

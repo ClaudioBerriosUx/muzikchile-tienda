@@ -225,7 +225,7 @@ export default function ModerarPublicacionesPage() {
               onClick={() => cambiarTab(t)}
               className="flex-1 py-3 text-sm transition-colors"
               style={{
-                fontFamily: "Barlow, sans-serif",
+                fontFamily: "var(--font-body)",
                 fontWeight: tab === t ? 600 : 400,
                 color: tab === t ? "#111111" : "#666666",
                 borderBottom: tab === t ? "2px solid #e8003d" : "2px solid transparent",
@@ -244,7 +244,7 @@ export default function ModerarPublicacionesPage() {
               value={filtroEstado}
               onChange={(e) => cambiarFiltro(e.target.value)}
               className="w-full rounded-md px-2 py-1.5 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none"
-              style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }}
+              style={{ fontFamily: "var(--font-body)", color: "#444444" }}
             >
               {ESTADOS_FILTRO.map((e) => (
                 <option key={e.value} value={e.value}>{e.label}</option>
@@ -257,12 +257,12 @@ export default function ModerarPublicacionesPage() {
         <div className="flex-1 overflow-y-auto" style={{ backgroundColor: "#f8f7f5" }}>
           {isLoading ? (
             <div className="p-8 text-center">
-              <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Cargando...</p>
+              <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Cargando...</p>
             </div>
           ) : publicaciones.length === 0 ? (
             <div className="p-8 text-center">
               <Newspaper size={32} className="mx-auto mb-2 text-[#cccccc]" />
-              <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+              <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                 {tab === "pendientes" ? "Nada pendiente por revisar" : "Sin publicaciones en esta vista"}
               </p>
             </div>
@@ -290,10 +290,10 @@ export default function ModerarPublicacionesPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium line-clamp-2" style={{ fontFamily: "Oswald, sans-serif", color: "#111111" }}>
+                    <p className="text-sm font-medium line-clamp-2" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
                       {p.titular}
                     </p>
-                    <p className="text-xs mt-0.5 truncate" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                    <p className="text-xs mt-0.5 truncate" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                       {p.artistas?.nombre ?? "—"} · {etiquetaCategoria(p.categoria)}
                     </p>
                     <div className="mt-1"><StatusBadge estado={p.estado} /></div>
@@ -311,7 +311,7 @@ export default function ModerarPublicacionesPage() {
           <div className="h-full flex items-center justify-center">
             <div className="text-center">
               <Newspaper size={40} className="mx-auto mb-3 text-[#cccccc]" />
-              <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "18px", color: "#999999" }}>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "18px", color: "#999999" }}>
                 Selecciona una publicación
               </p>
             </div>
@@ -332,23 +332,23 @@ export default function ModerarPublicacionesPage() {
 
             <div className="flex items-center gap-2 mb-3">
               <StatusBadge estado={seleccionada.estado} />
-              <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#999999" }}>
+              <span style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#999999" }}>
                 {etiquetaCategoria(seleccionada.categoria)} · {fecha(seleccionada.created_at)}
               </span>
             </div>
 
-            <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "26px", fontWeight: "700", color: "#111111", lineHeight: 1.2 }}>
+            <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "26px", color: "#111111", lineHeight: 1.2 }}>
               {seleccionada.titular}
             </h2>
 
-            <p className="mt-2" style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666" }}>
+            <p className="mt-2" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>
               por <strong style={{ color: "#111111" }}>{seleccionada.artistas?.nombre ?? "—"}</strong>
             </p>
 
             {seleccionada.bajada && (
               <p
                 className="mt-4"
-                style={{ fontFamily: "DM Sans, sans-serif", fontSize: "17px", color: "#444444", lineHeight: 1.6, fontWeight: 500 }}
+                style={{ fontFamily: "var(--font-body)", fontSize: "17px", color: "#444444", lineHeight: 1.6, fontWeight: 500 }}
               >
                 {seleccionada.bajada}
               </p>
@@ -357,7 +357,7 @@ export default function ModerarPublicacionesPage() {
             {seleccionada.cuerpo && (
               <p
                 className="mt-4 whitespace-pre-wrap"
-                style={{ fontFamily: "DM Sans, sans-serif", fontSize: "15px", color: "#444444", lineHeight: 1.75 }}
+                style={{ fontFamily: "var(--font-body)", fontSize: "15px", color: "#444444", lineHeight: 1.75 }}
               >
                 {seleccionada.cuerpo}
               </p>
@@ -369,10 +369,10 @@ export default function ModerarPublicacionesPage() {
                 className="mt-6 rounded-lg border p-4"
                 style={{ backgroundColor: "#fff7ed", borderColor: "#fed7aa" }}
               >
-                <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", fontWeight: 600, color: "#9a3412" }}>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", fontWeight: 600, color: "#9a3412" }}>
                   Comentario de moderación actual
                 </p>
-                <p className="mt-1" style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#7c2d12", lineHeight: 1.6 }}>
+                <p className="mt-1" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#7c2d12", lineHeight: 1.6 }}>
                   {seleccionada.comentario_moderacion}
                 </p>
               </div>
@@ -386,7 +386,7 @@ export default function ModerarPublicacionesPage() {
                   disabled={procesando}
                   className="w-full h-11 rounded-md text-white font-semibold flex items-center justify-center gap-2 transition-colors"
                   style={{
-                    fontFamily: "Barlow, sans-serif",
+                    fontFamily: "var(--font-body)",
                     backgroundColor: procesando ? "#86efac" : "#22c55e",
                     cursor: procesando ? "not-allowed" : "pointer",
                   }}
@@ -399,7 +399,7 @@ export default function ModerarPublicacionesPage() {
                     onClick={() => setMostrarDevolucion(true)}
                     className="w-full h-11 rounded-md font-semibold flex items-center justify-center gap-2 border transition-colors"
                     style={{
-                      fontFamily: "Barlow, sans-serif",
+                      fontFamily: "var(--font-body)",
                       backgroundColor: "#ffffff",
                       borderColor: "#e8003d",
                       color: "#e8003d",
@@ -409,7 +409,7 @@ export default function ModerarPublicacionesPage() {
                   </button>
                 ) : (
                   <div className="border border-[#e8e8e8] rounded-lg p-4">
-                    <p className="mb-2 text-sm" style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }}>
+                    <p className="mb-2 text-sm" style={{ fontFamily: "var(--font-body)", color: "#444444" }}>
                       ¿Qué tiene que corregir? El artista verá este texto:
                     </p>
                     <textarea
@@ -418,13 +418,13 @@ export default function ModerarPublicacionesPage() {
                       rows={4}
                       placeholder="Ej: falta la fecha del show y la imagen está pixelada."
                       className="w-full rounded-md px-3 py-2 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none resize-none"
-                      style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                      style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                     />
                     <div className="flex gap-2 mt-3">
                       <button
                         onClick={cerrarFormDevolucion}
                         className="flex-1 h-9 rounded border text-sm"
-                        style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#666666" }}
+                        style={{ fontFamily: "var(--font-body)", borderColor: "#e8e8e8", color: "#666666" }}
                       >
                         Cancelar
                       </button>
@@ -433,7 +433,7 @@ export default function ModerarPublicacionesPage() {
                         disabled={procesando || !comentario.trim()}
                         className="flex-1 h-9 rounded text-white text-sm"
                         style={{
-                          fontFamily: "Barlow, sans-serif",
+                          fontFamily: "var(--font-body)",
                           backgroundColor: !comentario.trim() || procesando ? "#f0a0b0" : "#e8003d",
                           cursor: !comentario.trim() || procesando ? "not-allowed" : "pointer",
                         }}
@@ -448,7 +448,7 @@ export default function ModerarPublicacionesPage() {
               <div className="mt-8 pt-6 border-t border-[#e8e8e8]">
                 <p
                   className="mb-4"
-                  style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#999999" }}
+                  style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#999999" }}
                 >
                   {seleccionada.estado === "borrador"
                     ? "Es un borrador del artista: todavía no la envía a revisión."
@@ -464,13 +464,13 @@ export default function ModerarPublicacionesPage() {
                       href={`/noticias/${seleccionada.slug}`}
                       target="_blank"
                       className="w-full h-11 rounded-md border flex items-center justify-center gap-2 transition-colors"
-                      style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#444444" }}
+                      style={{ fontFamily: "var(--font-body)", borderColor: "#e8e8e8", color: "#444444" }}
                     >
                       <ExternalLink size={16} /> Ver en el sitio
                     </Link>
 
                     <div className="border border-[#e8e8e8] rounded-lg p-4">
-                      <p className="mb-2 text-sm" style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }}>
+                      <p className="mb-2 text-sm" style={{ fontFamily: "var(--font-body)", color: "#444444" }}>
                         Retirar del público. Motivo <strong>opcional</strong>: si lo
                         escribes, vuelve al artista como devuelta; si lo dejas vacío,
                         pasa a borrador en silencio.
@@ -481,14 +481,14 @@ export default function ModerarPublicacionesPage() {
                         rows={3}
                         placeholder="Motivo (opcional)"
                         className="w-full rounded-md px-3 py-2 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none resize-none"
-                        style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                        style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                       />
                       <button
                         onClick={despublicar}
                         disabled={procesando}
                         className="w-full h-10 mt-3 rounded-md font-semibold flex items-center justify-center gap-2 border"
                         style={{
-                          fontFamily: "Barlow, sans-serif",
+                          fontFamily: "var(--font-body)",
                           backgroundColor: "#ffffff",
                           borderColor: "#f59e0b",
                           color: "#9a3412",
@@ -506,7 +506,7 @@ export default function ModerarPublicacionesPage() {
                   onClick={() => setABorrar(seleccionada)}
                   className="w-full h-10 mt-3 rounded-md flex items-center justify-center gap-2 border transition-colors"
                   style={{
-                    fontFamily: "Barlow, sans-serif",
+                    fontFamily: "var(--font-body)",
                     fontSize: "14px",
                     borderColor: "#fecaca",
                     color: "#e8003d",
@@ -525,10 +525,10 @@ export default function ModerarPublicacionesPage() {
       <Dialog open={!!aBorrar} onOpenChange={() => !borrando && setABorrar(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "Oswald, sans-serif" }}>
+            <DialogTitle style={{ fontFamily: "var(--font-titulo)" }}>
               ¿Eliminar definitivamente?
             </DialogTitle>
-            <DialogDescription style={{ fontFamily: "Barlow, sans-serif" }}>
+            <DialogDescription style={{ fontFamily: "var(--font-body)" }}>
               {aBorrar
                 ? `“${aBorrar.titular}” de ${aBorrar.artistas?.nombre ?? "—"} se eliminará junto con su imagen. No se puede deshacer.`
                 : "No se puede deshacer."}
@@ -541,7 +541,7 @@ export default function ModerarPublicacionesPage() {
               onClick={() => setABorrar(null)}
               disabled={borrando}
               className="px-4 py-2 rounded border text-sm"
-              style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#444444" }}
+              style={{ fontFamily: "var(--font-body)", borderColor: "#e8e8e8", color: "#444444" }}
             >
               Cancelar
             </button>
@@ -550,7 +550,7 @@ export default function ModerarPublicacionesPage() {
               disabled={borrando}
               className="px-4 py-2 rounded text-white text-sm"
               style={{
-                fontFamily: "Barlow, sans-serif",
+                fontFamily: "var(--font-body)",
                 backgroundColor: borrando ? "#f0a0b0" : "#e8003d",
                 cursor: borrando ? "not-allowed" : "pointer",
               }}

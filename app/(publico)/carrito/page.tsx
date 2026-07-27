@@ -31,16 +31,16 @@ export default function CarritoPage() {
       <>
         <main className="min-h-screen bg-white flex flex-col items-center justify-center gap-4 px-6">
           <ShoppingCart size={48} className="text-[#cccccc]" />
-          <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
+          <h1 style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}>
             Tu carrito está vacío
           </h1>
-          <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+          <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
             Agrega productos desde la tienda para comenzar.
           </p>
           <Link
             href="/tienda"
             className="mt-2 px-8 py-3 rounded-md text-white font-semibold"
-            style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#e8003d" }}
+            style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
           >
             Ver tienda
           </Link>
@@ -55,7 +55,7 @@ export default function CarritoPage() {
     <>
       <main className="min-h-screen bg-white">
         <div className="max-w-5xl mx-auto px-6 py-10">
-          <h1 className="mb-8" style={{ fontFamily: "Oswald, sans-serif", fontSize: "32px", fontWeight: "700", color: "#111111" }}>
+          <h1 className="mb-8" style={{ fontFamily: "var(--font-titulo)", fontSize: "32px", color: "#111111" }}>
             Carrito
           </h1>
 
@@ -79,16 +79,16 @@ export default function CarritoPage() {
                   <div className="flex-1 min-w-0">
                     <p
                       className="font-medium truncate"
-                      style={{ fontFamily: "Oswald, sans-serif", fontSize: "17px", color: "#111111" }}
+                      style={{ fontFamily: "var(--font-body)", fontSize: "17px", color: "#111111" }}
                     >
                       {item.nombre}
                     </p>
                     {item.artista && (
-                      <p className="text-sm mt-0.5" style={{ fontFamily: "Barlow, sans-serif", color: "#999999" }}>
+                      <p className="text-sm mt-0.5" style={{ fontFamily: "var(--font-body)", color: "#999999" }}>
                         {item.artista}
                       </p>
                     )}
-                    <p className="font-bold mt-1" style={{ fontFamily: "DM Sans, sans-serif", color: "#e8003d", fontSize: "16px" }}>
+                    <p className="font-bold mt-1" style={{ fontFamily: "var(--font-body)", color: "#e8003d", fontSize: "16px" }}>
                       {formatCLP(item.precio)}
                     </p>
                   </div>
@@ -103,7 +103,7 @@ export default function CarritoPage() {
                     </button>
                     <span
                       className="w-8 text-center"
-                      style={{ fontFamily: "DM Sans, sans-serif", fontSize: "15px", color: "#111111" }}
+                      style={{ fontFamily: "var(--font-body)", fontSize: "15px", color: "#111111" }}
                     >
                       {item.cantidad}
                     </span>
@@ -118,7 +118,7 @@ export default function CarritoPage() {
                   {/* Subtotal item */}
                   <p
                     className="w-24 text-right shrink-0 font-semibold"
-                    style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                    style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                   >
                     {formatCLP(item.precio * item.cantidad)}
                   </p>
@@ -141,15 +141,15 @@ export default function CarritoPage() {
                 className="sticky top-20 rounded-xl border border-[#e8e8e8] p-6"
                 style={{ backgroundColor: "#f8f7f5" }}
               >
-                <h2 className="mb-5" style={{ fontFamily: "Oswald, sans-serif", fontSize: "18px", fontWeight: "600", color: "#111111" }}>
+                <h2 className="mb-5" style={{ fontFamily: "var(--font-titulo)", fontSize: "18px", color: "#111111" }}>
                   Resumen
                 </h2>
 
                 <div className="flex justify-between items-center mb-6">
-                  <span style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }}>
+                  <span style={{ fontFamily: "var(--font-body)", color: "#444444" }}>
                     Subtotal ({items.reduce((a, i) => a + i.cantidad, 0)} productos)
                   </span>
-                  <span style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 700, fontSize: "18px", color: "#111111" }}>
+                  <span style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: "18px", color: "#111111" }}>
                     {formatCLP(subtotal)}
                   </span>
                 </div>
@@ -157,7 +157,7 @@ export default function CarritoPage() {
                 <Link
                   href="/checkout"
                   className="flex items-center justify-center w-full h-11 rounded-md text-white font-semibold transition-colors"
-                  style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#e8003d" }}
+                  style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#c5002e")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#e8003d")}
                 >
@@ -167,7 +167,7 @@ export default function CarritoPage() {
                 <Link
                   href="/tienda"
                   className="flex items-center justify-center w-full h-11 rounded-md border mt-2 transition-colors"
-                  style={{ fontFamily: "Barlow, sans-serif", borderColor: "#111111", color: "#111111" }}
+                  style={{ fontFamily: "var(--font-body)", borderColor: "#111111", color: "#111111" }}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8f7f5")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >

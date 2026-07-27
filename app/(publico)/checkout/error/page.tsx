@@ -14,15 +14,15 @@ export default function ErrorPage() {
 
         <h1
           className="mb-3"
-          style={{ fontFamily: "Oswald, sans-serif", fontSize: "36px", fontWeight: "700", color: "#111111" }}
+          style={{ fontFamily: "var(--font-titulo)", fontSize: "36px", color: "#111111" }}
         >
           Algo salió mal
         </h1>
 
-        <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "16px", color: "#666666" }}>
+        <p style={{ fontFamily: "var(--font-body)", fontSize: "16px", color: "#666666" }}>
           No se pudo procesar tu pago.
         </p>
-        <p className="mt-1 mb-8" style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#999999" }}>
+        <p className="mt-1 mb-8" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#999999" }}>
           No se realizó ningún cargo a tu cuenta.
         </p>
 
@@ -30,14 +30,14 @@ export default function ErrorPage() {
           <Link
             href="/checkout"
             className="inline-block px-8 py-3 rounded-md text-white font-semibold"
-            style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#e8003d" }}
+            style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
           >
             Volver al carrito
           </Link>
           <Link
             href="/tienda"
             className="inline-block px-8 py-3 rounded-md border font-semibold"
-            style={{ fontFamily: "Barlow, sans-serif", borderColor: "#111111", color: "#111111" }}
+            style={{ fontFamily: "var(--font-body)", borderColor: "#111111", color: "#111111" }}
           >
             Ir al inicio
           </Link>

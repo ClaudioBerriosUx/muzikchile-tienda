@@ -35,7 +35,7 @@ export default function Sidebar({ items, footer }: Props) {
               href={item.href}
               className="flex items-center gap-3 py-3 text-sm transition-colors"
               style={{
-                fontFamily: "Barlow, sans-serif",
+                fontFamily: "var(--font-body)",
                 paddingLeft: activo ? "17px" : "20px",
                 borderLeft: activo ? "3px solid #e8003d" : "3px solid transparent",
                 backgroundColor: activo ? "#ffffff" : "transparent",

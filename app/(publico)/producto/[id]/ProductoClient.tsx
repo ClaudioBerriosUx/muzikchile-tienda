@@ -47,12 +47,12 @@ interface ProductoRelacionado {
 
 function StockIndicator({ stock }: { stock: number }) {
   if (stock === 0) {
-    return <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#e8003d" }}>● Sin stock</span>;
+    return <span style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#e8003d" }}>● Sin stock</span>;
   }
   if (stock <= 5) {
-    return <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#f59e0b" }}>● Últimas {stock} unidades</span>;
+    return <span style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#f59e0b" }}>● Últimas {stock} unidades</span>;
   }
-  return <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#22c55e" }}>● {stock} disponibles</span>;
+  return <span style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#22c55e" }}>● {stock} disponibles</span>;
 }
 
 export default function ProductoClient({ id }: { id: string }) {
@@ -111,7 +111,7 @@ export default function ProductoClient({ id }: { id: string }) {
     return (
       <>
         <div className="min-h-screen flex items-center justify-center">
-          <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "24px", color: "#111111" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "24px", color: "#111111" }}>
             Producto no encontrado
           </p>
         </div>
@@ -148,7 +148,7 @@ export default function ProductoClient({ id }: { id: string }) {
                 <img src={imagenActiva} alt={producto.nombre} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-                  <span style={{ fontFamily: "Barlow, sans-serif", color: "#cccccc" }}>Sin imagen</span>
+                  <span style={{ fontFamily: "var(--font-body)", color: "#cccccc" }}>Sin imagen</span>
                 </div>
               )}
             </div>
@@ -171,7 +171,7 @@ export default function ProductoClient({ id }: { id: string }) {
 
           {/* Info */}
           <div>
-            <div className="flex items-center gap-1 text-sm" style={{ fontFamily: "Barlow, sans-serif", color: "#999999" }}>
+            <div className="flex items-center gap-1 text-sm" style={{ fontFamily: "var(--font-body)", color: "#999999" }}>
               <Link href="/tienda" className="hover:text-[#e8003d] transition-colors">Tienda</Link>
               {categoria && (
                 <>
@@ -188,13 +188,13 @@ export default function ProductoClient({ id }: { id: string }) {
             {categoria && (
               <span
                 className="inline-block mt-3 text-white text-xs px-2 py-0.5 rounded"
-                style={{ backgroundColor: "#111111", fontFamily: "Barlow, sans-serif" }}
+                style={{ backgroundColor: "#111111", fontFamily: "var(--font-body)" }}
               >
                 {categoria.nombre}
               </span>
             )}
 
-            <h1 className="mt-2" style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111", lineHeight: 1.2 }}>
+            <h1 className="mt-2" style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111", lineHeight: 1.2 }}>
               {producto.nombre}
             </h1>
 
@@ -205,28 +205,28 @@ export default function ProductoClient({ id }: { id: string }) {
                 ) : (
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                    style={{ backgroundColor: acento, fontFamily: "Oswald, sans-serif" }}
+                    style={{ backgroundColor: acento, fontFamily: "var(--font-body)" }}
                   >
                     {artista.nombre?.[0]?.toUpperCase()}
                   </div>
                 )}
                 <span
                   className="text-sm transition-colors group-hover:text-[#e8003d]"
-                  style={{ fontFamily: "DM Sans, sans-serif", color: "#666666" }}
+                  style={{ fontFamily: "var(--font-body)", color: "#666666" }}
                 >
                   por {artista.nombre}{artista.ciudad ? ` · ${artista.ciudad}` : ""}
                 </span>
               </Link>
             )}
 
-            <p className="mt-4" style={{ fontFamily: "DM Sans, sans-serif", fontWeight: "700", fontSize: "30px", color: "#e8003d" }}>
+            <p className="mt-4" style={{ fontFamily: "var(--font-body)", fontWeight: "700", fontSize: "30px", color: "#e8003d" }}>
               {formatCLP(producto.precio)}
             </p>
 
             <div className="border-t border-[#e8e8e8] my-4" />
 
             {producto.descripcion && (
-              <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "15px", color: "#666666", lineHeight: 1.7 }}>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "15px", color: "#666666", lineHeight: 1.7 }}>
                 {producto.descripcion}
               </p>
             )}
@@ -238,7 +238,7 @@ export default function ProductoClient({ id }: { id: string }) {
             {producto.tipo === "digital" && (
               <span
                 className="inline-block mt-3 text-sm px-3 py-1 rounded"
-                style={{ backgroundColor: "#dcfce7", color: "#166534", fontFamily: "Barlow, sans-serif" }}
+                style={{ backgroundColor: "#dcfce7", color: "#166534", fontFamily: "var(--font-body)" }}
               >
                 Descarga digital
               </span>
@@ -250,7 +250,7 @@ export default function ProductoClient({ id }: { id: string }) {
                   <span
                     key={zona}
                     className="text-xs border rounded px-2 py-0.5"
-                    style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#f8f7f5", borderColor: "#e8e8e8", color: "#666666" }}
+                    style={{ fontFamily: "var(--font-body)", backgroundColor: "#f8f7f5", borderColor: "#e8e8e8", color: "#666666" }}
                   >
                     {zona}
                   </span>
@@ -260,22 +260,22 @@ export default function ProductoClient({ id }: { id: string }) {
 
             {producto.tipo === "fisico" && !sinStock && (
               <div className="flex items-center gap-3 mt-5">
-                <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666" }}>Cantidad:</span>
+                <span style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>Cantidad:</span>
                 <div className="flex items-center border border-[#e8e8e8] rounded overflow-hidden">
                   <button
                     onClick={() => setCantidad((c) => Math.max(1, c - 1))}
                     className="px-3 py-1.5 text-[#111111] hover:bg-[#f8f7f5] transition-colors"
-                    style={{ fontFamily: "Barlow, sans-serif" }}
+                    style={{ fontFamily: "var(--font-body)" }}
                   >
                     −
                   </button>
-                  <span className="px-4 py-1.5 border-x border-[#e8e8e8] min-w-[40px] text-center" style={{ fontFamily: "Barlow, sans-serif", color: "#111111" }}>
+                  <span className="px-4 py-1.5 border-x border-[#e8e8e8] min-w-[40px] text-center" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
                     {cantidad}
                   </span>
                   <button
                     onClick={() => setCantidad((c) => Math.min(producto.stock, c + 1))}
                     className="px-3 py-1.5 text-[#111111] hover:bg-[#f8f7f5] transition-colors"
-                    style={{ fontFamily: "Barlow, sans-serif" }}
+                    style={{ fontFamily: "var(--font-body)" }}
                   >
                     +
                   </button>
@@ -288,7 +288,7 @@ export default function ProductoClient({ id }: { id: string }) {
               disabled={sinStock}
               className="w-full h-12 rounded-md mt-6 font-semibold transition-colors"
               style={{
-                fontFamily: "Barlow, sans-serif",
+                fontFamily: "var(--font-body)",
                 backgroundColor: sinStock ? "#d1d5db" : "#e8003d",
                 color: sinStock ? "#9ca3af" : "#ffffff",
                 cursor: sinStock ? "not-allowed" : "pointer",
@@ -303,7 +303,7 @@ export default function ProductoClient({ id }: { id: string }) {
               <Link
                 href={`/artista/${artista.slug}`}
                 className="flex items-center justify-center w-full h-12 rounded-md mt-3 border border-[#111111] transition-colors"
-                style={{ fontFamily: "Barlow, sans-serif", color: "#111111", backgroundColor: "#ffffff" }}
+                style={{ fontFamily: "var(--font-body)", color: "#111111", backgroundColor: "#ffffff" }}
                 onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8f7f5")}
                 onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#ffffff")}
               >
@@ -315,7 +315,7 @@ export default function ProductoClient({ id }: { id: string }) {
 
         {relacionados.length > 0 && artista && (
           <section className="mt-12">
-            <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "22px", fontWeight: "700", color: "#111111", marginBottom: "24px" }}>
+            <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "22px", color: "#111111", marginBottom: "24px" }}>
               Más de {artista.nombre}
             </h2>
             <div className="flex gap-4 overflow-x-auto pb-2">

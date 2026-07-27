@@ -5,6 +5,7 @@ import Hero from "./_portada/Hero";
 import VideosDestacados from "./_portada/VideosDestacados";
 import UltimasNoticias from "./_portada/UltimasNoticias";
 import GrainOverlay from "@/components/ui/GrainOverlay";
+import PopupSuscripcion from "@/components/ui/PopupSuscripcion";
 
 export const metadata: Metadata = {
   title: "MuzikChile — Conéctate con la música chilena",
@@ -70,7 +71,7 @@ export default function PortadaPage() {
           <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
             <h1
               style={{
-                fontFamily: F.oswald,
+                fontFamily: F.titulo,
                 fontSize: "clamp(30px, 5vw, 52px)",
                 fontWeight: 700,
                 letterSpacing: "0.01em",
@@ -85,7 +86,7 @@ export default function PortadaPage() {
             <p
               className="mt-5"
               style={{
-                fontFamily: F.dmSans,
+                fontFamily: F.body,
                 fontSize: "16px",
                 lineHeight: 1.7,
                 color: C.gris,
@@ -112,6 +113,14 @@ export default function PortadaPage() {
         pintado, no el orden en el DOM.
       */}
       <GrainOverlay />
+
+      {/*
+        Popup del boletín. Solo en la portada: es la puerta de entrada y la
+        única página donde interrumpir se justifica. Decide solo si aparece
+        (15s o 30% de scroll, con cooldown en localStorage), así que montarlo
+        no implica que se vea.
+      */}
+      <PopupSuscripcion />
     </div>
   );
 }

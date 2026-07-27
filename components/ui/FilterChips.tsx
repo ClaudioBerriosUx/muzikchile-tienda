@@ -26,7 +26,7 @@ export default function FilterChips({ opciones, valor, onChange, className }: Pr
             onClick={() => onChange(op.value)}
             className="whitespace-nowrap px-3 py-1.5 text-sm rounded border transition-colors"
             style={{
-              fontFamily: "Barlow, sans-serif",
+              fontFamily: "var(--font-body)",
               backgroundColor: activo ? "#111111" : "#ffffff",
               borderColor: activo ? "#111111" : "#e8e8e8",
               color: activo ? "#ffffff" : "#555555",

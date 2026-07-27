@@ -28,7 +28,7 @@ export default function NuevaPublicacionPage() {
       <Link
         href="/panel/publicaciones"
         className="inline-flex items-center gap-1.5 mb-4 text-sm transition-colors"
-        style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}
+        style={{ fontFamily: "var(--font-body)", color: "#666666" }}
       >
         <ArrowLeft size={14} />
         Mis publicaciones
@@ -36,22 +36,22 @@ export default function NuevaPublicacionPage() {
 
       <h1
         className="mb-2"
-        style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}
+        style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}
       >
         Nueva publicación
       </h1>
       <p
         className="mb-8"
-        style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666" }}
+        style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}
       >
         Una noticia tuya: un lanzamiento, un show, una nota de prensa.
       </p>
 
       {isLoading ? (
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Cargando...</p>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Cargando...</p>
       ) : !artista ? (
         <div className="rounded-xl border border-[#e8e8e8] p-8 text-center" style={{ backgroundColor: "#f8f7f5" }}>
-          <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+          <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
             No se encontró tu perfil de artista.{" "}
             <Link href="/panel/perfil" style={{ color: "#e8003d" }}>Complétalo primero</Link>.
           </p>

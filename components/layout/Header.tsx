@@ -62,7 +62,7 @@ export default function Header() {
                 <NavigationMenuLink
                   className={clases}
                   style={{
-                    fontFamily: "Barlow, sans-serif",
+                    fontFamily: "var(--font-body)",
                     color: activo ? "#ffffff" : "rgba(255,255,255,0.75)",
                     borderBottom: activo
                       ? "2px solid #e8003d"
@@ -91,7 +91,7 @@ export default function Header() {
           href={ACCESO_ARTISTAS_HREF}
           className="hidden sm:inline-flex items-center h-9 px-4 rounded-md text-sm font-semibold transition-colors"
           style={{
-            fontFamily: "Barlow, sans-serif",
+            fontFamily: "var(--font-body)",
             backgroundColor: "#e8003d",
             color: "#ffffff",
           }}
@@ -120,7 +120,7 @@ export default function Header() {
             <div className="px-6 py-4 border-b" style={{ borderColor: "#2a2a2a" }}>
               <SheetTitle
                 className="text-white"
-                style={{ fontFamily: "Oswald, sans-serif", fontSize: "18px", fontWeight: 700 }}
+                style={{ fontFamily: "var(--font-titulo)", fontSize: "18px",}}
               >
                 Menú
               </SheetTitle>
@@ -130,7 +130,7 @@ export default function Header() {
               {NAV_LINKS.map((link) => {
                 const activo = !link.external && esActivo(link.href);
                 const estilo: React.CSSProperties = {
-                  fontFamily: "Barlow, sans-serif",
+                  fontFamily: "var(--font-body)",
                   color: activo ? "#ffffff" : "rgba(255,255,255,0.75)",
                   borderLeft: activo
                     ? "3px solid #e8003d"
@@ -172,7 +172,7 @@ export default function Header() {
                 onClick={() => setMenuAbierto(false)}
                 className="flex items-center justify-center w-full h-11 rounded-md text-sm font-semibold"
                 style={{
-                  fontFamily: "Barlow, sans-serif",
+                  fontFamily: "var(--font-body)",
                   backgroundColor: "#e8003d",
                   color: "#ffffff",
                 }}

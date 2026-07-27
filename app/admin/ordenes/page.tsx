@@ -101,14 +101,14 @@ export default function OrdenesPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Filtros */}
         <div className="flex items-center gap-3 px-6 py-3 border-b border-[#e8e8e8] shrink-0 bg-white flex-wrap">
-          <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", fontWeight: "700", color: "#111111" }}>
+          <h1 style={{ fontFamily: "var(--font-titulo)", fontSize: "20px", color: "#111111" }}>
             Órdenes
           </h1>
           <select
             value={estadoFiltro}
             onChange={(e) => setEstadoFiltro(e.target.value)}
             className={inputClass}
-            style={{ fontFamily: "Barlow, sans-serif" }}
+            style={{ fontFamily: "var(--font-body)" }}
           >
             {ESTADOS.map((e) => (
               <option key={e} value={e} style={{ textTransform: "capitalize" }}>
@@ -122,9 +122,9 @@ export default function OrdenesPage() {
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             className={`${inputClass} w-56`}
-            style={{ fontFamily: "Barlow, sans-serif" }}
+            style={{ fontFamily: "var(--font-body)" }}
           />
-          <span className="ml-auto text-sm" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+          <span className="ml-auto text-sm" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
             {filtradas.length} órdenes
           </span>
         </div>
@@ -138,7 +138,7 @@ export default function OrdenesPage() {
                   <th
                     key={h}
                     className="text-left px-4 py-3 text-xs uppercase tracking-wide"
-                    style={{ fontFamily: "Barlow, sans-serif", color: "#666666", fontWeight: 600 }}
+                    style={{ fontFamily: "var(--font-body)", color: "#666666", fontWeight: 600 }}
                   >
                     {h}
                   </th>
@@ -164,27 +164,27 @@ export default function OrdenesPage() {
                     <td className="px-4 py-3 font-mono text-xs text-[#999]">
                       {o.external_reference?.slice(0, 8).toUpperCase() ?? o.id.slice(0, 8).toUpperCase()}
                     </td>
-                    <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#111111" }}>
+                    <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
                       {o.nombre_comprador ?? "—"}
                     </td>
-                    <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                    <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                       {nombre(o.artistas)}
                     </td>
-                    <td className="px-4 py-3 max-w-[160px] truncate" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                    <td className="px-4 py-3 max-w-[160px] truncate" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                       {nombre(o.productos)}
                     </td>
-                    <td className="px-4 py-3" style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 600, color: "#111111" }}>
+                    <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", fontWeight: 600, color: "#111111" }}>
                       {formatCLP(o.precio_unitario * o.cantidad)}
                     </td>
-                    <td className="px-4 py-3" style={{ fontFamily: "DM Sans, sans-serif", color: "#666666" }}>
+                    <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                       {formatCLP(o.comision_monto)}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: badge.bg, color: badge.text, fontFamily: "Barlow, sans-serif" }}>
+                      <span className="px-2 py-0.5 rounded text-xs font-medium" style={{ backgroundColor: badge.bg, color: badge.text, fontFamily: "var(--font-body)" }}>
                         {o.estado}
                       </span>
                     </td>
-                    <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#999999" }}>
+                    <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#999999" }}>
                       {new Date(o.created_at).toLocaleDateString("es-CL")}
                     </td>
                   </tr>
@@ -194,7 +194,7 @@ export default function OrdenesPage() {
           </table>
           {filtradas.length === 0 && (
             <div className="text-center py-16">
-              <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Sin órdenes</p>
+              <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Sin órdenes</p>
             </div>
           )}
         </div>
@@ -205,7 +205,7 @@ export default function OrdenesPage() {
         <div className="w-80 border-l border-[#e8e8e8] overflow-y-auto shrink-0 bg-white" style={{ borderLeft: "1px solid #e8e8e8" }}>
           <div className="p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
+              <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "16px", color: "#111111" }}>
                 Detalle orden
               </h2>
               <button onClick={() => setSeleccionada(null)} className="text-[#999] hover:text-[#111] text-lg leading-none">×</button>
@@ -223,29 +223,29 @@ export default function OrdenesPage() {
               ["Comisión", formatCLP(seleccionada.comision_monto)],
             ].map(([label, val]) => (
               <div key={label} className="mb-3">
-                <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "11px", color: "#999999", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</p>
-                <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "14px", color: "#111111", marginTop: "2px" }}>{val}</p>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "11px", color: "#999999", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</p>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#111111", marginTop: "2px" }}>{val}</p>
               </div>
             ))}
 
             {(seleccionada.direccion_envio || seleccionada.ciudad_envio) && (
               <div className="mb-3">
-                <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "11px", color: "#999999", textTransform: "uppercase" }}>Dirección envío</p>
-                <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "14px", color: "#111111", marginTop: "2px" }}>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "11px", color: "#999999", textTransform: "uppercase" }}>Dirección envío</p>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#111111", marginTop: "2px" }}>
                   {[seleccionada.direccion_envio, seleccionada.ciudad_envio, seleccionada.region_envio].filter(Boolean).join(", ")}
                 </p>
               </div>
             )}
 
             <div className="border-t border-[#e8e8e8] mt-4 pt-4">
-              <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444", marginBottom: "6px" }}>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#444444", marginBottom: "6px" }}>
                 Cambiar estado
               </p>
               <select
                 value={nuevoEstado}
                 onChange={(e) => setNuevoEstado(e.target.value)}
                 className="w-full rounded-md px-3 py-2 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none mb-3"
-                style={{ fontFamily: "Barlow, sans-serif" }}
+                style={{ fontFamily: "var(--font-body)" }}
               >
                 {ESTADOS.filter((e) => e !== "todos").map((e) => (
                   <option key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>
@@ -256,7 +256,7 @@ export default function OrdenesPage() {
                 disabled={actualizando || nuevoEstado === seleccionada.estado}
                 className="w-full h-9 rounded-md text-white text-sm"
                 style={{
-                  fontFamily: "Barlow, sans-serif",
+                  fontFamily: "var(--font-body)",
                   backgroundColor: actualizando || nuevoEstado === seleccionada.estado ? "#d1d5db" : "#e8003d",
                 }}
               >

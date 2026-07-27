@@ -54,7 +54,7 @@ export default function EditarPublicacionPage() {
     <Link
       href="/panel/publicaciones"
       className="inline-flex items-center gap-1.5 mb-4 text-sm transition-colors"
-      style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}
+      style={{ fontFamily: "var(--font-body)", color: "#666666" }}
     >
       <ArrowLeft size={14} />
       Mis publicaciones
@@ -70,21 +70,21 @@ export default function EditarPublicacionPage() {
       >
         <Lock size={28} className="mx-auto mb-3 text-[#cccccc]" />
         <div className="flex items-center justify-center gap-2 mb-2">
-          <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", color: "#111111" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "20px", color: "#111111" }}>
             {titulo}
           </p>
           {estado && <StatusBadge estado={estado} />}
         </div>
         <p
           className="max-w-md mx-auto"
-          style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666", lineHeight: 1.6 }}
+          style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666", lineHeight: 1.6 }}
         >
           {detalle}
         </p>
         <Link
           href="/panel/publicaciones"
           className="inline-block mt-5 px-5 py-2 rounded-md text-white text-sm"
-          style={{ backgroundColor: "#e8003d", fontFamily: "Barlow, sans-serif" }}
+          style={{ backgroundColor: "#e8003d", fontFamily: "var(--font-body)" }}
         >
           Volver al listado
         </Link>
@@ -96,7 +96,7 @@ export default function EditarPublicacionPage() {
     return (
       <div>
         {volver}
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Cargando publicación...</p>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Cargando publicación...</p>
       </div>
     );
   }
@@ -136,13 +136,13 @@ export default function EditarPublicacionPage() {
 
       <h1
         className="mb-2"
-        style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}
+        style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}
       >
         Editar publicación
       </h1>
       <p
         className="mb-8"
-        style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666" }}
+        style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}
       >
         {publicacion.estado === "devuelta"
           ? "Corrige lo que te indicaron y vuelve a enviarla a revisión."

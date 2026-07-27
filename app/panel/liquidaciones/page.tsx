@@ -109,17 +109,17 @@ export default function LiquidacionesPage() {
 
   return (
     <div>
-      <h1 className="mb-2" style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
+      <h1 className="mb-2" style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}>
         Mis liquidaciones
       </h1>
-      <p className="mb-8" style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666" }}>
+      <p className="mb-8" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>
         Historial de ventas y pagos recibidos
       </p>
 
       {/* Aviso datos bancarios */}
       {!tieneDatosBancarios && (
         <div className="mb-6 p-4 rounded-xl border" style={{ backgroundColor: "#fef9c3", borderColor: "#fde68a" }}>
-          <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#854d0e" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#854d0e" }}>
             ⚠️ No tienes datos bancarios configurados. Agrégalos en{" "}
             <a href="/panel/perfil" className="underline font-semibold">Mi perfil</a>{" "}
             para que podamos enviarte tus pagos.
@@ -136,13 +136,13 @@ export default function LiquidacionesPage() {
                 <span style={{ color: m.color }}>{m.icon}</span>
               </div>
             </div>
-            <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "22px", fontWeight: "700", color: "#111111" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "22px", fontWeight: "700", color: "#111111" }}>
               {m.valor}
             </p>
-            <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#666666", marginTop: "2px" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#666666", marginTop: "2px" }}>
               {m.label}
             </p>
-            <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "11px", color: "#999999", marginTop: "1px" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "11px", color: "#999999", marginTop: "1px" }}>
               {m.desc}
             </p>
           </div>
@@ -151,12 +151,12 @@ export default function LiquidacionesPage() {
 
       {/* Historial de pagos recibidos */}
       <section className="mb-10">
-        <h2 className="mb-4" style={{ fontFamily: "Oswald, sans-serif", fontSize: "18px", fontWeight: "600", color: "#111111" }}>
+        <h2 className="mb-4" style={{ fontFamily: "var(--font-titulo)", fontSize: "18px", color: "#111111" }}>
           Pagos recibidos
         </h2>
         {liquidaciones.length === 0 ? (
           <div className="rounded-xl border border-[#e8e8e8] p-10 text-center" style={{ backgroundColor: "#f8f7f5" }}>
-            <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+            <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
               Aún no has recibido pagos. Aparecerán aquí cuando el admin registre una liquidación.
             </p>
           </div>
@@ -167,7 +167,7 @@ export default function LiquidacionesPage() {
                 <tr>
                   {["Fecha", "Monto", "Comprobante", "Nota"].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs uppercase tracking-wide"
-                      style={{ fontFamily: "Barlow, sans-serif", color: "#666666", fontWeight: 600 }}>
+                      style={{ fontFamily: "var(--font-body)", color: "#666666", fontWeight: 600 }}>
                       {h}
                     </th>
                   ))}
@@ -176,12 +176,12 @@ export default function LiquidacionesPage() {
               <tbody>
                 {liquidaciones.map((l, i) => (
                   <tr key={l.id} style={{ borderTop: i > 0 ? "1px solid #f0f0f0" : undefined }}>
-                    <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                    <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                       {l.fecha_transferencia
                         ? new Date(l.fecha_transferencia).toLocaleDateString("es-CL")
                         : "—"}
                     </td>
-                    <td className="px-4 py-3 font-bold" style={{ fontFamily: "DM Sans, sans-serif", color: "#22c55e" }}>
+                    <td className="px-4 py-3 font-bold" style={{ fontFamily: "var(--font-body)", color: "#22c55e" }}>
                       {formatCLP(l.monto)}
                     </td>
                     <td className="px-4 py-3">
@@ -194,7 +194,7 @@ export default function LiquidacionesPage() {
                         <span className="text-xs font-mono" style={{ color: "#666666" }}>{l.numero_comprobante}</span>
                       ) : "—"}
                     </td>
-                    <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                    <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                       {l.nota ?? "—"}
                     </td>
                   </tr>
@@ -207,12 +207,12 @@ export default function LiquidacionesPage() {
 
       {/* Detalle de órdenes */}
       <section>
-        <h2 className="mb-4" style={{ fontFamily: "Oswald, sans-serif", fontSize: "18px", fontWeight: "600", color: "#111111" }}>
+        <h2 className="mb-4" style={{ fontFamily: "var(--font-titulo)", fontSize: "18px", color: "#111111" }}>
           Mis ventas
         </h2>
         {ordenes.length === 0 ? (
           <div className="rounded-xl border border-[#e8e8e8] p-10 text-center" style={{ backgroundColor: "#f8f7f5" }}>
-            <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Aún no tienes ventas registradas.</p>
+            <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Aún no tienes ventas registradas.</p>
           </div>
         ) : (
           <div className="rounded-xl border border-[#e8e8e8] overflow-hidden">
@@ -221,7 +221,7 @@ export default function LiquidacionesPage() {
                 <tr>
                   {["Fecha", "Producto", "Tu ganancia", "Comisión", "Estado", "Liquidado"].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs uppercase tracking-wide"
-                      style={{ fontFamily: "Barlow, sans-serif", color: "#666666", fontWeight: 600 }}>
+                      style={{ fontFamily: "var(--font-body)", color: "#666666", fontWeight: 600 }}>
                       {h}
                     </th>
                   ))}
@@ -234,16 +234,16 @@ export default function LiquidacionesPage() {
                     : (o.productos as { nombre: string } | null);
                   return (
                     <tr key={o.id} style={{ borderTop: i > 0 ? "1px solid #f0f0f0" : undefined }}>
-                      <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                      <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                         {new Date(o.created_at).toLocaleDateString("es-CL")}
                       </td>
-                      <td className="px-4 py-3 max-w-[180px] truncate" style={{ fontFamily: "Barlow, sans-serif", color: "#111111" }}>
+                      <td className="px-4 py-3 max-w-[180px] truncate" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
                         {producto?.nombre ?? "—"}
                       </td>
-                      <td className="px-4 py-3 font-bold" style={{ fontFamily: "DM Sans, sans-serif", color: "#e8003d" }}>
+                      <td className="px-4 py-3 font-bold" style={{ fontFamily: "var(--font-body)", color: "#e8003d" }}>
                         {formatCLP(o.monto_artista)}
                       </td>
-                      <td className="px-4 py-3" style={{ fontFamily: "DM Sans, sans-serif", color: "#999999" }}>
+                      <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#999999" }}>
                         {formatCLP(o.comision_monto)}
                       </td>
                       <td className="px-4 py-3">
@@ -252,12 +252,12 @@ export default function LiquidacionesPage() {
                       <td className="px-4 py-3">
                         {o.liquidado ? (
                           <span className="text-xs px-2 py-0.5 rounded font-medium"
-                            style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#dcfce7", color: "#166534" }}>
+                            style={{ fontFamily: "var(--font-body)", backgroundColor: "#dcfce7", color: "#166534" }}>
                             Pagado
                           </span>
                         ) : (
                           <span className="text-xs px-2 py-0.5 rounded"
-                            style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#f3f4f6", color: "#666666" }}>
+                            style={{ fontFamily: "var(--font-body)", backgroundColor: "#f3f4f6", color: "#666666" }}>
                             Pendiente
                           </span>
                         )}

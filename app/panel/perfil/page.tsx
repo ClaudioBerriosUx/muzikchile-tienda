@@ -108,7 +108,7 @@ interface Artista {
 }
 
 const hintStyle: React.CSSProperties = {
-  fontFamily: "Barlow, sans-serif",
+  fontFamily: "var(--font-body)",
   fontSize: "12px",
   color: "#999999",
   marginTop: "6px",
@@ -327,25 +327,25 @@ export default function PerfilPage() {
 
   const inputBase = "w-full rounded-md px-3 py-2.5 text-sm border focus:outline-none transition-colors";
   const inputStyle = (hasError: boolean) => ({
-    fontFamily: "DM Sans, sans-serif",
+    fontFamily: "var(--font-body)",
     color: "#111111",
     borderColor: hasError ? "#e8003d" : "#e8e8e8",
     outline: "none",
   });
 
   const labelEl = (txt: string) => (
-    <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#666666", display: "block", marginBottom: "5px" }}>
+    <label style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#666666", display: "block", marginBottom: "5px" }}>
       {txt}
     </label>
   );
   const errEl = (msg?: string) => msg ? (
-    <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#e8003d", marginTop: "4px" }}>{msg}</p>
+    <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#e8003d", marginTop: "4px" }}>{msg}</p>
   ) : null;
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Cargando perfil...</p>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Cargando perfil...</p>
       </div>
     );
   }
@@ -356,7 +356,7 @@ export default function PerfilPage() {
   return (
     <div className="max-w-3xl">
       <div className="flex items-center justify-between mb-8">
-        <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
+        <h1 style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}>
           Mi perfil
         </h1>
         {artista?.slug && (
@@ -364,7 +364,7 @@ export default function PerfilPage() {
             href={`/artista/${artista.slug}`}
             target="_blank"
             className="flex items-center gap-1.5 text-sm transition-colors"
-            style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}
+            style={{ fontFamily: "var(--font-body)", color: "#666666" }}
             onMouseEnter={(e) => (e.currentTarget.style.color = "#e8003d")}
             onMouseLeave={(e) => (e.currentTarget.style.color = "#666666")}
           >
@@ -380,7 +380,7 @@ export default function PerfilPage() {
           <div className="shrink-0 flex flex-col items-center gap-2">
             <div
               className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-white text-3xl font-bold cursor-pointer relative group"
-              style={{ backgroundColor: colorAccento, fontFamily: "Oswald, sans-serif" }}
+              style={{ backgroundColor: colorAccento, fontFamily: "var(--font-body)" }}
               onClick={() => fotoRef.current?.click()}
             >
               {fotoActual ? (
@@ -394,7 +394,7 @@ export default function PerfilPage() {
               type="button"
               onClick={() => fotoRef.current?.click()}
               className="text-xs transition-colors"
-              style={{ fontFamily: "Barlow, sans-serif", color: "#e8003d" }}
+              style={{ fontFamily: "var(--font-body)", color: "#e8003d" }}
             >
               Cambiar foto
             </button>
@@ -426,7 +426,7 @@ export default function PerfilPage() {
               >
                 <span
                   className="px-3 py-2.5 text-sm bg-[#f8f7f5] border-r border-[#e8e8e8] shrink-0"
-                  style={{ fontFamily: "Barlow, sans-serif", color: "#999999" }}
+                  style={{ fontFamily: "var(--font-body)", color: "#999999" }}
                 >
                   tienda.muzikchile.cl/artista/
                 </span>
@@ -434,7 +434,7 @@ export default function PerfilPage() {
                   {...register("slug")}
                   onChange={handleSlugChange}
                   className="flex-1 px-3 py-2.5 text-sm focus:outline-none"
-                  style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                  style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                 />
               </div>
               <p style={hintStyle}>Solo minúsculas, números y guiones. Ej: valentina-ruz</p>
@@ -445,7 +445,7 @@ export default function PerfilPage() {
 
         {/* ── Información pública ── */}
         <section className="p-6 rounded-xl border border-[#e8e8e8] bg-white flex flex-col gap-5">
-          <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111", marginBottom: "-4px" }}>
+          <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "16px", color: "#111111", marginBottom: "-4px" }}>
             Información pública
           </h2>
 
@@ -507,7 +507,7 @@ export default function PerfilPage() {
                 <span
                   key={i}
                   className="flex items-center gap-1 px-2 py-0.5 rounded text-sm"
-                  style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#f0f0f0", color: "#111111" }}
+                  style={{ fontFamily: "var(--font-body)", backgroundColor: "#f0f0f0", color: "#111111" }}
                 >
                   {g}
                   <button
@@ -525,7 +525,7 @@ export default function PerfilPage() {
                 onChange={handleGenerosInputChange}
                 onKeyDown={handleGenerosKeyDown}
                 className="flex-1 min-w-[120px] text-sm focus:outline-none bg-transparent"
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                 placeholder={generosArr.length === 0 ? "Agregar género..." : ""}
               />
             </div>
@@ -543,7 +543,7 @@ export default function PerfilPage() {
 
         {/* ── Redes sociales ── */}
         <section className="p-6 rounded-xl border border-[#e8e8e8] bg-white flex flex-col gap-5">
-          <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111", marginBottom: "-4px" }}>
+          <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "16px", color: "#111111", marginBottom: "-4px" }}>
             Redes sociales
           </h2>
           {REDES_CONFIG.map(({ key, label: lbl, placeholder, hint, badge }) => (
@@ -558,7 +558,7 @@ export default function PerfilPage() {
               <p style={hintStyle}>{hint}</p>
               {badge && (
                 <span style={{
-                  fontFamily: "Barlow, sans-serif",
+                  fontFamily: "var(--font-body)",
                   fontSize: "11px",
                   color: "#aaaaaa",
                   backgroundColor: "#f0f0f0",
@@ -578,10 +578,10 @@ export default function PerfilPage() {
         {/* ── SEO ── */}
         <section className="p-6 rounded-xl border border-[#e8e8e8] bg-white flex flex-col gap-5">
           <div>
-            <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
+            <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "16px", color: "#111111" }}>
               SEO de tu perfil
             </h2>
-            <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#999999", marginTop: "2px" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#999999", marginTop: "2px" }}>
               Ayuda a que tus fans te encuentren en Google
             </p>
           </div>
@@ -600,7 +600,7 @@ export default function PerfilPage() {
                 Aparece en Google como título de tu página. Si está vacío, se genera como &quot;[Nombre] | Merch en MuzikChile&quot;.
               </p>
               <span style={{
-                fontFamily: "Barlow, sans-serif",
+                fontFamily: "var(--font-body)",
                 fontSize: "12px",
                 color: (seoTituloWatch?.length ?? 0) >= 60 ? "#e8003d" : "#999999",
                 whiteSpace: "nowrap",
@@ -628,7 +628,7 @@ export default function PerfilPage() {
                 Aparece debajo del título en Google. Si está vacío, se usa la bio. Máximo 160 caracteres.
               </p>
               <span style={{
-                fontFamily: "Barlow, sans-serif",
+                fontFamily: "var(--font-body)",
                 fontSize: "12px",
                 color: (seoDescWatch?.length ?? 0) >= 160 ? "#e8003d" : "#999999",
                 whiteSpace: "nowrap",
@@ -645,10 +645,10 @@ export default function PerfilPage() {
         {/* ── Datos bancarios ── */}
         <section className="p-6 rounded-xl border border-[#e8e8e8] bg-white flex flex-col gap-4">
           <div>
-            <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
+            <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "16px", color: "#111111" }}>
               Datos bancarios
             </h2>
-            <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#999999", marginTop: "2px" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#999999", marginTop: "2px" }}>
               Necesarios para recibir tus pagos. No son públicos.
             </p>
           </div>
@@ -686,7 +686,7 @@ export default function PerfilPage() {
             disabled={guardando}
             className="h-11 px-10 rounded-md text-white font-semibold transition-colors"
             style={{
-              fontFamily: "Barlow, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: "15px",
               backgroundColor: guardando ? "#f0a0b0" : "#e8003d",
               cursor: guardando ? "not-allowed" : "pointer",

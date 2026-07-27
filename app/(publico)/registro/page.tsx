@@ -88,12 +88,12 @@ function RegistroContent() {
   };
 
   const inputClass = "w-full rounded-md px-3 py-2.5 text-sm border focus:outline-none transition-colors";
-  const inputStyle = { fontFamily: "DM Sans, sans-serif", borderColor: "#e8e8e8", color: "#111111" };
+  const inputStyle = { fontFamily: "var(--font-body)", borderColor: "#e8e8e8", color: "#111111" };
 
   if (estado === "verificando") {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Verificando invitación...</p>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Verificando invitación...</p>
       </div>
     );
   }
@@ -106,20 +106,20 @@ function RegistroContent() {
           style={{ backgroundColor: "#ffffff", borderColor: "#e8e8e8", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}
         >
           <div className="mb-6">
-            <span style={{ fontFamily: "Oswald, sans-serif", fontSize: "24px", fontWeight: "700" }}>
+            <span style={{ fontFamily: "var(--font-titulo)", fontSize: "26px", letterSpacing: "0.02em" }}>
               <span style={{ color: "#111111" }}>MuzikChile</span>
               <span style={{ color: "#e8003d" }}>·</span>
             </span>
           </div>
-          <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", fontWeight: "600", color: "#111111", marginBottom: "12px" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "20px", fontWeight: "600", color: "#111111", marginBottom: "12px" }}>
             Enlace inválido o expirado
           </p>
-          <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "14px", color: "#666666", lineHeight: 1.6, marginBottom: "24px" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666", lineHeight: 1.6, marginBottom: "24px" }}>
             Este enlace de invitación ya no es válido. Solicita uno nuevo al administrador o intenta ingresar directamente.
           </p>
           <Link
             href="/login"
-            style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#e8003d" }}
+            style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#e8003d" }}
           >
             Ir al login →
           </Link>
@@ -135,22 +135,22 @@ function RegistroContent() {
         style={{ backgroundColor: "#ffffff", borderColor: "#e8e8e8", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}
       >
         <div className="text-center mb-8">
-          <span style={{ fontFamily: "Oswald, sans-serif", fontSize: "24px", fontWeight: "700" }}>
+          <span style={{ fontFamily: "var(--font-body)", fontSize: "24px", fontWeight: "700" }}>
             <span style={{ color: "#111111" }}>MuzikChile</span>
             <span style={{ color: "#e8003d" }}>·</span>
           </span>
         </div>
 
-        <h1 className="mb-2" style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", fontWeight: "600", color: "#111111" }}>
+        <h1 className="mb-2" style={{ fontFamily: "var(--font-titulo)", fontSize: "20px", color: "#111111" }}>
           Crea tu contraseña
         </h1>
-        <p className="mb-6" style={{ fontFamily: "DM Sans, sans-serif", fontSize: "14px", color: "#666666", lineHeight: 1.6 }}>
+        <p className="mb-6" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666", lineHeight: 1.6 }}>
           Configura una contraseña para acceder a tu panel de artista.
         </p>
 
         <div className="flex flex-col gap-5">
           <div className="flex flex-col gap-1.5">
-            <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#444444" }}>
+            <label style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#444444" }}>
               Contraseña
             </label>
             <input
@@ -166,7 +166,7 @@ function RegistroContent() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#444444" }}>
+            <label style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#444444" }}>
               Confirmar contraseña
             </label>
             <input
@@ -182,7 +182,7 @@ function RegistroContent() {
           </div>
 
           {errorMsg && (
-            <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#e8003d" }}>{errorMsg}</p>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#e8003d" }}>{errorMsg}</p>
           )}
 
           <button
@@ -190,7 +190,7 @@ function RegistroContent() {
             disabled={guardando || !password || !confirm}
             className="w-full h-11 rounded-md font-semibold transition-colors"
             style={{
-              fontFamily: "Barlow, sans-serif",
+              fontFamily: "var(--font-body)",
               backgroundColor: guardando || !password || !confirm ? "#f0a0b0" : "#e8003d",
               color: "#ffffff",
               cursor: guardando ? "not-allowed" : "pointer",
@@ -210,7 +210,7 @@ export default function RegistroPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Cargando...</p>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Cargando...</p>
       </div>
     }>
       <RegistroContent />

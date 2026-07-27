@@ -102,7 +102,7 @@ export default function PanelShell({ children }: { children: React.ReactNode }) 
         className="min-h-screen flex items-center justify-center"
         style={{ backgroundColor: "#f8f7f5" }}
       >
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
           Verificando acceso...
         </p>
       </div>
@@ -119,7 +119,7 @@ export default function PanelShell({ children }: { children: React.ReactNode }) 
             <button
               onClick={handleSignOut}
               className="flex items-center gap-3 w-full px-5 py-3 text-sm transition-colors"
-              style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}
+              style={{ fontFamily: "var(--font-body)", color: "#666666" }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.color = "#e8003d";
                 e.currentTarget.style.backgroundColor = "#fff5f5";

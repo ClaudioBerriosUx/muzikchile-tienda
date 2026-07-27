@@ -64,12 +64,22 @@ export const C = {
   blanco:       "#ffffff",
 } as const;
 
-/** Familias tipográficas vía las CSS variables que define `app/layout.tsx`. */
+/**
+ * Los DOS roles tipográficos del sitio, vía los tokens de `app/globals.css`.
+ *
+ * Acá NO va una familia literal: `--font-titulo` y `--font-body` son la fuente
+ * de verdad, y este objeto solo existe para el código que estila inline
+ * (`style={{ fontFamily: F.body }}`), donde no entran clases de Tailwind.
+ *
+ * `titulo` es para elementos de display que NO son h1–h4 (un logotipo, un
+ * número gigante). Los headings reales no necesitan declararlo: la regla de
+ * `@layer base` ya los pone en Anton.
+ */
 export const F = {
-  bebas:   "var(--font-bebas), sans-serif",
-  oswald:  "var(--font-oswald), sans-serif",
-  dmSans:  "var(--font-dm-sans), sans-serif",
-  barlowC: "var(--font-barlow-condensed), sans-serif",
+  /** Anton — titulares y display. Un solo peso: nunca acompañar de bold. */
+  titulo: "var(--font-titulo)",
+  /** DM Sans — cuerpo, UI, todo lo que no sea titular. */
+  body:   "var(--font-body)",
 } as const;
 
 /**

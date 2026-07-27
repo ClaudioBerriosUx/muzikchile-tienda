@@ -40,12 +40,12 @@ function MetricCard({
     >
       <div className="flex items-start justify-between">
         <div>
-          <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>
             {label}
           </p>
           <p
             className="mt-2"
-            style={{ fontFamily: "Oswald, sans-serif", fontSize: "32px", fontWeight: "700", color: "#111111" }}
+            style={{ fontFamily: "var(--font-body)", fontSize: "32px", fontWeight: "700", color: "#111111" }}
           >
             {valor}
           </p>
@@ -149,7 +149,7 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Cargando...</p>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Cargando...</p>
       </div>
     );
   }
@@ -157,16 +157,16 @@ export default function DashboardPage() {
   if (!artista) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "22px", color: "#111111" }}>
+        <p style={{ fontFamily: "var(--font-body)", fontSize: "22px", color: "#111111" }}>
           Completa tu perfil de artista
         </p>
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
           Necesitas un perfil para publicar productos.
         </p>
         <Link
           href="/panel/perfil"
           className="px-6 py-2.5 rounded-md text-white text-sm font-semibold"
-          style={{ backgroundColor: "#e8003d", fontFamily: "Barlow, sans-serif" }}
+          style={{ backgroundColor: "#e8003d", fontFamily: "var(--font-body)" }}
         >
           Completar perfil
         </Link>
@@ -178,11 +178,11 @@ export default function DashboardPage() {
     <div>
       <h1
         className="mb-2"
-        style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}
+        style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}
       >
         Dashboard
       </h1>
-      <p className="mb-8" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+      <p className="mb-8" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
         Bienvenido, {artista.nombre}
       </p>
 
@@ -218,7 +218,7 @@ export default function DashboardPage() {
       <div>
         <h2
           className="mb-4"
-          style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", fontWeight: "600", color: "#111111" }}
+          style={{ fontFamily: "var(--font-titulo)", fontSize: "20px", color: "#111111" }}
         >
           Últimas ventas
         </h2>
@@ -229,16 +229,16 @@ export default function DashboardPage() {
             style={{ backgroundColor: "#f8f7f5" }}
           >
             <ShoppingBag size={40} className="mx-auto mb-3 text-[#cccccc]" />
-            <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "18px", color: "#111111" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "18px", color: "#111111" }}>
               Aún no tienes ventas
             </p>
-            <p className="mt-1 mb-4" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+            <p className="mt-1 mb-4" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
               Sube tu primer producto para empezar a vender
             </p>
             <Link
               href="/panel/productos/nuevo"
               className="inline-block px-5 py-2 rounded-md text-white text-sm"
-              style={{ backgroundColor: "#e8003d", fontFamily: "Barlow, sans-serif" }}
+              style={{ backgroundColor: "#e8003d", fontFamily: "var(--font-body)" }}
             >
               Sube tu primer producto
             </Link>
@@ -252,7 +252,7 @@ export default function DashboardPage() {
                     <th
                       key={h}
                       className="text-left px-4 py-3"
-                      style={{ fontFamily: "Barlow, sans-serif", fontWeight: 600, color: "#666666", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.05em" }}
+                      style={{ fontFamily: "var(--font-body)", fontWeight: 600, color: "#666666", fontSize: "12px", textTransform: "uppercase", letterSpacing: "0.05em" }}
                     >
                       {h}
                     </th>
@@ -265,18 +265,18 @@ export default function DashboardPage() {
                     key={orden.id}
                     style={{ borderTop: i > 0 ? "1px solid #e8e8e8" : undefined }}
                   >
-                    <td className="px-4 py-3" style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}>
+                    <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
                       {Array.isArray(orden.productos)
                         ? orden.productos[0]?.nombre
                         : (orden.productos as { nombre: string } | null)?.nombre ?? "—"}
                     </td>
-                    <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                    <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                       {orden.nombre_comprador ?? "—"}
                     </td>
-                    <td className="px-4 py-3" style={{ fontFamily: "DM Sans, sans-serif", color: "#111111", fontWeight: 600 }}>
+                    <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#111111", fontWeight: 600 }}>
                       {formatCLP(orden.monto_artista)}
                     </td>
-                    <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                    <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                       {new Date(orden.created_at).toLocaleDateString("es-CL")}
                     </td>
                     <td className="px-4 py-3">

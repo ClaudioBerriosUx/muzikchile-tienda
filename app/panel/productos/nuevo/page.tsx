@@ -167,7 +167,7 @@ export default function NuevoProductoPage() {
     <div>
       <h1
         className="mb-8"
-        style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}
+        style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}
       >
         Subir producto
       </h1>
@@ -178,17 +178,17 @@ export default function NuevoProductoPage() {
           <div className="flex flex-col gap-5">
             {/* Nombre */}
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }} className={labelClass}>
+              <label style={{ fontFamily: "var(--font-body)", color: "#444444" }} className={labelClass}>
                 Nombre del producto
               </label>
               <input
                 {...register("nombre")}
                 className={inputClass}
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                 placeholder="Ej: Polera tour 2024"
               />
               {errors.nombre && (
-                <p style={{ fontFamily: "Barlow, sans-serif", color: "#e8003d" }} className={errorClass}>
+                <p style={{ fontFamily: "var(--font-body)", color: "#e8003d" }} className={errorClass}>
                   {errors.nombre.message}
                 </p>
               )}
@@ -196,7 +196,7 @@ export default function NuevoProductoPage() {
 
             {/* Descripción */}
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }} className={labelClass}>
+              <label style={{ fontFamily: "var(--font-body)", color: "#444444" }} className={labelClass}>
                 Descripción
                 <span className="ml-auto float-right text-xs" style={{ color: descripcion.length > 460 ? "#e8003d" : "#999" }}>
                   {descripcion.length}/500
@@ -207,11 +207,11 @@ export default function NuevoProductoPage() {
                 rows={5}
                 maxLength={500}
                 className={`${inputClass} resize-none`}
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                 placeholder="Describe tu producto..."
               />
               {errors.descripcion && (
-                <p style={{ fontFamily: "Barlow, sans-serif", color: "#e8003d" }} className={errorClass}>
+                <p style={{ fontFamily: "var(--font-body)", color: "#e8003d" }} className={errorClass}>
                   {errors.descripcion.message}
                 </p>
               )}
@@ -219,13 +219,13 @@ export default function NuevoProductoPage() {
 
             {/* Categoría */}
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }} className={labelClass}>
+              <label style={{ fontFamily: "var(--font-body)", color: "#444444" }} className={labelClass}>
                 Categoría
               </label>
               <select
                 {...register("categoria_id")}
                 className={inputClass}
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                style={{ fontFamily: "var(--font-body)", color: "#111111" }}
               >
                 <option value="">Selecciona una categoría</option>
                 {categorias.map((c) => (
@@ -233,7 +233,7 @@ export default function NuevoProductoPage() {
                 ))}
               </select>
               {errors.categoria_id && (
-                <p style={{ fontFamily: "Barlow, sans-serif", color: "#e8003d" }} className={errorClass}>
+                <p style={{ fontFamily: "var(--font-body)", color: "#e8003d" }} className={errorClass}>
                   {errors.categoria_id.message}
                 </p>
               )}
@@ -242,13 +242,13 @@ export default function NuevoProductoPage() {
             {/* Subcategoría */}
             {subcategorias.length > 0 && (
               <div>
-                <label style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }} className={labelClass}>
+                <label style={{ fontFamily: "var(--font-body)", color: "#444444" }} className={labelClass}>
                   Subcategoría
                 </label>
                 <select
                   {...register("subcategoria_id")}
                   className={inputClass}
-                  style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                  style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                 >
                   <option value="">Sin subcategoría</option>
                   {subcategorias.map((c) => (
@@ -260,7 +260,7 @@ export default function NuevoProductoPage() {
 
             {/* Toggle Físico / Digital */}
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }} className={labelClass}>
+              <label style={{ fontFamily: "var(--font-body)", color: "#444444" }} className={labelClass}>
                 Tipo de producto
               </label>
               <div className="flex rounded-md border border-[#e8e8e8] overflow-hidden w-fit">
@@ -271,7 +271,7 @@ export default function NuevoProductoPage() {
                     onClick={() => setValue("tipo", t)}
                     className="px-5 py-2 text-sm transition-colors capitalize"
                     style={{
-                      fontFamily: "Barlow, sans-serif",
+                      fontFamily: "var(--font-body)",
                       backgroundColor: tipo === t ? "#111111" : "#ffffff",
                       color: tipo === t ? "#ffffff" : "#666666",
                     }}
@@ -287,13 +287,13 @@ export default function NuevoProductoPage() {
           <div className="flex flex-col gap-5">
             {/* Precio */}
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }} className={labelClass}>
+              <label style={{ fontFamily: "var(--font-body)", color: "#444444" }} className={labelClass}>
                 Precio (CLP)
               </label>
               <div className="relative">
                 <span
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-sm"
-                  style={{ fontFamily: "DM Sans, sans-serif", color: "#999" }}
+                  style={{ fontFamily: "var(--font-body)", color: "#999" }}
                 >
                   $
                 </span>
@@ -301,13 +301,13 @@ export default function NuevoProductoPage() {
                   type="number"
                   {...register("precio", { valueAsNumber: true })}
                   className={`${inputClass} pl-7`}
-                  style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                  style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                   placeholder="5990"
                   min={1100}
                 />
               </div>
               {errors.precio && (
-                <p style={{ fontFamily: "Barlow, sans-serif", color: "#e8003d" }} className={errorClass}>
+                <p style={{ fontFamily: "var(--font-body)", color: "#e8003d" }} className={errorClass}>
                   {errors.precio.message}
                 </p>
               )}
@@ -316,14 +316,14 @@ export default function NuevoProductoPage() {
             {/* Stock (solo físico) */}
             {tipo === "fisico" && (
               <div>
-                <label style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }} className={labelClass}>
+                <label style={{ fontFamily: "var(--font-body)", color: "#444444" }} className={labelClass}>
                   Stock disponible
                 </label>
                 <input
                   type="number"
                   {...register("stock", { valueAsNumber: true })}
                   className={inputClass}
-                  style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                  style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                   placeholder="10"
                   min={0}
                 />
@@ -332,7 +332,7 @@ export default function NuevoProductoPage() {
 
             {/* Upload imágenes */}
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }} className={labelClass}>
+              <label style={{ fontFamily: "var(--font-body)", color: "#444444" }} className={labelClass}>
                 Imágenes ({archivos.length}/5)
               </label>
 
@@ -347,16 +347,16 @@ export default function NuevoProductoPage() {
                 >
                   <input {...getInputProps()} />
                   <Upload size={24} className="mx-auto mb-2 text-[#cccccc]" />
-                  <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666" }}>
+                  <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>
                     {isDragActive ? "Suelta las fotos aquí" : "Arrastra tus fotos aquí o haz click"}
                   </p>
-                  <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#999999", marginTop: "4px" }}>
+                  <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#999999", marginTop: "4px" }}>
                     JPG, PNG, WEBP · Máximo 5 fotos
                   </p>
                 </div>
               )}
 
-              <div style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#999999", marginTop: "6px", lineHeight: 1.5 }}>
+              <div style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#999999", marginTop: "6px", lineHeight: 1.5 }}>
                 📐 Tamaño recomendado: 800 × 800 px (cuadrada)<br />
                 📁 Formatos: JPG, PNG, WEBP<br />
                 ⚖️ Peso máximo: 5 MB por imagen<br />
@@ -385,7 +385,7 @@ export default function NuevoProductoPage() {
 
             {/* Zonas de envío */}
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }} className={labelClass}>
+              <label style={{ fontFamily: "var(--font-body)", color: "#444444" }} className={labelClass}>
                 Zonas de envío
                 {tipo === "digital" && (
                   <span className="ml-2 text-xs" style={{ color: "#22c55e" }}>
@@ -404,7 +404,7 @@ export default function NuevoProductoPage() {
                       disabled={tipo === "digital"}
                       className="px-3 py-1.5 text-sm rounded border transition-colors"
                       style={{
-                        fontFamily: "Barlow, sans-serif",
+                        fontFamily: "var(--font-body)",
                         backgroundColor: activa ? "#111111" : "#ffffff",
                         borderColor: activa ? "#111111" : "#e8e8e8",
                         color: activa ? "#ffffff" : "#555555",
@@ -418,7 +418,7 @@ export default function NuevoProductoPage() {
                 })}
               </div>
               {errors.zonas_envio && (
-                <p style={{ fontFamily: "Barlow, sans-serif", color: "#e8003d" }} className={errorClass}>
+                <p style={{ fontFamily: "var(--font-body)", color: "#e8003d" }} className={errorClass}>
                   {errors.zonas_envio.message}
                 </p>
               )}
@@ -433,7 +433,7 @@ export default function NuevoProductoPage() {
             disabled={enviando}
             className="w-full h-12 rounded-md text-white font-semibold transition-colors"
             style={{
-              fontFamily: "Barlow, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: "16px",
               backgroundColor: enviando ? "#f0a0b0" : "#e8003d",
               cursor: enviando ? "not-allowed" : "pointer",

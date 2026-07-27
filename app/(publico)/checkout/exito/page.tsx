@@ -38,35 +38,35 @@ function ExitoContent() {
 
         <h1
           className="mb-3"
-          style={{ fontFamily: "Oswald, sans-serif", fontSize: "36px", fontWeight: "700", color: "#111111" }}
+          style={{ fontFamily: "var(--font-titulo)", fontSize: "36px", color: "#111111" }}
         >
           ¡Compra exitosa!
         </h1>
 
-        <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "16px", color: "#666666" }}>
+        <p style={{ fontFamily: "var(--font-body)", fontSize: "16px", color: "#666666" }}>
           Tu pedido ha sido confirmado.
         </p>
 
         {numeroOrden && (
-          <p className="mt-2" style={{ fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "#999999" }}>
+          <p className="mt-2" style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#999999" }}>
             Número de orden: <strong>{numeroOrden}</strong>
           </p>
         )}
 
         {payment_id && (
-          <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "12px", color: "#cccccc", marginTop: "4px" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#cccccc", marginTop: "4px" }}>
             Payment ID: {payment_id}
           </p>
         )}
 
-        <p className="mt-4 mb-8" style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666" }}>
+        <p className="mt-4 mb-8" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>
           Recibirás un email con los detalles de tu compra.
         </p>
 
         <Link
           href="/tienda"
           className="inline-block px-8 py-3 rounded-md text-white font-semibold"
-          style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#e8003d" }}
+          style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
         >
           Seguir comprando
         </Link>
@@ -79,7 +79,7 @@ export default function ExitoPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Confirmando pago...</p>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Confirmando pago...</p>
       </div>
     }>
       <ExitoContent />

@@ -95,7 +95,7 @@ function PanelEmbed({
     <div className="p-3 border-t" style={{ borderColor: "#e8e8e8", backgroundColor: "#f8f7f5" }}>
       <label
         className="block mb-1.5"
-        style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444" }}
+        style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#444444" }}
       >
         Pega la URL de {tipo === "youtube" ? "YouTube" : "Spotify"}
       </label>
@@ -111,7 +111,7 @@ function PanelEmbed({
           placeholder={ejemplo}
           className="flex-1 rounded-md px-3 py-2 text-sm border focus:outline-none"
           style={{
-            fontFamily: "DM Sans, sans-serif",
+            fontFamily: "var(--font-body)",
             borderColor: error ? C.rojo : "#e8e8e8",
             color: "#111111",
           }}
@@ -120,7 +120,7 @@ function PanelEmbed({
           type="button"
           onClick={insertar}
           className="px-4 rounded-md text-white text-sm font-semibold flex items-center gap-1.5"
-          style={{ fontFamily: "Barlow, sans-serif", backgroundColor: C.rojo }}
+          style={{ fontFamily: "var(--font-body)", backgroundColor: C.rojo }}
         >
           <Check size={14} /> Insertar
         </button>
@@ -135,7 +135,7 @@ function PanelEmbed({
         </button>
       </div>
       {error && (
-        <p className="mt-1.5" style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: C.rojo }}>
+        <p className="mt-1.5" style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: C.rojo }}>
           {error}
         </p>
       )}
@@ -249,7 +249,7 @@ function Barra({ editor }: { editor: Editor }) {
               onClick={() => setPanel(panel === t ? null : t)}
               className="h-8 px-3 rounded text-xs font-semibold transition-colors"
               style={{
-                fontFamily: "Barlow, sans-serif",
+                fontFamily: "var(--font-body)",
                 backgroundColor: panel === t ? C.rojo : "#111111",
                 color: C.blanco,
               }}
@@ -303,7 +303,7 @@ export default function EditorContenido({ valor, onChange, placeholder }: Props)
         className="rounded-md border p-4"
         style={{ borderColor: "#e8e8e8", minHeight: "300px" }}
       >
-        <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#999999" }}>
+        <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#999999" }}>
           Cargando editor...
         </p>
       </div>
@@ -319,7 +319,7 @@ export default function EditorContenido({ valor, onChange, placeholder }: Props)
         style={{
           borderColor: "#e8e8e8",
           backgroundColor: "#f8f7f5",
-          fontFamily: F.barlowC,
+          fontFamily: F.body,
           fontSize: "12px",
           color: "#999999",
         }}

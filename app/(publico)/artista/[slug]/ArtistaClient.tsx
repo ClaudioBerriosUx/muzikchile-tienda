@@ -86,7 +86,7 @@ export default function ArtistaClient({ slug }: { slug: string }) {
     return (
       <>
         <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-          <div className="animate-pulse" style={{ fontFamily: "Barlow, sans-serif", color: "#666" }}>
+          <div className="animate-pulse" style={{ fontFamily: "var(--font-body)", color: "#666" }}>
             Cargando artista...
           </div>
         </div>
@@ -98,7 +98,7 @@ export default function ArtistaClient({ slug }: { slug: string }) {
     return (
       <>
         <div className="min-h-screen flex items-center justify-center">
-          <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "24px", color: "#111111" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "24px", color: "#111111" }}>
             Artista no encontrado
           </p>
         </div>
@@ -127,7 +127,7 @@ export default function ArtistaClient({ slug }: { slug: string }) {
             ) : (
               <div
                 className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-bold shrink-0"
-                style={{ backgroundColor: acento, border: `4px solid ${acento}`, fontFamily: "Oswald, sans-serif" }}
+                style={{ backgroundColor: acento, border: `4px solid ${acento}`, fontFamily: "var(--font-body)" }}
               >
                 {inicial}
               </div>
@@ -135,7 +135,7 @@ export default function ArtistaClient({ slug }: { slug: string }) {
           </div>
 
           <div className="flex-1 min-w-0">
-            <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "36px", fontWeight: "700", color: "#111111", lineHeight: 1.1 }}>
+            <h1 style={{ fontFamily: "var(--font-titulo)", fontSize: "36px", color: "#111111", lineHeight: 1.1 }}>
               {artista.nombre}
               {artista.verificado && (
                 <span style={{
@@ -145,7 +145,7 @@ export default function ArtistaClient({ slug }: { slug: string }) {
                   backgroundColor: "#e8003d",
                   color: "white",
                   fontSize: "10px",
-                  fontFamily: "Barlow, sans-serif",
+                  fontFamily: "var(--font-body)",
                   fontWeight: "700",
                   padding: "2px 8px",
                   borderRadius: "20px",
@@ -161,7 +161,7 @@ export default function ArtistaClient({ slug }: { slug: string }) {
             {(artista.ciudad || artista.region) && (
               <span
                 className="inline-block mt-2 border rounded px-2 py-0.5"
-                style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", backgroundColor: "#ffffff", color: "#666666" }}
+                style={{ fontFamily: "var(--font-body)", fontSize: "12px", backgroundColor: "#ffffff", color: "#666666" }}
               >
                 {[artista.ciudad, artista.region].filter(Boolean).join(" · ")}
               </span>
@@ -170,7 +170,7 @@ export default function ArtistaClient({ slug }: { slug: string }) {
             {artista.bio && (
               <p
                 className="mt-3 max-w-lg"
-                style={{ fontFamily: "DM Sans, sans-serif", fontSize: "15px", color: "#666666", lineHeight: 1.6 }}
+                style={{ fontFamily: "var(--font-body)", fontSize: "15px", color: "#666666", lineHeight: 1.6 }}
               >
                 {artista.bio}
               </p>
@@ -186,7 +186,7 @@ export default function ArtistaClient({ slug }: { slug: string }) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs border rounded px-2 py-1 transition-colors capitalize"
-                      style={{ fontFamily: "Barlow, sans-serif", color: "#666666", borderColor: "#e8e8e8" }}
+                      style={{ fontFamily: "var(--font-body)", color: "#666666", borderColor: "#e8e8e8" }}
                       onMouseEnter={(e) => (e.currentTarget.style.color = "#111111")}
                       onMouseLeave={(e) => (e.currentTarget.style.color = "#666666")}
                     >
@@ -208,7 +208,7 @@ export default function ArtistaClient({ slug }: { slug: string }) {
               onClick={() => setTabActivo(tab)}
               className="py-3 text-sm transition-colors"
               style={{
-                fontFamily: "Barlow, sans-serif",
+                fontFamily: "var(--font-body)",
                 fontWeight: tabActivo === tab ? 600 : 400,
                 color: tabActivo === tab ? "#111111" : "#666666",
                 borderBottom: tabActivo === tab ? `2px solid ${acento}` : "2px solid transparent",
@@ -225,7 +225,7 @@ export default function ArtistaClient({ slug }: { slug: string }) {
         {tabActivo === "productos" ? (
           productos.length === 0 ? (
             <div className="text-center py-20">
-              <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", color: "#111111" }}>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "20px", color: "#111111" }}>
                 Sin productos disponibles
               </p>
             </div>
@@ -250,19 +250,19 @@ export default function ArtistaClient({ slug }: { slug: string }) {
           )
         ) : (
           <div className="p-6 max-w-2xl">
-            <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "15px", color: "#444444", lineHeight: 1.7 }}>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "15px", color: "#444444", lineHeight: 1.7 }}>
               {artista.bio_completa ?? artista.bio ?? "Sin información adicional."}
             </p>
             {artista.ciudad && (
               <div className="mt-6">
-                <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#999999" }}>Ciudad</p>
-                <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "15px", color: "#111111", marginTop: "4px" }}>{artista.ciudad}</p>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#999999" }}>Ciudad</p>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "15px", color: "#111111", marginTop: "4px" }}>{artista.ciudad}</p>
               </div>
             )}
             {artista.region && (
               <div className="mt-4">
-                <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#999999" }}>Región</p>
-                <p style={{ fontFamily: "DM Sans, sans-serif", fontSize: "15px", color: "#111111", marginTop: "4px" }}>{artista.region}</p>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#999999" }}>Región</p>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "15px", color: "#111111", marginTop: "4px" }}>{artista.region}</p>
               </div>
             )}
           </div>

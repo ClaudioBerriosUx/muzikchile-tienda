@@ -54,14 +54,14 @@ export default function CarritoDrawer() {
         {/* Header del drawer */}
         <div className="flex items-center gap-3 px-6 py-4 border-b border-[#e8e8e8] shrink-0">
           <SheetTitle
-            style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", fontWeight: "700", color: "#111111" }}
+            style={{ fontFamily: "var(--font-titulo)", fontSize: "20px", color: "#111111" }}
           >
             Tu carrito
           </SheetTitle>
           {cantidad > 0 && (
             <span
               className="text-white text-xs font-bold rounded-full px-2 py-0.5"
-              style={{ backgroundColor: "#e8003d", fontFamily: "Barlow, sans-serif" }}
+              style={{ backgroundColor: "#e8003d", fontFamily: "var(--font-body)" }}
             >
               {cantidad}
             </span>
@@ -73,17 +73,17 @@ export default function CarritoDrawer() {
           /* Estado vacío */
           <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
             <ShoppingCart size={48} className="text-[#cccccc]" />
-            <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", fontWeight: "700", color: "#111111" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "20px", fontWeight: "700", color: "#111111" }}>
               Tu carrito está vacío
             </p>
-            <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>
               Agrega productos de tus artistas favoritos
             </p>
             <Link
               href="/tienda"
               onClick={cerrar}
               className="mt-2 px-6 py-2.5 rounded-md text-white text-sm font-semibold"
-              style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#e8003d" }}
+              style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
             >
               Ver tienda
             </Link>
@@ -109,16 +109,16 @@ export default function CarritoDrawer() {
                   <div className="flex-1 min-w-0">
                     <p
                       className="font-medium line-clamp-1"
-                      style={{ fontFamily: "DM Sans, sans-serif", fontSize: "14px", color: "#111111" }}
+                      style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#111111" }}
                     >
                       {item.nombre}
                     </p>
                     {item.artista && (
-                      <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#666666" }}>
+                      <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#666666" }}>
                         {item.artista}
                       </p>
                     )}
-                    <p className="font-bold mt-1" style={{ fontFamily: "DM Sans, sans-serif", color: "#e8003d", fontSize: "14px" }}>
+                    <p className="font-bold mt-1" style={{ fontFamily: "var(--font-body)", color: "#e8003d", fontSize: "14px" }}>
                       {formatCLP(item.precio)}
                     </p>
                   </div>
@@ -134,7 +134,7 @@ export default function CarritoDrawer() {
                       </button>
                       <span
                         className="w-5 text-center"
-                        style={{ fontFamily: "DM Sans, sans-serif", fontSize: "14px", color: "#111111" }}
+                        style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#111111" }}
                       >
                         {item.cantidad}
                       </span>
@@ -163,8 +163,8 @@ export default function CarritoDrawer() {
             {/* Footer sticky */}
             <div className="shrink-0 px-6 py-5 border-t border-[#e8e8e8]" style={{ backgroundColor: "#ffffff" }}>
               <div className="flex items-center justify-between mb-4">
-                <span style={{ fontFamily: "Barlow, sans-serif", color: "#444444" }}>Subtotal</span>
-                <span style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 700, fontSize: "18px", color: "#e8003d" }}>
+                <span style={{ fontFamily: "var(--font-body)", color: "#444444" }}>Subtotal</span>
+                <span style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: "18px", color: "#e8003d" }}>
                   {formatCLP(total)}
                 </span>
               </div>
@@ -174,7 +174,7 @@ export default function CarritoDrawer() {
                   href="/checkout"
                   onClick={cerrar}
                   className="flex items-center justify-center w-full h-11 rounded-md text-white font-semibold transition-colors"
-                  style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#e8003d" }}
+                  style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#c5002e")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#e8003d")}
                 >
@@ -184,7 +184,7 @@ export default function CarritoDrawer() {
                   href="/carrito"
                   onClick={cerrar}
                   className="flex items-center justify-center w-full h-11 rounded-md border transition-colors"
-                  style={{ fontFamily: "Barlow, sans-serif", borderColor: "#111111", color: "#111111" }}
+                  style={{ fontFamily: "var(--font-body)", borderColor: "#111111", color: "#111111" }}
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8f7f5")}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                 >

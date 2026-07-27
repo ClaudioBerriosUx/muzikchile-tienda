@@ -74,7 +74,7 @@ export default function ProductCard({
           {categoria && (
             <span
               className="absolute top-2 left-2 text-white text-xs px-2 py-0.5 rounded"
-              style={{ backgroundColor: "#111111", fontFamily: "Barlow, sans-serif" }}
+              style={{ backgroundColor: "#111111", fontFamily: "var(--font-body)" }}
             >
               {categoria}
             </span>
@@ -84,7 +84,7 @@ export default function ProductCard({
           <button
             onClick={handleAgregar}
             className="absolute bottom-0 left-0 right-0 text-white text-sm py-2.5 translate-y-full group-hover:translate-y-0 transition-transform duration-200"
-            style={{ backgroundColor: colorAccento, fontFamily: "Barlow, sans-serif" }}
+            style={{ backgroundColor: colorAccento, fontFamily: "var(--font-body)" }}
           >
             Agregar al carrito
           </button>
@@ -94,7 +94,7 @@ export default function ProductCard({
         <div className="p-3">
           <p
             className="text-base font-medium line-clamp-2 text-[#111111]"
-            style={{ fontFamily: "Oswald, sans-serif" }}
+            style={{ fontFamily: "var(--font-body)" }}
           >
             {nombre}
           </p>
@@ -103,20 +103,20 @@ export default function ProductCard({
             <MapPin className="w-3 h-3 text-[#999999]" />
             <span
               className="text-xs text-[#666666]"
-              style={{ fontFamily: "Barlow, sans-serif" }}
+              style={{ fontFamily: "var(--font-body)" }}
             >
               {artista}{ciudad ? ` · ${ciudad}` : ""}
             </span>
           </div>
           {verificado && (
-            <span style={{ fontSize: "10px", color: "#e8003d", fontFamily: "Barlow, sans-serif", fontWeight: "700" }}>
+            <span style={{ fontSize: "10px", color: "#e8003d", fontFamily: "var(--font-body)", fontWeight: "700" }}>
               ✓ Verificado
             </span>
           )}
 
           <p
             className="text-lg font-bold mt-2"
-            style={{ fontFamily: "DM Sans, sans-serif", color: "#e8003d" }}
+            style={{ fontFamily: "var(--font-body)", color: "#e8003d" }}
           >
             {formatCLP(precio)}
           </p>

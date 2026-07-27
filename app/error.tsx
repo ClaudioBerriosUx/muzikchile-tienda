@@ -29,7 +29,7 @@ export default function GlobalError({
     >
       <p
         style={{
-          fontFamily: "Barlow, sans-serif",
+          fontFamily: "var(--font-body)",
           fontSize: "13px",
           color: "#e8003d",
           letterSpacing: "0.15em",
@@ -42,9 +42,8 @@ export default function GlobalError({
 
       <h1
         style={{
-          fontFamily: "Oswald, sans-serif",
+          fontFamily: "var(--font-titulo)",
           fontSize: "44px",
-          fontWeight: 700,
           color: "#ffffff",
           lineHeight: 1.1,
           marginBottom: "12px",
@@ -56,7 +55,7 @@ export default function GlobalError({
       <p
         className="max-w-md"
         style={{
-          fontFamily: "Barlow, sans-serif",
+          fontFamily: "var(--font-body)",
           fontSize: "16px",
           color: "rgba(255,255,255,0.65)",
           lineHeight: 1.6,
@@ -72,7 +71,7 @@ export default function GlobalError({
           onClick={reset}
           className="inline-flex items-center justify-center h-11 px-8 rounded-md font-semibold transition-colors cursor-pointer"
           style={{
-            fontFamily: "Barlow, sans-serif",
+            fontFamily: "var(--font-body)",
             backgroundColor: "#e8003d",
             color: "#ffffff",
           }}
@@ -84,7 +83,7 @@ export default function GlobalError({
           href="/"
           className="inline-flex items-center justify-center h-11 px-8 rounded-md border transition-colors"
           style={{
-            fontFamily: "Barlow, sans-serif",
+            fontFamily: "var(--font-body)",
             borderColor: "rgba(255,255,255,0.25)",
             color: "#ffffff",
           }}

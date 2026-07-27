@@ -14,7 +14,7 @@ export default function NotFound() {
     >
       <p
         style={{
-          fontFamily: "Barlow, sans-serif",
+          fontFamily: "var(--font-body)",
           fontSize: "13px",
           color: "#e8003d",
           letterSpacing: "0.15em",
@@ -27,9 +27,8 @@ export default function NotFound() {
 
       <h1
         style={{
-          fontFamily: "Oswald, sans-serif",
+          fontFamily: "var(--font-titulo)",
           fontSize: "44px",
-          fontWeight: 700,
           color: "#ffffff",
           lineHeight: 1.1,
           marginBottom: "12px",
@@ -41,7 +40,7 @@ export default function NotFound() {
       <p
         className="max-w-md"
         style={{
-          fontFamily: "Barlow, sans-serif",
+          fontFamily: "var(--font-body)",
           fontSize: "16px",
           color: "rgba(255,255,255,0.65)",
           lineHeight: 1.6,
@@ -55,7 +54,7 @@ export default function NotFound() {
         href="/"
         className="inline-flex items-center justify-center h-11 px-8 rounded-md font-semibold transition-colors"
         style={{
-          fontFamily: "Barlow, sans-serif",
+          fontFamily: "var(--font-body)",
           backgroundColor: "#e8003d",
           color: "#ffffff",
         }}

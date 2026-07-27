@@ -114,13 +114,13 @@ export default function CuponesPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
-        <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
+        <h1 style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}>
           Cupones globales
         </h1>
         <button
           onClick={() => abrir()}
           className="flex items-center gap-2 px-4 py-2 rounded-md text-white text-sm font-semibold"
-          style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#e8003d" }}
+          style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
         >
           <Plus size={16} /> Nuevo cupón
         </button>
@@ -131,7 +131,7 @@ export default function CuponesPage() {
           <thead style={{ backgroundColor: "#f8f7f5" }}>
             <tr>
               {["Código", "Tipo", "Valor", "Usos", "Expira", "Artista", "Estado", ""].map((h) => (
-                <th key={h} className="text-left px-4 py-3 text-xs uppercase tracking-wide" style={{ fontFamily: "Barlow, sans-serif", color: "#666666", fontWeight: 600 }}>
+                <th key={h} className="text-left px-4 py-3 text-xs uppercase tracking-wide" style={{ fontFamily: "var(--font-body)", color: "#666666", fontWeight: 600 }}>
                   {h}
                 </th>
               ))}
@@ -141,21 +141,21 @@ export default function CuponesPage() {
             {cupones.map((c, i) => (
               <tr key={c.id} style={{ borderTop: i > 0 ? "1px solid #f0f0f0" : undefined }}>
                 <td className="px-4 py-3 font-mono font-bold" style={{ color: "#111111" }}>{c.codigo}</td>
-                <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                   {c.tipo_descuento === "porcentaje" ? "%" : "$"}
                 </td>
-                <td className="px-4 py-3" style={{ fontFamily: "DM Sans, sans-serif", color: "#e8003d", fontWeight: 700 }}>
+                <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#e8003d", fontWeight: 700 }}>
                   {c.tipo_descuento === "porcentaje" ? `${c.valor}%` : formatCLP(c.valor)}
                 </td>
-                <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                   {c.usos_actuales}{c.usos_maximos ? ` / ${c.usos_maximos}` : ""}
                 </td>
-                <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                   {c.expira_at ? new Date(c.expira_at).toLocaleDateString("es-CL") : "—"}
                 </td>
                 <td className="px-4 py-3">
                   <span className="text-xs px-2 py-0.5 rounded" style={{
-                    fontFamily: "Barlow, sans-serif",
+                    fontFamily: "var(--font-body)",
                     backgroundColor: c.artista_id ? "#dbeafe" : "#f3f4f6",
                     color: c.artista_id ? "#1e40af" : "#666666",
                   }}>
@@ -164,7 +164,7 @@ export default function CuponesPage() {
                 </td>
                 <td className="px-4 py-3">
                   <span className="text-xs px-2 py-0.5 rounded font-medium" style={{
-                    fontFamily: "Barlow, sans-serif",
+                    fontFamily: "var(--font-body)",
                     backgroundColor: c.activo ? "#dcfce7" : "#fee2e2",
                     color: c.activo ? "#166534" : "#991b1b",
                   }}>
@@ -187,7 +187,7 @@ export default function CuponesPage() {
         </table>
         {cupones.length === 0 && (
           <div className="text-center py-12">
-            <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Sin cupones creados.</p>
+            <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Sin cupones creados.</p>
           </div>
         )}
       </div>
@@ -195,42 +195,42 @@ export default function CuponesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "Oswald, sans-serif" }}>
+            <DialogTitle style={{ fontFamily: "var(--font-titulo)" }}>
               {editando ? "Editar cupón" : "Nuevo cupón global"}
             </DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-2">
             <div className="col-span-2">
-              <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>Código</label>
-              <input value={form.codigo} onChange={set("codigo")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", textTransform: "uppercase" }} placeholder="VERANO2025" />
+              <label style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>Código</label>
+              <input value={form.codigo} onChange={set("codigo")} className={inputClass} style={{ fontFamily: "var(--font-body)", textTransform: "uppercase" }} placeholder="VERANO2025" />
             </div>
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>Tipo</label>
-              <select value={form.tipo_descuento} onChange={set("tipo_descuento")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }}>
+              <label style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>Tipo</label>
+              <select value={form.tipo_descuento} onChange={set("tipo_descuento")} className={inputClass} style={{ fontFamily: "var(--font-body)" }}>
                 <option value="porcentaje">Porcentaje (%)</option>
                 <option value="fijo">Monto fijo ($)</option>
               </select>
             </div>
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>
+              <label style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>
                 Valor {form.tipo_descuento === "porcentaje" ? "(%)" : "(CLP)"}
               </label>
-              <input type="number" value={form.valor} onChange={set("valor")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }} placeholder={form.tipo_descuento === "porcentaje" ? "10" : "5000"} />
+              <input type="number" value={form.valor} onChange={set("valor")} className={inputClass} style={{ fontFamily: "var(--font-body)" }} placeholder={form.tipo_descuento === "porcentaje" ? "10" : "5000"} />
             </div>
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>Usos máximos</label>
-              <input type="number" value={form.usos_maximos} onChange={set("usos_maximos")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }} placeholder="Ilimitado" />
+              <label style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>Usos máximos</label>
+              <input type="number" value={form.usos_maximos} onChange={set("usos_maximos")} className={inputClass} style={{ fontFamily: "var(--font-body)" }} placeholder="Ilimitado" />
             </div>
             <div className="col-span-2">
-              <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>Fecha de expiración</label>
-              <input type="date" value={form.expira_at} onChange={set("expira_at")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }} />
+              <label style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>Fecha de expiración</label>
+              <input type="date" value={form.expira_at} onChange={set("expira_at")} className={inputClass} style={{ fontFamily: "var(--font-body)" }} />
             </div>
           </div>
           <DialogFooter>
-            <button onClick={() => setDialogOpen(false)} className="px-4 py-2 rounded border text-sm" style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#666666" }}>
+            <button onClick={() => setDialogOpen(false)} className="px-4 py-2 rounded border text-sm" style={{ fontFamily: "var(--font-body)", borderColor: "#e8e8e8", color: "#666666" }}>
               Cancelar
             </button>
-            <button onClick={guardar} disabled={guardando} className="px-4 py-2 rounded text-white text-sm" style={{ fontFamily: "Barlow, sans-serif", backgroundColor: guardando ? "#f0a0b0" : "#e8003d" }}>
+            <button onClick={guardar} disabled={guardando} className="px-4 py-2 rounded text-white text-sm" style={{ fontFamily: "var(--font-body)", backgroundColor: guardando ? "#f0a0b0" : "#e8003d" }}>
               {guardando ? "Guardando..." : "Guardar"}
             </button>
           </DialogFooter>

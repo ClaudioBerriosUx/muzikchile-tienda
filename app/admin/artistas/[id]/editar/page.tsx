@@ -80,7 +80,7 @@ interface Artista {
 }
 
 const hintStyle: React.CSSProperties = {
-  fontFamily: "Barlow, sans-serif",
+  fontFamily: "var(--font-body)",
   fontSize: "12px",
   color: "#999999",
   marginTop: "6px",
@@ -206,18 +206,18 @@ export default function AdminEditarArtistaPage() {
 
   const inputClass = "w-full rounded-md px-3 py-2.5 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none transition-colors";
   const labelEl = (txt: string) => (
-    <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#666666", display: "block", marginBottom: "5px" }}>
+    <label style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#666666", display: "block", marginBottom: "5px" }}>
       {txt}
     </label>
   );
   const errEl = (msg?: string) => msg ? (
-    <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#e8003d", marginTop: "3px" }}>{msg}</p>
+    <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#e8003d", marginTop: "3px" }}>{msg}</p>
   ) : null;
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Cargando artista...</p>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Cargando artista...</p>
       </div>
     );
   }
@@ -232,17 +232,17 @@ export default function AdminEditarArtistaPage() {
         <div className="flex flex-col gap-1">
           <Link
             href="/admin/artistas"
-            style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#999999" }}
+            style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#999999" }}
             className="hover:text-[#e8003d] transition-colors"
           >
             ← Volver a artistas
           </Link>
           <div className="flex items-center gap-3">
-            <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "24px", fontWeight: "700", color: "#111111" }}>
+            <h1 style={{ fontFamily: "var(--font-titulo)", fontSize: "24px", color: "#111111" }}>
               Editando perfil de {artista?.nombre ?? "…"}
             </h1>
             <span style={{
-              fontFamily: "Barlow, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: "11px",
               fontWeight: 600,
               backgroundColor: "#fef08a",
@@ -263,7 +263,7 @@ export default function AdminEditarArtistaPage() {
           <div className="shrink-0 flex flex-col items-center gap-2">
             <div
               className="w-24 h-24 rounded-full overflow-hidden flex items-center justify-center text-white text-3xl font-bold cursor-pointer relative group"
-              style={{ backgroundColor: colorAccento, fontFamily: "Oswald, sans-serif" }}
+              style={{ backgroundColor: colorAccento, fontFamily: "var(--font-body)" }}
               onClick={() => fotoRef.current?.click()}
             >
               {fotoActual ? (
@@ -274,7 +274,7 @@ export default function AdminEditarArtistaPage() {
               </div>
             </div>
             <button type="button" onClick={() => fotoRef.current?.click()} className="text-xs"
-              style={{ fontFamily: "Barlow, sans-serif", color: "#e8003d" }}>
+              style={{ fontFamily: "var(--font-body)", color: "#e8003d" }}>
               Cambiar foto
             </button>
             <input ref={fotoRef} type="file" accept="image/*" className="hidden" onChange={handleFoto} />
@@ -284,18 +284,18 @@ export default function AdminEditarArtistaPage() {
             <div>
               {labelEl("Nombre artístico *")}
               <input {...register("nombre")} onBlur={autoSlug} className={inputClass}
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} placeholder="Nombre del artista" />
+                style={{ fontFamily: "var(--font-body)", color: "#111111" }} placeholder="Nombre del artista" />
               {errEl(errors.nombre?.message)}
             </div>
             <div>
               {labelEl("Slug")}
               <div className="flex items-center rounded-md border border-[#e8e8e8] overflow-hidden focus-within:border-[#e8003d] transition-colors">
                 <span className="px-3 py-2.5 text-sm bg-[#f8f7f5] border-r border-[#e8e8e8] shrink-0"
-                  style={{ fontFamily: "Barlow, sans-serif", color: "#999999" }}>
+                  style={{ fontFamily: "var(--font-body)", color: "#999999" }}>
                   /artista/
                 </span>
                 <input {...register("slug")} className="flex-1 px-3 py-2.5 text-sm focus:outline-none"
-                  style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} />
+                  style={{ fontFamily: "var(--font-body)", color: "#111111" }} />
               </div>
               {errEl(errors.slug?.message)}
             </div>
@@ -304,14 +304,14 @@ export default function AdminEditarArtistaPage() {
 
         {/* ── Información pública ── */}
         <section className="p-6 rounded-xl border border-[#e8e8e8] bg-white flex flex-col gap-5">
-          <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
+          <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "16px", color: "#111111" }}>
             Información pública
           </h2>
 
           <div>
             {labelEl(`Bio corta (${(bioWatch ?? "").length}/160)`)}
             <textarea {...register("bio")} rows={2} maxLength={160}
-              className={`${inputClass} resize-none`} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+              className={`${inputClass} resize-none`} style={{ fontFamily: "var(--font-body)", color: "#111111" }}
               placeholder="Una frase que describe al artista..." />
             {errEl(errors.bio?.message)}
           </div>
@@ -319,18 +319,18 @@ export default function AdminEditarArtistaPage() {
           <div>
             {labelEl("Biografía completa")}
             <textarea {...register("bio_completa")} rows={5}
-              className={`${inputClass} resize-none`} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+              className={`${inputClass} resize-none`} style={{ fontFamily: "var(--font-body)", color: "#111111" }}
               placeholder="Biografía extendida..." />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
               {labelEl("Ciudad")}
-              <input {...register("ciudad")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} placeholder="Santiago" />
+              <input {...register("ciudad")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} placeholder="Santiago" />
             </div>
             <div>
               {labelEl("Región")}
-              <select {...register("region")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}>
+              <select {...register("region")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
                 <option value="">Selecciona región</option>
                 {REGIONES_CHILE.map((r) => <option key={r} value={r}>{r}</option>)}
               </select>
@@ -340,7 +340,7 @@ export default function AdminEditarArtistaPage() {
           <div>
             {labelEl("Géneros musicales")}
             <input {...register("generos")} className={inputClass}
-              style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+              style={{ fontFamily: "var(--font-body)", color: "#111111" }}
               placeholder="Ej: Indie folk, Nueva Canción, Acústico" />
             <p style={hintStyle}>Separar con comas.</p>
           </div>
@@ -353,14 +353,14 @@ export default function AdminEditarArtistaPage() {
 
         {/* ── Redes sociales ── */}
         <section className="p-6 rounded-xl border border-[#e8e8e8] bg-white flex flex-col gap-5">
-          <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
+          <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "16px", color: "#111111" }}>
             Redes sociales
           </h2>
           {REDES_CONFIG.map(({ key, label: lbl, placeholder, hint }) => (
             <div key={key}>
               {labelEl(lbl)}
               <input {...register(key as keyof FormData)} className={inputClass}
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} placeholder={placeholder} />
+                style={{ fontFamily: "var(--font-body)", color: "#111111" }} placeholder={placeholder} />
               <p style={hintStyle}>{hint}</p>
             </div>
           ))}
@@ -369,10 +369,10 @@ export default function AdminEditarArtistaPage() {
         {/* ── SEO ── */}
         <section className="p-6 rounded-xl border border-[#e8e8e8] bg-white flex flex-col gap-5">
           <div>
-            <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
+            <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "16px", color: "#111111" }}>
               SEO del perfil
             </h2>
-            <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#999999", marginTop: "2px" }}>
+            <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#999999", marginTop: "2px" }}>
               Cómo aparece en Google
             </p>
           </div>
@@ -380,10 +380,10 @@ export default function AdminEditarArtistaPage() {
           <div>
             {labelEl("Título para Google")}
             <input {...register("seo_titulo")} maxLength={60} className={inputClass}
-              style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+              style={{ fontFamily: "var(--font-body)", color: "#111111" }}
               placeholder="Ej: Nombre artista | Merch oficial" />
             <div className="flex justify-end">
-              <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: (seoTituloWatch?.length ?? 0) >= 60 ? "#e8003d" : "#999999" }}>
+              <span style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: (seoTituloWatch?.length ?? 0) >= 60 ? "#e8003d" : "#999999" }}>
                 {seoTituloWatch?.length ?? 0}/60
               </span>
             </div>
@@ -392,10 +392,10 @@ export default function AdminEditarArtistaPage() {
           <div>
             {labelEl("Descripción para Google")}
             <textarea {...register("seo_descripcion")} maxLength={160} rows={3}
-              className={`${inputClass} resize-none`} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+              className={`${inputClass} resize-none`} style={{ fontFamily: "var(--font-body)", color: "#111111" }}
               placeholder="Descripción breve para Google..." />
             <div className="flex justify-end">
-              <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: (seoDescWatch?.length ?? 0) >= 160 ? "#e8003d" : "#999999" }}>
+              <span style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: (seoDescWatch?.length ?? 0) >= 160 ? "#e8003d" : "#999999" }}>
                 {seoDescWatch?.length ?? 0}/160
               </span>
             </div>
@@ -404,31 +404,31 @@ export default function AdminEditarArtistaPage() {
 
         {/* ── Datos bancarios ── */}
         <section className="p-6 rounded-xl border border-[#e8e8e8] bg-white flex flex-col gap-4">
-          <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
+          <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "16px", color: "#111111" }}>
             Datos bancarios
           </h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
               {labelEl("Banco")}
-              <select {...register("banco")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}>
+              <select {...register("banco")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
                 <option value="">Selecciona banco</option>
                 {BANCOS_CHILE.map((b) => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
             <div>
               {labelEl("RUT")}
-              <input {...register("rut")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} placeholder="12.345.678-9" />
+              <input {...register("rut")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} placeholder="12.345.678-9" />
             </div>
             <div>
               {labelEl("Tipo de cuenta")}
-              <select {...register("tipo_cuenta")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}>
+              <select {...register("tipo_cuenta")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
                 <option value="">Selecciona tipo</option>
                 {TIPOS_CUENTA.map((t) => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
               {labelEl("N° de cuenta")}
-              <input {...register("cuenta_bancaria")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} placeholder="00000000000" />
+              <input {...register("cuenta_bancaria")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} placeholder="00000000000" />
             </div>
           </div>
         </section>
@@ -440,7 +440,7 @@ export default function AdminEditarArtistaPage() {
             disabled={guardando}
             className="h-11 px-10 rounded-md text-white font-semibold transition-colors"
             style={{
-              fontFamily: "Barlow, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: "15px",
               backgroundColor: guardando ? "#f0a0b0" : "#e8003d",
               cursor: guardando ? "not-allowed" : "pointer",

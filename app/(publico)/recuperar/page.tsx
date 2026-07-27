@@ -66,7 +66,7 @@ export default function RecuperarPage() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <span style={{ fontFamily: "Oswald, sans-serif", fontSize: "24px", fontWeight: "700" }}>
+          <span style={{ fontFamily: "var(--font-titulo)", fontSize: "26px", letterSpacing: "0.02em" }}>
             <span style={{ color: "#111111" }}>MuzikChile</span>
             <span style={{ color: "#e8003d" }}>·</span>
           </span>
@@ -83,13 +83,13 @@ export default function RecuperarPage() {
 
             <h1
               className="mb-3"
-              style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", fontWeight: "600", color: "#111111" }}
+              style={{ fontFamily: "var(--font-titulo)", fontSize: "20px", color: "#111111" }}
             >
               Revisa tu correo
             </h1>
 
             <p
-              style={{ fontFamily: "Barlow, sans-serif", fontSize: "15px", color: "#666666", lineHeight: 1.6 }}
+              style={{ fontFamily: "var(--font-body)", fontSize: "15px", color: "#666666", lineHeight: 1.6 }}
             >
               Si <strong style={{ color: "#111111" }}>{enviado}</strong> está registrado,
               te enviamos un enlace para crear una contraseña nueva. El enlace
@@ -98,7 +98,7 @@ export default function RecuperarPage() {
 
             <p
               className="mt-4"
-              style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#999999" }}
+              style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#999999" }}
             >
               ¿No llegó? Revisa spam o{" "}
               <button
@@ -115,7 +115,7 @@ export default function RecuperarPage() {
             <Link
               href="/login"
               className="inline-flex items-center justify-center w-full h-11 rounded-md border mt-7 transition-colors"
-              style={{ fontFamily: "Barlow, sans-serif", borderColor: "#111111", color: "#111111" }}
+              style={{ fontFamily: "var(--font-body)", borderColor: "#111111", color: "#111111" }}
             >
               Volver al login
             </Link>
@@ -124,13 +124,13 @@ export default function RecuperarPage() {
           <>
             <h1
               className="mb-2"
-              style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", fontWeight: "600", color: "#111111" }}
+              style={{ fontFamily: "var(--font-titulo)", fontSize: "20px", color: "#111111" }}
             >
               Recuperar contraseña
             </h1>
             <p
               className="mb-6"
-              style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666", lineHeight: 1.5 }}
+              style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666", lineHeight: 1.5 }}
             >
               Ingresa tu email y te enviamos un enlace para crear una contraseña nueva.
             </p>
@@ -139,7 +139,7 @@ export default function RecuperarPage() {
               <div className="flex flex-col gap-1.5">
                 <label
                   htmlFor="email"
-                  style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#444444" }}
+                  style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#444444" }}
                 >
                   Email
                 </label>
@@ -150,7 +150,7 @@ export default function RecuperarPage() {
                   {...register("email")}
                   className="w-full rounded-md px-3 py-2.5 text-sm border transition-colors focus:outline-none"
                   style={{
-                    fontFamily: "DM Sans, sans-serif",
+                    fontFamily: "var(--font-body)",
                     borderColor: errors.email ? "#e8003d" : "#e8e8e8",
                     color: "#111111",
                   }}
@@ -158,7 +158,7 @@ export default function RecuperarPage() {
                   onBlur={(e)  => { if (!errors.email) e.currentTarget.style.borderColor = "#e8e8e8"; }}
                 />
                 {errors.email && (
-                  <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#e8003d" }}>
+                  <span style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#e8003d" }}>
                     {errors.email.message}
                   </span>
                 )}
@@ -169,7 +169,7 @@ export default function RecuperarPage() {
                 disabled={loading}
                 className="w-full h-11 rounded-md font-semibold transition-colors mt-1"
                 style={{
-                  fontFamily: "Barlow, sans-serif",
+                  fontFamily: "var(--font-body)",
                   backgroundColor: loading ? "#f0a0b0" : "#e8003d",
                   color: "#ffffff",
                   cursor: loading ? "not-allowed" : "pointer",
@@ -184,7 +184,7 @@ export default function RecuperarPage() {
             <p className="text-center mt-4">
               <Link
                 href="/login"
-                style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666" }}
+                style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}
               >
                 Volver al login
               </Link>

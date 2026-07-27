@@ -193,12 +193,12 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
   const inputClass =
     "w-full rounded-md px-3 py-2.5 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none transition-colors";
   const labelClass = "block text-sm mb-1.5";
-  const labelStyle = { fontFamily: "Barlow, sans-serif", color: "#444444" };
-  const fieldStyle = { fontFamily: "DM Sans, sans-serif", color: "#111111" };
+  const labelStyle = { fontFamily: "var(--font-body)", color: "#444444" };
+  const fieldStyle = { fontFamily: "var(--font-body)", color: "#111111" };
 
   const errorEl = (msg?: string) =>
     msg ? (
-      <p className="text-xs mt-1" style={{ fontFamily: "Barlow, sans-serif", color: "#e8003d" }}>
+      <p className="text-xs mt-1" style={{ fontFamily: "var(--font-body)", color: "#e8003d" }}>
         {msg}
       </p>
     ) : null;
@@ -213,11 +213,11 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
         >
           <p
             className="mb-1"
-            style={{ fontFamily: "Oswald, sans-serif", fontSize: "14px", fontWeight: 600, color: "#9a3412" }}
+            style={{ fontFamily: "var(--font-body)", fontSize: "14px", fontWeight: 600, color: "#9a3412" }}
           >
             Qué hay que corregir
           </p>
-          <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#7c2d12", lineHeight: 1.6 }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#7c2d12", lineHeight: 1.6 }}>
             {publicacion.comentario_moderacion}
           </p>
         </div>
@@ -311,7 +311,7 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
             >
               <input {...getInputProps()} />
               <Upload size={24} className="mx-auto mb-2 text-[#cccccc]" />
-              <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666" }}>
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>
                 {isDragActive
                   ? "Suelta la imagen aquí"
                   : preview
@@ -321,7 +321,7 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
             </div>
 
             <div
-              style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#999999", marginTop: "6px", lineHeight: 1.5 }}
+              style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#999999", marginTop: "6px", lineHeight: 1.5 }}
             >
               📐 Se redimensiona a 1200 px de ancho<br />
               📁 Formatos: JPG, PNG, WEBP<br />
@@ -356,7 +356,7 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
           disabled={enviando !== null}
           className="h-12 px-6 rounded-md border font-semibold transition-colors"
           style={{
-            fontFamily: "Barlow, sans-serif",
+            fontFamily: "var(--font-body)",
             fontSize: "15px",
             borderColor: "#111111",
             color: "#111111",
@@ -374,7 +374,7 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
           disabled={enviando !== null}
           className="flex-1 h-12 rounded-md text-white font-semibold transition-colors"
           style={{
-            fontFamily: "Barlow, sans-serif",
+            fontFamily: "var(--font-body)",
             fontSize: "16px",
             backgroundColor: enviando ? "#f0a0b0" : "#e8003d",
             cursor: enviando ? "not-allowed" : "pointer",
@@ -386,7 +386,7 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
 
       <p
         className="mt-3"
-        style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#999999" }}
+        style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#999999" }}
       >
         Un borrador solo lo ves tú. Al enviar a revisión, el equipo la revisa antes
         de publicarla.

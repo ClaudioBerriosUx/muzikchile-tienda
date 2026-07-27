@@ -132,7 +132,7 @@ export default function CuponesPage() {
 
   const inputClass = "w-full rounded-md px-3 py-2.5 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none transition-colors";
   const lbl = (txt: string) => (
-    <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>
+    <label style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#444444", display: "block", marginBottom: "5px" }}>
       {txt}
     </label>
   );
@@ -141,17 +141,17 @@ export default function CuponesPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
+          <h1 style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}>
             Mis cupones
           </h1>
-          <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666", marginTop: "4px" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666", marginTop: "4px" }}>
             Crea descuentos exclusivos para tus fans
           </p>
         </div>
         <button
           onClick={() => abrir()}
           className="flex items-center gap-2 px-4 py-2 rounded-md text-white text-sm font-semibold"
-          style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#e8003d" }}
+          style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
         >
           <Plus size={16} /> Nuevo cupón
         </button>
@@ -159,18 +159,18 @@ export default function CuponesPage() {
 
       {isLoading ? (
         <div className="flex items-center justify-center h-32">
-          <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Cargando...</p>
+          <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Cargando...</p>
         </div>
       ) : cupones.length === 0 ? (
         <div className="rounded-xl border border-[#e8e8e8] p-12 text-center" style={{ backgroundColor: "#f8f7f5" }}>
-          <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", color: "#111111" }}>Sin cupones</p>
-          <p className="mt-1 mb-4" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "20px", color: "#111111" }}>Sin cupones</p>
+          <p className="mt-1 mb-4" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
             Crea tu primer descuento para tus fans
           </p>
           <button
             onClick={() => abrir()}
             className="px-6 py-2 rounded-md text-white text-sm"
-            style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#e8003d" }}
+            style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
           >
             Crear cupón
           </button>
@@ -182,7 +182,7 @@ export default function CuponesPage() {
               <tr>
                 {["Código", "Tipo", "Valor", "Usos", "Expira", "Estado", ""].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs uppercase tracking-wide"
-                    style={{ fontFamily: "Barlow, sans-serif", color: "#666666", fontWeight: 600 }}>
+                    style={{ fontFamily: "var(--font-body)", color: "#666666", fontWeight: 600 }}>
                     {h}
                   </th>
                 ))}
@@ -192,21 +192,21 @@ export default function CuponesPage() {
               {cupones.map((c, i) => (
                 <tr key={c.id} style={{ borderTop: i > 0 ? "1px solid #f0f0f0" : undefined }}>
                   <td className="px-4 py-3 font-mono font-bold" style={{ color: "#111111" }}>{c.codigo}</td>
-                  <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                  <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                     {c.tipo_descuento === "porcentaje" ? "Porcentaje" : "Monto fijo"}
                   </td>
-                  <td className="px-4 py-3 font-bold" style={{ fontFamily: "DM Sans, sans-serif", color: "#e8003d" }}>
+                  <td className="px-4 py-3 font-bold" style={{ fontFamily: "var(--font-body)", color: "#e8003d" }}>
                     {c.tipo_descuento === "porcentaje" ? `${c.valor}%` : formatCLP(c.valor)}
                   </td>
-                  <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                  <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                     {c.usos_actuales}{c.usos_maximos ? ` / ${c.usos_maximos}` : ""}
                   </td>
-                  <td className="px-4 py-3" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                  <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                     {c.expira_at ? new Date(c.expira_at).toLocaleDateString("es-CL") : "—"}
                   </td>
                   <td className="px-4 py-3">
                     <span className="text-xs px-2 py-0.5 rounded font-medium" style={{
-                      fontFamily: "Barlow, sans-serif",
+                      fontFamily: "var(--font-body)",
                       backgroundColor: c.activo ? "#dcfce7" : "#fee2e2",
                       color: c.activo ? "#166534" : "#991b1b",
                     }}>
@@ -237,7 +237,7 @@ export default function CuponesPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "Oswald, sans-serif" }}>
+            <DialogTitle style={{ fontFamily: "var(--font-titulo)" }}>
               {editando ? "Editar cupón" : "Nuevo cupón"}
             </DialogTitle>
           </DialogHeader>
@@ -246,13 +246,13 @@ export default function CuponesPage() {
               {lbl("Código")}
               <input value={form.codigo} onChange={set("codigo")}
                 className={inputClass}
-                style={{ fontFamily: "DM Sans, sans-serif", textTransform: "uppercase" }}
+                style={{ fontFamily: "var(--font-body)", textTransform: "uppercase" }}
                 placeholder="FANS20" />
             </div>
             <div>
               {lbl("Tipo")}
               <select value={form.tipo} onChange={set("tipo")}
-                className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }}>
+                className={inputClass} style={{ fontFamily: "var(--font-body)" }}>
                 <option value="porcentaje">Porcentaje (%)</option>
                 <option value="fijo">Monto fijo ($)</option>
               </select>
@@ -260,30 +260,30 @@ export default function CuponesPage() {
             <div>
               {lbl(`Valor ${form.tipo === "porcentaje" ? "(%)" : "(CLP)"}`)}
               <input type="number" value={form.valor} onChange={set("valor")}
-                className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }}
+                className={inputClass} style={{ fontFamily: "var(--font-body)" }}
                 placeholder={form.tipo === "porcentaje" ? "20" : "2000"} />
             </div>
             <div>
               {lbl("Usos máximos")}
               <input type="number" value={form.usos_maximos} onChange={set("usos_maximos")}
-                className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }}
+                className={inputClass} style={{ fontFamily: "var(--font-body)" }}
                 placeholder="Ilimitado" />
             </div>
             <div>
               {lbl("Fecha de expiración")}
               <input type="date" value={form.expira_at} onChange={set("expira_at")}
-                className={inputClass} style={{ fontFamily: "DM Sans, sans-serif" }} />
+                className={inputClass} style={{ fontFamily: "var(--font-body)" }} />
             </div>
           </div>
           <DialogFooter>
             <button onClick={() => setDialogOpen(false)}
               className="px-4 py-2 rounded border text-sm"
-              style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#666666" }}>
+              style={{ fontFamily: "var(--font-body)", borderColor: "#e8e8e8", color: "#666666" }}>
               Cancelar
             </button>
             <button onClick={guardar} disabled={guardando}
               className="px-4 py-2 rounded text-white text-sm"
-              style={{ fontFamily: "Barlow, sans-serif", backgroundColor: guardando ? "#f0a0b0" : "#e8003d" }}>
+              style={{ fontFamily: "var(--font-body)", backgroundColor: guardando ? "#f0a0b0" : "#e8003d" }}>
               {guardando ? "Guardando..." : "Guardar"}
             </button>
           </DialogFooter>

@@ -130,13 +130,13 @@ export default function CategoriasPage() {
     queryClient.invalidateQueries({ queryKey: ["admin-categorias"] });
   };
 
-  const btnStyle = { fontFamily: "Barlow, sans-serif" as const };
+  const btnStyle = { fontFamily: "var(--font-body)" as const };
   const inputClass = "w-full rounded-md px-3 py-2.5 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none transition-colors";
 
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
-        <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
+        <h1 style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}>
           Categorías
         </h1>
         <button
@@ -150,7 +150,7 @@ export default function CategoriasPage() {
 
       <div className="flex flex-col gap-3">
         {raices.length === 0 && (
-          <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Sin categorías aún.</p>
+          <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Sin categorías aún.</p>
         )}
 
         {raices.map((cat) => (
@@ -158,7 +158,7 @@ export default function CategoriasPage() {
             {/* Header categoría raíz */}
             <div className="flex items-center gap-3 px-4 py-3" style={{ backgroundColor: "#f8f7f5" }}>
               {cat.icono && <span className="text-xl">{cat.icono}</span>}
-              <span className="flex-1" style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
+              <span className="flex-1" style={{ fontFamily: "var(--font-body)", fontSize: "16px", fontWeight: "600", color: "#111111" }}>
                 {cat.nombre}
               </span>
               <div className="flex gap-1">
@@ -190,7 +190,7 @@ export default function CategoriasPage() {
                   >
                     <span style={{ color: "#cccccc", marginLeft: "24px" }}>└</span>
                     {hija.icono && <span>{hija.icono}</span>}
-                    <span className="flex-1" style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#444444" }}>
+                    <span className="flex-1" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#444444" }}>
                       {hija.nombre}
                     </span>
                     <div className="flex gap-1">
@@ -224,44 +224,44 @@ export default function CategoriasPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "Oswald, sans-serif" }}>
+            <DialogTitle style={{ fontFamily: "var(--font-titulo)" }}>
               {editando ? "Editar categoría" : "Nueva categoría"}
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-4 py-2">
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#444444", display: "block", marginBottom: "6px" }}>
+              <label style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#444444", display: "block", marginBottom: "6px" }}>
                 Nombre
               </label>
               <input
                 value={form.nombre}
                 onChange={(e) => setForm((f) => ({ ...f, nombre: e.target.value }))}
                 className={inputClass}
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                 placeholder="Ej: Ropa"
               />
             </div>
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#444444", display: "block", marginBottom: "6px" }}>
+              <label style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#444444", display: "block", marginBottom: "6px" }}>
                 Ícono (emoji)
               </label>
               <input
                 value={form.icono}
                 onChange={(e) => setForm((f) => ({ ...f, icono: e.target.value }))}
                 className={inputClass}
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                 placeholder="🎵"
               />
             </div>
             <div>
-              <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#444444", display: "block", marginBottom: "6px" }}>
+              <label style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#444444", display: "block", marginBottom: "6px" }}>
                 Es subcategoría de (opcional)
               </label>
               <select
                 value={form.padre_id}
                 onChange={(e) => setForm((f) => ({ ...f, padre_id: e.target.value }))}
                 className={inputClass}
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                style={{ fontFamily: "var(--font-body)", color: "#111111" }}
               >
                 <option value="">— Categoría raíz —</option>
                 {raices.map((r) => (

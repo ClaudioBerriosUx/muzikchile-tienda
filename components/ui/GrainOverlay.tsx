@@ -13,11 +13,16 @@
 /**
  * Qué tan visible es el grano. Rango útil en este sitio: 0.05 – 0.15.
  *
+ * Subida de 0.08 a 0.12 junto con el arreglo de la animación: a 0.08 la textura
+ * se veía, pero el temblor no — el ojo detecta mucho peor el MOVIMIENTO de algo
+ * de bajo contraste que su presencia. Un poco más de opacidad es lo que hace
+ * que el salto de fotograma se lea.
+ *
  * ⚠️ La referencia usaba 0.8, pero eso era con `difference`, que es un modo
  * mucho más agresivo. Con `screen` y fondo casi negro, 0.8 sería una tormenta
  * de nieve.
  */
-const OPACIDAD = 0.08;
+const OPACIDAD = 0.12;
 
 /**
  * Modo de fusión. Importa MÁS de lo que parece en este sitio, porque la portada
@@ -81,15 +86,26 @@ export default function GrainOverlay() {
       style={{
         position: "fixed",
         /*
-          La capa mide el doble del viewport y se ancla desplazada, de modo que
-          al moverse nunca asome un borde. 200% (y no el 300% de la referencia)
-          es deliberado: el área de la capa se paga en memoria de GPU, y 300%
-          son 9 viewports contra los 4 de acá.
+          La capa mide el TRIPLE del viewport y se ancla desplazada, de modo que
+          al moverse nunca asome un borde. Los offsets son los de la referencia.
+
+          Con estos valores la capa va de -50% a +250% en horizontal y de -110%
+          a +190% en vertical: sobra medio viewport a cada lado y cerca de uno
+          entero arriba y abajo. Las traslaciones de los keyframes (±8% del
+          elemento = ±24% de pantalla) caben ahí con holgura.
+
+          ⚠️ COSTO: 300% × 300% son 9 viewports de capa compuesta, contra los 4
+          que serían a 200%. En una pantalla de 1920×1080 eso es del orden de
+          ~75MB de textura en GPU (el navegador tesela y no rasteriza todo de
+          una, pero el orden de magnitud es ese). Para el movimiento que hacen
+          hoy los keyframes, 200%/-50%/-50% alcanzaría de sobra y costaría menos
+          de la mitad: si aparece jank en equipos modestos, ese es el primer
+          dial que hay que bajar, y no hace falta tocar los keyframes.
         */
-        top: "-50%",
+        top: "-110%",
         left: "-50%",
-        width: "200%",
-        height: "200%",
+        width: "300%",
+        height: "300%",
         zIndex: Z_INDEX,
         // Sin esto la capa se comería todos los clics de la portada.
         pointerEvents: "none",

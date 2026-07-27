@@ -27,7 +27,7 @@ export default function StatusBadge({ estado }: Props) {
       style={{
         backgroundColor: estilo.bg,
         color: estilo.text,
-        fontFamily: "Barlow, sans-serif",
+        fontFamily: "var(--font-body)",
       }}
     >
       {estilo.label}

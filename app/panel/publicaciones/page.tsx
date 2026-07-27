@@ -122,13 +122,13 @@ export default function MisPublicacionesPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
-        <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
+        <h1 style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}>
           Mis publicaciones
         </h1>
         <Link
           href="/panel/publicaciones/nueva"
           className="flex items-center gap-2 px-4 py-2 rounded-md text-white text-sm font-semibold"
-          style={{ backgroundColor: "#e8003d", fontFamily: "Barlow, sans-serif" }}
+          style={{ backgroundColor: "#e8003d", fontFamily: "var(--font-body)" }}
         >
           <Plus size={16} />
           Nueva publicación
@@ -152,16 +152,16 @@ export default function MisPublicacionesPage() {
       ) : publicaciones.length === 0 ? (
         <div className="text-center py-20 rounded-xl border border-[#e8e8e8]" style={{ backgroundColor: "#f8f7f5" }}>
           <Newspaper size={40} className="mx-auto mb-3 text-[#cccccc]" />
-          <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", color: "#111111" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "20px", color: "#111111" }}>
             Aún no tienes publicaciones
           </p>
-          <p className="mt-2" style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#666666" }}>
+          <p className="mt-2" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>
             Cuenta un lanzamiento, un show o lo que estés preparando.
           </p>
           <Link
             href="/panel/publicaciones/nueva"
             className="inline-block mt-4 px-5 py-2 rounded-md text-white text-sm"
-            style={{ backgroundColor: "#e8003d", fontFamily: "Barlow, sans-serif" }}
+            style={{ backgroundColor: "#e8003d", fontFamily: "var(--font-body)" }}
           >
             Crear la primera
           </Link>
@@ -191,7 +191,7 @@ export default function MisPublicacionesPage() {
                   <div className="flex items-start justify-between gap-3">
                     <p
                       className="line-clamp-2"
-                      style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", color: "#111111" }}
+                      style={{ fontFamily: "var(--font-body)", fontSize: "16px", color: "#111111" }}
                     >
                       {p.titular}
                     </p>
@@ -202,7 +202,7 @@ export default function MisPublicacionesPage() {
 
                   <p
                     className="mt-1"
-                    style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#666666" }}
+                    style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#666666" }}
                   >
                     {etiquetaCategoria(p.categoria)}
                     {" · "}
@@ -218,13 +218,13 @@ export default function MisPublicacionesPage() {
                       style={{ backgroundColor: "#fff7ed", borderColor: "#fed7aa" }}
                     >
                       <p
-                        style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", fontWeight: 600, color: "#9a3412" }}
+                        style={{ fontFamily: "var(--font-body)", fontSize: "12px", fontWeight: 600, color: "#9a3412" }}
                       >
                         Qué hay que corregir
                       </p>
                       <p
                         className="mt-0.5"
-                        style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#7c2d12", lineHeight: 1.5 }}
+                        style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#7c2d12", lineHeight: 1.5 }}
                       >
                         {p.comentario_moderacion}
                       </p>
@@ -241,7 +241,7 @@ export default function MisPublicacionesPage() {
                       <Link
                         href={`/panel/publicaciones/${p.id}/editar`}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs transition-colors"
-                        style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#444444" }}
+                        style={{ fontFamily: "var(--font-body)", borderColor: "#e8e8e8", color: "#444444" }}
                       >
                         <Pencil size={12} />
                         Editar
@@ -254,7 +254,7 @@ export default function MisPublicacionesPage() {
                         href={`/noticias/${p.slug}`}
                         target="_blank"
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs transition-colors"
-                        style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#444444" }}
+                        style={{ fontFamily: "var(--font-body)", borderColor: "#e8e8e8", color: "#444444" }}
                       >
                         <ExternalLink size={12} />
                         Ver publicada
@@ -265,7 +265,7 @@ export default function MisPublicacionesPage() {
                       <button
                         onClick={() => setABorrar(p)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs transition-colors"
-                        style={{ fontFamily: "Barlow, sans-serif", borderColor: "#fecaca", color: "#e8003d" }}
+                        style={{ fontFamily: "var(--font-body)", borderColor: "#fecaca", color: "#e8003d" }}
                       >
                         <Trash2 size={12} />
                         Eliminar
@@ -279,7 +279,7 @@ export default function MisPublicacionesPage() {
                     {!esEditable(p.estado) && (
                       <span
                         className="text-xs"
-                        style={{ fontFamily: "Barlow, sans-serif", color: "#999999" }}
+                        style={{ fontFamily: "var(--font-body)", color: "#999999" }}
                       >
                         {p.estado === "pendiente"
                           ? "En revisión — no se puede editar mientras la revisamos"
@@ -298,12 +298,12 @@ export default function MisPublicacionesPage() {
       <Dialog open={!!aBorrar} onOpenChange={() => !borrando && setABorrar(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "Oswald, sans-serif" }}>
+            <DialogTitle style={{ fontFamily: "var(--font-titulo)" }}>
               {aBorrar?.estado === "publicada"
                 ? "¿Eliminar una noticia publicada?"
                 : "¿Eliminar esta publicación?"}
             </DialogTitle>
-            <DialogDescription style={{ fontFamily: "Barlow, sans-serif" }}>
+            <DialogDescription style={{ fontFamily: "var(--font-body)" }}>
               {aBorrar
                 ? textoConfirmacion(aBorrar.estado, aBorrar.titular)
                 : "No se puede deshacer."}
@@ -314,7 +314,7 @@ export default function MisPublicacionesPage() {
               onClick={() => setABorrar(null)}
               disabled={borrando}
               className="px-4 py-2 rounded border text-sm"
-              style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#444444" }}
+              style={{ fontFamily: "var(--font-body)", borderColor: "#e8e8e8", color: "#444444" }}
             >
               Cancelar
             </button>
@@ -323,7 +323,7 @@ export default function MisPublicacionesPage() {
               disabled={borrando}
               className="px-4 py-2 rounded text-white text-sm"
               style={{
-                fontFamily: "Barlow, sans-serif",
+                fontFamily: "var(--font-body)",
                 backgroundColor: borrando ? "#f0a0b0" : "#e8003d",
                 cursor: borrando ? "not-allowed" : "pointer",
               }}

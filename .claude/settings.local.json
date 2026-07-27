@@ -7,7 +7,18 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(npx vercel *)",
-      "Bash(node -p \"require\\('C:/Users/raice/OneDrive/Documentos/muzikchile-tienda/node_modules/next/package.json'\\).version\")"
+      "Bash(node -p \"require\\('C:/Users/raice/OneDrive/Documentos/muzikchile-tienda/node_modules/next/package.json'\\).version\")",
+      "Bash(grep -P '\\\\t\\(string|\\\\?\\\\?\\)$' \"/c/Users/raice/AppData/Local/Temp/claude/C--Users-raice-OneDrive-Documentos-muzikchile-tienda/c6724e7f-bc4c-4c92-80b0-c78d696f22a5/scratchpad/detail.txt\")",
+      "Bash(node __TRACKED_VAR__/codemod.mjs __TRACKED_VAR__/log.txt)",
+      "Bash(grep -c 'font-titulo\\\\|F\\\\.titulo' __TRACKED_VAR__/log.txt)",
+      "Bash(grep titulo *)",
+      "Bash(awk -F'\\\\t' '{print $2}')",
+      "Bash(echo \"exit=$?\")",
+      "Bash(node __TRACKED_VAR__/quitar-peso.mjs __TRACKED_VAR__/pesos.txt)",
+      "Bash(npm run *)",
+      "Bash(grep -oE \"[a-z-]+/[a-z-]+$\")",
+      "Bash(git stash *)",
+      "Bash(npx supabase *)"
     ]
   }
 }

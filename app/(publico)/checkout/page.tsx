@@ -71,7 +71,7 @@ export default function CheckoutPage() {
   if (!hidratado) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Cargando...</p>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Cargando...</p>
       </div>
     );
   }
@@ -79,7 +79,7 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-        <p style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Redirigiendo...</p>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Redirigiendo...</p>
       </div>
     );
   }
@@ -142,14 +142,14 @@ export default function CheckoutPage() {
   };
 
   const inputClass = "w-full rounded-md px-3 py-2.5 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none transition-colors";
-  const labelStyle = { fontFamily: "Barlow, sans-serif", fontSize: "14px" as const, color: "#444444" };
-  const errStyle   = { fontFamily: "Barlow, sans-serif", fontSize: "12px" as const, color: "#e8003d" };
+  const labelStyle = { fontFamily: "var(--font-body)", fontSize: "14px" as const, color: "#444444" };
+  const errStyle   = { fontFamily: "var(--font-body)", fontSize: "12px" as const, color: "#e8003d" };
 
   return (
     <>
       <main className="min-h-screen bg-white">
         <div className="max-w-5xl mx-auto px-6 py-10">
-          <h1 className="mb-8" style={{ fontFamily: "Oswald, sans-serif", fontSize: "32px", fontWeight: "700", color: "#111111" }}>
+          <h1 className="mb-8" style={{ fontFamily: "var(--font-titulo)", fontSize: "32px", color: "#111111" }}>
             Checkout
           </h1>
 
@@ -161,7 +161,7 @@ export default function CheckoutPage() {
 
                 {/* Tu pedido */}
                 <section>
-                  <h2 className="mb-4" style={{ fontFamily: "Oswald, sans-serif", fontSize: "18px", fontWeight: "600", color: "#111111" }}>
+                  <h2 className="mb-4" style={{ fontFamily: "var(--font-titulo)", fontSize: "18px", color: "#111111" }}>
                     Tu pedido
                   </h2>
                   <div className="rounded-xl border border-[#e8e8e8] overflow-hidden">
@@ -173,20 +173,20 @@ export default function CheckoutPage() {
                           <div className="w-14 h-14 rounded bg-[#f8f7f5] shrink-0" />
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate" style={{ fontFamily: "Oswald, sans-serif", color: "#111111" }}>{item.nombre}</p>
-                          {item.artista && <p className="text-xs" style={{ fontFamily: "Barlow, sans-serif", color: "#999" }}>{item.artista}</p>}
-                          <p className="text-sm font-bold mt-0.5" style={{ fontFamily: "DM Sans, sans-serif", color: "#e8003d" }}>{formatCLP(item.precio)}</p>
+                          <p className="text-sm font-medium truncate" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>{item.nombre}</p>
+                          {item.artista && <p className="text-xs" style={{ fontFamily: "var(--font-body)", color: "#999" }}>{item.artista}</p>}
+                          <p className="text-sm font-bold mt-0.5" style={{ fontFamily: "var(--font-body)", color: "#e8003d" }}>{formatCLP(item.precio)}</p>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <button type="button" onClick={() => actualizarCantidad(item.id, item.cantidad - 1)} className="w-7 h-7 rounded border border-[#e8e8e8] flex items-center justify-center">
                             <Minus size={11} />
                           </button>
-                          <span className="w-6 text-center text-sm" style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}>{item.cantidad}</span>
+                          <span className="w-6 text-center text-sm" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>{item.cantidad}</span>
                           <button type="button" onClick={() => actualizarCantidad(item.id, item.cantidad + 1)} className="w-7 h-7 rounded border border-[#e8e8e8] flex items-center justify-center">
                             <Plus size={11} />
                           </button>
                         </div>
-                        <p className="text-sm font-semibold w-20 text-right shrink-0" style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}>
+                        <p className="text-sm font-semibold w-20 text-right shrink-0" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
                           {formatCLP(item.precio * item.cantidad)}
                         </p>
                         <button type="button" onClick={() => remover(item.id)} className="text-[#ccc] hover:text-[#e8003d] transition-colors shrink-0">
@@ -195,26 +195,26 @@ export default function CheckoutPage() {
                       </div>
                     ))}
                     <div className="flex justify-between p-3" style={{ backgroundColor: "#f8f7f5" }}>
-                      <span style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>Subtotal</span>
-                      <span style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 700, color: "#111111" }}>{formatCLP(subtotal)}</span>
+                      <span style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Subtotal</span>
+                      <span style={{ fontFamily: "var(--font-body)", fontWeight: 700, color: "#111111" }}>{formatCLP(subtotal)}</span>
                     </div>
                   </div>
                 </section>
 
                 {/* Cupón */}
                 <section>
-                  <h2 className="mb-3" style={{ fontFamily: "Oswald, sans-serif", fontSize: "18px", fontWeight: "600", color: "#111111" }}>
+                  <h2 className="mb-3" style={{ fontFamily: "var(--font-titulo)", fontSize: "18px", color: "#111111" }}>
                     ¿Tienes un cupón?
                   </h2>
                   {cuponAplicado ? (
                     <div className="flex items-center justify-between p-3 rounded-lg border" style={{ backgroundColor: "#dcfce7", borderColor: "#86efac" }}>
                       <div className="flex items-center gap-2">
                         <Tag size={15} style={{ color: "#166534" }} />
-                        <span style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#166534", fontWeight: 600 }}>
+                        <span style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#166534", fontWeight: 600 }}>
                           {cuponAplicado.codigo} — {cuponAplicado.tipo_descuento === "porcentaje" ? `${cuponAplicado.valor}% de descuento` : `${formatCLP(cuponAplicado.valor)} de descuento`}
                         </span>
                       </div>
-                      <button type="button" onClick={() => { setCuponAplicado(null); setCuponCodigo(""); }} className="text-xs underline" style={{ fontFamily: "Barlow, sans-serif", color: "#166534" }}>
+                      <button type="button" onClick={() => { setCuponAplicado(null); setCuponCodigo(""); }} className="text-xs underline" style={{ fontFamily: "var(--font-body)", color: "#166534" }}>
                         Quitar
                       </button>
                     </div>
@@ -227,9 +227,9 @@ export default function CheckoutPage() {
                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); validarCupon(); } }}
                         placeholder="CÓDIGO"
                         className={`${inputClass} uppercase tracking-widest`}
-                        style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                        style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                       />
-                      <button type="button" onClick={validarCupon} disabled={buscandoCupon} className="px-5 py-2 rounded-md text-white text-sm font-semibold shrink-0" style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#111111" }}>
+                      <button type="button" onClick={validarCupon} disabled={buscandoCupon} className="px-5 py-2 rounded-md text-white text-sm font-semibold shrink-0" style={{ fontFamily: "var(--font-body)", backgroundColor: "#111111" }}>
                         {buscandoCupon ? "..." : "Aplicar"}
                       </button>
                     </div>
@@ -238,37 +238,37 @@ export default function CheckoutPage() {
 
                 {/* Datos comprador */}
                 <section>
-                  <h2 className="mb-4" style={{ fontFamily: "Oswald, sans-serif", fontSize: "18px", fontWeight: "600", color: "#111111" }}>
+                  <h2 className="mb-4" style={{ fontFamily: "var(--font-titulo)", fontSize: "18px", color: "#111111" }}>
                     Datos del comprador
                   </h2>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2">
                       <label style={labelStyle} className="block mb-1.5">Nombre completo</label>
-                      <input {...register("nombre")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} />
+                      <input {...register("nombre")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} />
                       {errors.nombre && <p className="mt-1" style={errStyle}>{errors.nombre.message}</p>}
                     </div>
                     <div>
                       <label style={labelStyle} className="block mb-1.5">Email</label>
-                      <input type="email" {...register("email")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} />
+                      <input type="email" {...register("email")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} />
                       {errors.email && <p className="mt-1" style={errStyle}>{errors.email.message}</p>}
                     </div>
                     <div>
                       <label style={labelStyle} className="block mb-1.5">Teléfono (opcional)</label>
-                      <input type="tel" {...register("telefono")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} />
+                      <input type="tel" {...register("telefono")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} />
                     </div>
                     <div className="col-span-2">
                       <label style={labelStyle} className="block mb-1.5">Dirección de envío</label>
-                      <input {...register("direccion")} placeholder="Av. Ejemplo 1234, depto 5A" className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} />
+                      <input {...register("direccion")} placeholder="Av. Ejemplo 1234, depto 5A" className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} />
                       {errors.direccion && <p className="mt-1" style={errStyle}>{errors.direccion.message}</p>}
                     </div>
                     <div>
                       <label style={labelStyle} className="block mb-1.5">Ciudad</label>
-                      <input {...register("ciudad")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} />
+                      <input {...register("ciudad")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} />
                       {errors.ciudad && <p className="mt-1" style={errStyle}>{errors.ciudad.message}</p>}
                     </div>
                     <div>
                       <label style={labelStyle} className="block mb-1.5">Región</label>
-                      <input {...register("region")} className={inputClass} style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }} />
+                      <input {...register("region")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} />
                       {errors.region && <p className="mt-1" style={errStyle}>{errors.region.message}</p>}
                     </div>
                   </div>
@@ -278,15 +278,15 @@ export default function CheckoutPage() {
               {/* ── Columna derecha — Resumen ── */}
               <div>
                 <div className="sticky top-20 rounded-xl border border-[#e8e8e8] p-6" style={{ backgroundColor: "#f8f7f5" }}>
-                  <h2 className="mb-4" style={{ fontFamily: "Oswald, sans-serif", fontSize: "18px", fontWeight: "600", color: "#111111" }}>Resumen</h2>
+                  <h2 className="mb-4" style={{ fontFamily: "var(--font-titulo)", fontSize: "18px", color: "#111111" }}>Resumen</h2>
 
                   <div className="flex flex-col gap-2 mb-4">
                     {items.map((item) => (
                       <div key={item.id} className="flex justify-between text-sm gap-2">
-                        <span className="truncate" style={{ fontFamily: "Barlow, sans-serif", color: "#666666" }}>
+                        <span className="truncate" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                           {item.nombre}{item.cantidad > 1 ? ` ×${item.cantidad}` : ""}
                         </span>
-                        <span className="shrink-0" style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}>
+                        <span className="shrink-0" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
                           {formatCLP(item.precio * item.cantidad)}
                         </span>
                       </div>
@@ -296,13 +296,13 @@ export default function CheckoutPage() {
                   <div className="border-t border-[#e8e8e8] pt-4 flex flex-col gap-2">
                     {cuponAplicado && (
                       <div className="flex justify-between text-sm">
-                        <span style={{ fontFamily: "Barlow, sans-serif", color: "#166534" }}>Descuento</span>
-                        <span style={{ fontFamily: "DM Sans, sans-serif", color: "#166534" }}>-{formatCLP(descuento)}</span>
+                        <span style={{ fontFamily: "var(--font-body)", color: "#166534" }}>Descuento</span>
+                        <span style={{ fontFamily: "var(--font-body)", color: "#166534" }}>-{formatCLP(descuento)}</span>
                       </div>
                     )}
                     <div className="flex items-center justify-between mt-1">
-                      <span style={{ fontFamily: "Barlow, sans-serif", fontWeight: 600, color: "#111111" }}>Total</span>
-                      <span style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 700, fontSize: "22px", color: "#e8003d" }}>{formatCLP(total)}</span>
+                      <span style={{ fontFamily: "var(--font-body)", fontWeight: 600, color: "#111111" }}>Total</span>
+                      <span style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: "22px", color: "#e8003d" }}>{formatCLP(total)}</span>
                     </div>
                   </div>
 
@@ -316,15 +316,15 @@ export default function CheckoutPage() {
                     >
                       <span className="text-xl">🔴</span>
                       <div>
-                        <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", fontWeight: 600, color: "#111111" }}>MercadoPago</p>
-                        <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "11px", color: "#666666" }}>Tarjetas de crédito y débito</p>
+                        <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", fontWeight: 600, color: "#111111" }}>MercadoPago</p>
+                        <p style={{ fontFamily: "var(--font-body)", fontSize: "11px", color: "#666666" }}>Tarjetas de crédito y débito</p>
                       </div>
                     </button>
                     <div className="w-full flex items-center gap-3 p-3 rounded-lg border border-[#e8e8e8] opacity-50 cursor-not-allowed select-none">
                       <span className="text-xl">🟢</span>
                       <div>
-                        <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", fontWeight: 600, color: "#111111" }}>WebPay</p>
-                        <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "11px", color: "#666666" }}>Próximamente</p>
+                        <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", fontWeight: 600, color: "#111111" }}>WebPay</p>
+                        <p style={{ fontFamily: "var(--font-body)", fontSize: "11px", color: "#666666" }}>Próximamente</p>
                       </div>
                     </div>
                   </div>
@@ -333,7 +333,7 @@ export default function CheckoutPage() {
                     type="submit"
                     disabled={pagando}
                     className="w-full h-12 rounded-md text-white font-semibold mt-5"
-                    style={{ fontFamily: "Barlow, sans-serif", fontSize: "15px", backgroundColor: pagando ? "#f0a0b0" : "#e8003d", cursor: pagando ? "not-allowed" : "pointer" }}
+                    style={{ fontFamily: "var(--font-body)", fontSize: "15px", backgroundColor: pagando ? "#f0a0b0" : "#e8003d", cursor: pagando ? "not-allowed" : "pointer" }}
                     onMouseEnter={(e) => { if (!pagando) e.currentTarget.style.backgroundColor = "#c5002e"; }}
                     onMouseLeave={(e) => { if (!pagando) e.currentTarget.style.backgroundColor = "#e8003d"; }}
                   >

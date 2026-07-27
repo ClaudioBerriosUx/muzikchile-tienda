@@ -39,7 +39,7 @@ function AtribucionAutor({ autor }: { autor: Autor }) {
           style={{
             backgroundColor: C.rojo,
             color: C.blanco,
-            fontFamily: F.bebas,
+            fontFamily: F.body,
             fontSize: "20px",
           }}
         >
@@ -50,14 +50,14 @@ function AtribucionAutor({ autor }: { autor: Autor }) {
       <span className="min-w-0">
         <span
           className="block"
-          style={{ fontFamily: F.dmSans, fontSize: "12px", color: C.grisTenue }}
+          style={{ fontFamily: F.body, fontSize: "12px", color: C.grisTenue }}
         >
           {autor.es_editorial ? "Escrito por" : "Publicado por"}
         </span>
         <span
           className="block truncate"
           style={{
-            fontFamily: F.barlowC,
+            fontFamily: F.body,
             textTransform: "uppercase",
             letterSpacing: "0.08em",
             fontSize: "17px",
@@ -73,7 +73,7 @@ function AtribucionAutor({ autor }: { autor: Autor }) {
         <span
           className="ml-auto shrink-0"
           style={{
-            fontFamily: F.barlowC,
+            fontFamily: F.body,
             textTransform: "uppercase",
             letterSpacing: "0.1em",
             fontSize: "12px",
@@ -155,7 +155,7 @@ export default async function NoticiaPage({ params }: Props) {
           href="/noticias"
           className="inline-flex items-center gap-1.5 mb-8 transition-colors"
           style={{
-            fontFamily: F.barlowC,
+            fontFamily: F.body,
             textTransform: "uppercase",
             letterSpacing: "0.1em",
             fontSize: "13px",
@@ -189,7 +189,7 @@ export default async function NoticiaPage({ params }: Props) {
               style={{
                 borderColor: C.rojo,
                 color: C.rojoClaro,
-                fontFamily: F.barlowC,
+                fontFamily: F.body,
                 fontSize: "12px",
                 letterSpacing: "0.1em",
                 textTransform: "uppercase",
@@ -198,7 +198,7 @@ export default async function NoticiaPage({ params }: Props) {
               {etiquetaCategoria(noticia.categoria)}
             </span>
           )}
-          <span style={{ fontFamily: F.dmSans, fontSize: "13px", color: C.grisTenue }}>
+          <span style={{ fontFamily: F.body, fontSize: "13px", color: C.grisTenue }}>
             {fechaLarga(noticia.created_at)}
           </span>
         </div>
@@ -206,7 +206,7 @@ export default async function NoticiaPage({ params }: Props) {
         {/* Titular */}
         <h1
           style={{
-            fontFamily: F.bebas,
+            fontFamily: F.titulo,
             fontSize: "clamp(34px, 6vw, 52px)",
             lineHeight: 1.08,
             letterSpacing: "0.02em",
@@ -221,7 +221,7 @@ export default async function NoticiaPage({ params }: Props) {
           <p
             className="mt-4"
             style={{
-              fontFamily: F.dmSans,
+              fontFamily: F.body,
               fontSize: "19px",
               lineHeight: 1.6,
               color: C.grisClaro,
@@ -252,7 +252,7 @@ export default async function NoticiaPage({ params }: Props) {
             href="/noticias"
             className="inline-flex items-center gap-1.5 transition-colors"
             style={{
-              fontFamily: F.barlowC,
+              fontFamily: F.body,
               textTransform: "uppercase",
               letterSpacing: "0.1em",
               fontSize: "14px",

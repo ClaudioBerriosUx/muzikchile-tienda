@@ -44,7 +44,7 @@ const LEGALES = [
 ];
 
 const tituloColumna: React.CSSProperties = {
-  fontFamily: F.barlowC,
+  fontFamily: F.body,
   fontSize: "13px",
   fontWeight: 600,
   color: C.blanco,
@@ -54,7 +54,7 @@ const tituloColumna: React.CSSProperties = {
 };
 
 const linkStyle: React.CSSProperties = {
-  fontFamily: F.dmSans,
+  fontFamily: F.body,
   fontSize: "14px",
   color: C.gris,
 };
@@ -172,7 +172,7 @@ export default function Footer() {
 
       <div style={{ borderTop: `1px solid ${C.borde}` }}>
         <div className="max-w-6xl mx-auto px-6 py-5">
-          <p style={{ fontFamily: F.dmSans, fontSize: "13px", color: C.grisTenue }}>
+          <p style={{ fontFamily: F.body, fontSize: "13px", color: C.grisTenue }}>
             MuzikChile 2024 — 2026
           </p>
         </div>

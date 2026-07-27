@@ -157,7 +157,7 @@ export default function Hero() {
               fontSize: "12px",
               letterSpacing: "1px",
               fontWeight: 500,
-              fontFamily: F.dmSans,
+              fontFamily: F.body,
               // Las mayúsculas las pone el CSS: en el JSX el texto queda legible
               // y traducible, y no hay que reescribirlo si el estilo cambia.
               textTransform: "uppercase",
@@ -202,7 +202,7 @@ export default function Hero() {
                 </span>
                 <p
                   style={{
-                    fontFamily: F.barlowC,
+                    fontFamily: F.body,
                     textTransform: "uppercase",
                     letterSpacing: "0.14em",
                     fontSize: "13px",

@@ -130,7 +130,7 @@ function VideoModal({
         <div className="mt-4">
           <p
             style={{
-              fontFamily: F.barlowC,
+              fontFamily: F.body,
               textTransform: "uppercase",
               letterSpacing: "0.1em",
               color: C.blanco,
@@ -139,7 +139,7 @@ function VideoModal({
           >
             {video.artist}
           </p>
-          <p style={{ fontFamily: F.dmSans, color: C.gris, fontSize: "14px" }}>
+          <p style={{ fontFamily: F.body, color: C.gris, fontSize: "14px" }}>
             {video.tracktitle}
           </p>
         </div>
@@ -208,7 +208,7 @@ function VideoCard({
         <p
           className="truncate"
           style={{
-            fontFamily: F.barlowC,
+            fontFamily: F.body,
             textTransform: "uppercase",
             letterSpacing: "0.08em",
             fontSize: "17px",
@@ -219,7 +219,7 @@ function VideoCard({
         </p>
         <p
           className="truncate mt-0.5"
-          style={{ fontFamily: F.dmSans, fontSize: "13px", color: C.gris }}
+          style={{ fontFamily: F.body, fontSize: "13px", color: C.gris }}
         >
           {video.tracktitle ?? ""}
         </p>
@@ -230,7 +230,7 @@ function VideoCard({
             style={{
               borderColor: C.rojo,
               color: C.rojoClaro,
-              fontFamily: F.dmSans,
+              fontFamily: F.body,
               fontSize: "10px",
               letterSpacing: "0.06em",
               textTransform: "uppercase",
@@ -284,7 +284,7 @@ export default function VideosDestacados() {
         <h2
           className="pl-4 mb-8"
           style={{
-            fontFamily: F.bebas,
+            fontFamily: F.titulo,
             fontSize: "38px",
             letterSpacing: "0.04em",
             color: C.blanco,
@@ -298,7 +298,7 @@ export default function VideosDestacados() {
         {!configurado ? (
           <p
             className="rounded-lg border p-6"
-            style={{ borderColor: C.borde, fontFamily: F.dmSans, color: C.grisTenue, fontSize: "14px" }}
+            style={{ borderColor: C.borde, fontFamily: F.body, color: C.grisTenue, fontSize: "14px" }}
           >
             Falta configurar <code>NEXT_PUBLIC_CHANNEL_SUPABASE_URL</code> y{" "}
             <code>NEXT_PUBLIC_CHANNEL_SUPABASE_ANON_KEY</code> para mostrar los videos del Channel.
@@ -320,11 +320,11 @@ export default function VideosDestacados() {
             ))}
           </div>
         ) : isError ? (
-          <p style={{ fontFamily: F.dmSans, color: C.grisTenue, fontSize: "14px" }}>
+          <p style={{ fontFamily: F.body, color: C.grisTenue, fontSize: "14px" }}>
             No se pudieron cargar los videos en este momento.
           </p>
         ) : videos.length === 0 ? (
-          <p style={{ fontFamily: F.dmSans, color: C.grisTenue, fontSize: "14px" }}>
+          <p style={{ fontFamily: F.body, color: C.grisTenue, fontSize: "14px" }}>
             Todavía no hay videos destacados.
           </p>
         ) : (

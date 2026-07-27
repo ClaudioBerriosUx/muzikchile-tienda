@@ -12,11 +12,11 @@ type Settings = Record<string, string>;
 function SectionHeader({ title, badge }: { title: string; badge?: string }) {
   return (
     <div className="flex items-center gap-3 mb-5">
-      <h2 style={{ fontFamily: "Oswald, sans-serif", fontSize: "17px", fontWeight: "600", color: "#111111" }}>
+      <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "17px", color: "#111111" }}>
         {title}
       </h2>
       {badge && (
-        <span className="text-xs px-2 py-0.5 rounded-full" style={{ fontFamily: "Barlow, sans-serif", backgroundColor: "#dbeafe", color: "#1e40af" }}>
+        <span className="text-xs px-2 py-0.5 rounded-full" style={{ fontFamily: "var(--font-body)", backgroundColor: "#dbeafe", color: "#1e40af" }}>
           {badge}
         </span>
       )}
@@ -26,7 +26,7 @@ function SectionHeader({ title, badge }: { title: string; badge?: string }) {
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label style={{ fontFamily: "Barlow, sans-serif", fontSize: "13px", color: "#666666", display: "block", marginBottom: "6px" }}>
+    <label style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#666666", display: "block", marginBottom: "6px" }}>
       {children}
     </label>
   );
@@ -87,7 +87,7 @@ export default function ConfiguracionPage() {
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className={`${inputClass} pr-10`}
-          style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+          style={{ fontFamily: "var(--font-body)", color: "#111111" }}
         />
         <button
           type="button"
@@ -102,7 +102,7 @@ export default function ConfiguracionPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="mb-8" style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
+      <h1 className="mb-8" style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}>
         Configuración
       </h1>
 
@@ -118,7 +118,7 @@ export default function ConfiguracionPage() {
               value={form.comision_default ?? "10"}
               onChange={(e) => set("comision_default", e.target.value)}
               className={inputClass}
-              style={{ fontFamily: "DM Sans, sans-serif", color: "#111111", maxWidth: "160px" }}
+              style={{ fontFamily: "var(--font-body)", color: "#111111", maxWidth: "160px" }}
             />
           </div>
         </section>
@@ -149,10 +149,10 @@ export default function ConfiguracionPage() {
             </div>
             <div className="flex items-center justify-between py-2">
               <div>
-                <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#111111", fontWeight: 600 }}>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#111111", fontWeight: 600 }}>
                   Modo producción
                 </p>
-                <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#666666" }}>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#666666" }}>
                   Desactivado = Sandbox
                 </p>
               </div>
@@ -175,7 +175,7 @@ export default function ConfiguracionPage() {
                 value={form.transbank_commerce_code ?? ""}
                 onChange={(e) => set("transbank_commerce_code", e.target.value)}
                 className={inputClass}
-                style={{ fontFamily: "DM Sans, sans-serif", color: "#111111" }}
+                style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                 placeholder="597055555532"
               />
             </div>
@@ -191,10 +191,10 @@ export default function ConfiguracionPage() {
             </div>
             <div className="flex items-center justify-between py-2">
               <div>
-                <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "14px", color: "#111111", fontWeight: 600 }}>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#111111", fontWeight: 600 }}>
                   Modo producción
                 </p>
-                <p style={{ fontFamily: "Barlow, sans-serif", fontSize: "12px", color: "#666666" }}>
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#666666" }}>
                   Desactivado = Integración
                 </p>
               </div>
@@ -217,7 +217,7 @@ export default function ConfiguracionPage() {
               value={form.logistica_embalaje ?? "5"}
               onChange={(e) => set("logistica_embalaje", e.target.value)}
               className={inputClass}
-              style={{ fontFamily: "DM Sans, sans-serif", color: "#111111", maxWidth: "160px" }}
+              style={{ fontFamily: "var(--font-body)", color: "#111111", maxWidth: "160px" }}
             />
           </div>
         </section>
@@ -229,7 +229,7 @@ export default function ConfiguracionPage() {
             disabled={guardando}
             className="h-11 px-8 rounded-md text-white font-semibold transition-colors"
             style={{
-              fontFamily: "Barlow, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: "15px",
               backgroundColor: guardando ? "#f0a0b0" : "#e8003d",
               cursor: guardando ? "not-allowed" : "pointer",

@@ -111,7 +111,7 @@ function EmbedEnlace({ tipo, url }: { tipo: string; url: string }) {
         style={{
           borderColor: C.rojo,
           color: C.rojoClaro,
-          fontFamily: F.barlowC,
+          fontFamily: F.body,
           fontSize: "12px",
           letterSpacing: "0.1em",
           textTransform: "uppercase",
@@ -121,13 +121,13 @@ function EmbedEnlace({ tipo, url }: { tipo: string; url: string }) {
       </span>
       <span
         className="truncate"
-        style={{ fontFamily: F.dmSans, fontSize: "14px", color: C.grisClaro }}
+        style={{ fontFamily: F.body, fontSize: "14px", color: C.grisClaro }}
       >
         Ver publicación en {ETIQUETA[tipo] ?? tipo}
       </span>
       <span
         className="ml-auto shrink-0"
-        style={{ fontFamily: F.barlowC, fontSize: "13px", color: C.rojoClaro }}
+        style={{ fontFamily: F.body, fontSize: "13px", color: C.rojoClaro }}
       >
         Abrir →
       </span>

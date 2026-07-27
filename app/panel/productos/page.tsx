@@ -84,13 +84,13 @@ export default function MisProductosPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-8">
-        <h1 style={{ fontFamily: "Oswald, sans-serif", fontSize: "28px", fontWeight: "700", color: "#111111" }}>
+        <h1 style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}>
           Mis productos
         </h1>
         <Link
           href="/panel/productos/nuevo"
           className="flex items-center gap-2 px-4 py-2 rounded-md text-white text-sm font-semibold"
-          style={{ backgroundColor: "#e8003d", fontFamily: "Barlow, sans-serif" }}
+          style={{ backgroundColor: "#e8003d", fontFamily: "var(--font-body)" }}
         >
           <Plus size={16} />
           Nuevo producto
@@ -115,13 +115,13 @@ export default function MisProductosPage() {
       ) : productos.length === 0 ? (
         <div className="text-center py-20 rounded-xl border border-[#e8e8e8]" style={{ backgroundColor: "#f8f7f5" }}>
           <Music size={40} className="mx-auto mb-3 text-[#cccccc]" />
-          <p style={{ fontFamily: "Oswald, sans-serif", fontSize: "20px", color: "#111111" }}>
+          <p style={{ fontFamily: "var(--font-body)", fontSize: "20px", color: "#111111" }}>
             Aún no tienes productos
           </p>
           <Link
             href="/panel/productos/nuevo"
             className="inline-block mt-4 px-5 py-2 rounded-md text-white text-sm"
-            style={{ backgroundColor: "#e8003d", fontFamily: "Barlow, sans-serif" }}
+            style={{ backgroundColor: "#e8003d", fontFamily: "var(--font-body)" }}
           >
             Sube tu primer producto
           </Link>
@@ -153,19 +153,19 @@ export default function MisProductosPage() {
                     <div className="flex items-start justify-between gap-2">
                       <p
                         className="font-medium line-clamp-1"
-                        style={{ fontFamily: "Oswald, sans-serif", fontSize: "16px", color: "#111111" }}
+                        style={{ fontFamily: "var(--font-body)", fontSize: "16px", color: "#111111" }}
                       >
                         {p.nombre}
                       </p>
                       <StatusBadge estado={p.estado} />
                     </div>
 
-                    <p className="mt-1" style={{ fontFamily: "DM Sans, sans-serif", fontWeight: 700, color: "#e8003d", fontSize: "15px" }}>
+                    <p className="mt-1" style={{ fontFamily: "var(--font-body)", fontWeight: 700, color: "#e8003d", fontSize: "15px" }}>
                       {formatCLP(p.precio)}
                     </p>
 
                     {p.estado === "rechazado" && p.motivo_rechazo && (
-                      <p className="mt-1 text-xs" style={{ fontFamily: "Barlow, sans-serif", color: "#e8003d" }}>
+                      <p className="mt-1 text-xs" style={{ fontFamily: "var(--font-body)", color: "#e8003d" }}>
                         {p.motivo_rechazo}
                       </p>
                     )}
@@ -174,7 +174,7 @@ export default function MisProductosPage() {
                       <Link
                         href={`/panel/productos/${p.id}/editar`}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs transition-colors"
-                        style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#444444" }}
+                        style={{ fontFamily: "var(--font-body)", borderColor: "#e8e8e8", color: "#444444" }}
                       >
                         <Pencil size={12} />
                         Editar
@@ -182,7 +182,7 @@ export default function MisProductosPage() {
                       <button
                         onClick={() => setIdAEliminar(p.id)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs transition-colors"
-                        style={{ fontFamily: "Barlow, sans-serif", borderColor: "#fecaca", color: "#e8003d" }}
+                        style={{ fontFamily: "var(--font-body)", borderColor: "#fecaca", color: "#e8003d" }}
                       >
                         <Trash2 size={12} />
                         Eliminar
@@ -200,8 +200,8 @@ export default function MisProductosPage() {
       <Dialog open={!!idAEliminar} onOpenChange={() => setIdAEliminar(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: "Oswald, sans-serif" }}>¿Eliminar producto?</DialogTitle>
-            <DialogDescription style={{ fontFamily: "Barlow, sans-serif" }}>
+            <DialogTitle style={{ fontFamily: "var(--font-titulo)" }}>¿Eliminar producto?</DialogTitle>
+            <DialogDescription style={{ fontFamily: "var(--font-body)" }}>
               Esta acción no se puede deshacer. El producto será eliminado permanentemente.
             </DialogDescription>
           </DialogHeader>
@@ -209,7 +209,7 @@ export default function MisProductosPage() {
             <button
               onClick={() => setIdAEliminar(null)}
               className="px-4 py-2 rounded border text-sm"
-              style={{ fontFamily: "Barlow, sans-serif", borderColor: "#e8e8e8", color: "#444444" }}
+              style={{ fontFamily: "var(--font-body)", borderColor: "#e8e8e8", color: "#444444" }}
             >
               Cancelar
             </button>
@@ -218,7 +218,7 @@ export default function MisProductosPage() {
               disabled={eliminando}
               className="px-4 py-2 rounded text-white text-sm"
               style={{
-                fontFamily: "Barlow, sans-serif",
+                fontFamily: "var(--font-body)",
                 backgroundColor: eliminando ? "#f0a0b0" : "#e8003d",
                 cursor: eliminando ? "not-allowed" : "pointer",
               }}
