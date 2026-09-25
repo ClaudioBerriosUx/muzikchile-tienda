@@ -634,8 +634,10 @@ Proyecto retomado tras 2 meses sin tocar.
 
 **Pendientes abiertos por esta retoma**
 - 🔐 **Rotar la service role key de Supabase y el token de Vercel** — se
-  filtraron en chats en julio. Tras rotar, actualizar `.env.local` y las env vars
-  del proyecto en Vercel.
+  filtraron en chats en julio. Tras rotar, actualizar `.env.local`, las env vars
+  del proyecto en Vercel y el secreto `SERVICE_ROLE_KEY` de la Edge Function
+  (`npx supabase secrets set`). El Redeploy de Vercel de la rotación lleva
+  también el cambio de `/admin/artistas` (sin plan B de `signInWithOtp`).
 - **Keep-alive de Supabase Free** mientras no se lance: GitHub Action con cron
   cada 3-4 días que haga una consulta simple, para que el proyecto no se vuelva a
   pausar.
@@ -706,6 +708,59 @@ no reporta los rechazos de `remove()` ni de `update()`.
 (storage no está tipado; solo difería el formato del CLI nuevo, no se regeneró).
 El TODO de `lib/storage.ts` quedó cerrado.
 
+### Seguridad · Alta de artistas solo por invitación (2026-09-25)
+
+Había **dos puertas** para convertirse en artista sin que el admin lo decidiera:
+
+1. **`invitar-artista` estaba abierta a internet**: `verify_jwt: false` y ningún
+   control en el código. Cualquiera podía hacer POST con `{email}` y la función,
+   con service role, invitaba ese correo y le asignaba rol `artista`. Además
+   logueaba el body completo.
+2. **Autoalta vía `artistas`**: el registro público de Auth está abierto
+   (`disable_signup: false`), `artista_insert_own` solo pedía
+   `auth.uid() = user_id`, y el trigger `trg_assign_artista_role` (SECURITY
+   DEFINER) regala el rol a quien inserte su fila. Registrarse + un insert por
+   API = artista.
+
+Se revisó `auth.users`: solo están el admin y la cuenta de prueba
+`claudio@agencia.sbs` (Valentina Ruz). Nadie se coló.
+
+**Cambios**
+- Migración `20260925194955_user_roles_fk_y_alta_artista`:
+  - borra los 2 `user_roles` huérfanos (`57d1d452…`, `9f360f66…`, de las
+    pruebas del 2026-06-02) y agrega **FK `user_roles.user_id → auth.users(id)
+    ON DELETE CASCADE`**;
+  - `artista_insert_own` ahora exige además `has_role(auth.uid(), 'artista')`:
+    solo crea su fila quien ya fue invitado. `PanelShell.ensureArtistaRecord`
+    sigue funcionando.
+- `invitar-artista` (v9): 401 sin token / token inválido (`auth.getUser`), 403 si
+  no es admin (`has_role`), 400 email inválido, 429 si el SMTP pone rate limit.
+  Logs sin body ni email. `verify_jwt` **sigue en `false`** (el deploy conserva
+  lo que había porque el repo no tiene `supabase/config.toml`); la seguridad no
+  depende de él — la función verifica sola.
+- `/admin/artistas`: se quitó el plan B `signInWithOtp({ shouldCreateUser: true })`
+  — creaba usuarios sin rol que después no podían entrar al panel. Ahora muestra
+  el error real de la función. **Pendiente de deploy a Vercel** (va en el mismo
+  Redeploy que la rotación de claves).
+
+**Verificación: `npm run verificar:invitar`** (`scripts/verificar-invitar-artista.mjs`)
+— antes **1/4** (sin c; fallaban a, b, d), después **5/5**. (a) y (b) mandan un
+email inválido: la función vieja respondía 400 (llegaba a `inviteUserByEmail`
+sin mirar quién llamaba); la nueva corta antes con 401/403. (c) manda un correo
+real a `raices.berrios+rlstest-<ts>@gmail.com`; con `--sin-invitacion` se salta.
+
+- (a) Sin sesión → 401 · (b) sesión artista → 403
+- (c) Sesión admin → invita y el invitado queda con rol `artista`
+- (d) Usuario sin rol inserta su fila en `artistas` → rechazado, sigue sin rol
+- (e) Artista invitado crea su fila en `artistas` → permitido
+
+Sin regresiones: `verificar:rls` 6/6, `verificar:rls-storage` 10/10. Tipos sin
+cambios.
+
+**Pendiente (dashboard, fuera del repo):** Authentication → Sign In / Providers
+→ desactivar **"Allow new users to sign up"**. Las invitaciones siguen
+funcionando con el registro cerrado. Cierra la puerta 2 por el otro lado.
+
 ---
 
 ## 🚀 Bloqueos de lanzamiento (3)
@@ -744,14 +799,16 @@ los tres: sacar uno deja el sitio bloqueado igual.
    C:/Users/raice/scoop/apps/postgresql/current/bin/pg_dump.exe \
      --schema-only --no-owner --no-privileges --schema=public --schema=storage \
      -f supabase/schema_baseline.sql \
-     "postgresql://postgres:[PASSWORD]@db.rgskspvuvzwmvmsccoez.supabase.co:5432/postgres?sslmode=require"
+     "postgresql://postgres.rgskspvuvzwmvmsccoez@aws-1-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require"
    ```
-   Password en Dashboard → Settings → Database. Correrlo en una terminal propia,
-   no con `!` en un chat: el comando lleva la contraseña.
+   **La URL va SIN contraseña**: `pg_dump` la pide interactivamente, así no queda
+   en el historial de la terminal ni en un chat. Password en Dashboard →
+   Settings → Database. Correrlo en una terminal propia (no con `!` en un chat:
+   el prompt interactivo no funciona ahí).
 
    **Guardar como referencia, no como migración ejecutable** — por eso va en `supabase/schema_baseline.sql` y no en `supabase/migrations/`. Un archivo en `migrations/` sería marcado como aplicado por `db push` y enmascararía para siempre la ausencia del baseline real. (De hecho el `db pull` fallido de 2026-07-25 dejó una migración de 0 bytes que hubo que borrar por exactamente eso.)
 
-   Si la conexión directa falla por IPv6 (el host `db.<ref>.supabase.co` es IPv6-only en proyectos nuevos), usar el pooler en modo sesión: host `aws-1-us-west-2.pooler.supabase.com:5432`, usuario `postgres.rgskspvuvzwmvmsccoez`.
+   La receta usa el pooler en modo sesión (host `aws-1-us-west-2.pooler.supabase.com:5432`, usuario `postgres.rgskspvuvzwmvmsccoez`) porque la conexión directa `db.<ref>.supabase.co` es IPv6-only en proyectos nuevos. Si tu red tiene IPv6, también sirve `postgresql://postgres@db.rgskspvuvzwmvmsccoez.supabase.co:5432/postgres?sslmode=require`, igualmente sin contraseña.
 
 1. **Confirmar con una compra real de prueba** que el descuento del cupón ahora sí llega a MercadoPago (fix ya deployado en `93a9858`)
 2. **Probar flujo completo sin cupón** — confirmar que checkout sin cupón funciona 100% en producción

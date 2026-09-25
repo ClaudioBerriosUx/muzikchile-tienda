@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Sqfcp0NW2XneICwhDMjRMgXYLeQRU6Qk0UxjZjdS6dAJatwdN05Kjf6aobuKs79
+\restrict g7MmyVlMSXfA1wC4ZIWlyCxbdthVfE8osBTMu1YXWFPBhXZuL5g8M6SIxloAi4V
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.6
@@ -2852,6 +2852,14 @@ ALTER TABLE ONLY public.publicaciones
 
 
 --
+-- Name: user_roles user_roles_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.user_roles
+    ADD CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: objects objects_bucketId_fkey; Type: FK CONSTRAINT; Schema: storage; Owner: -
 --
 
@@ -3080,7 +3088,7 @@ CREATE POLICY artista_insert_cupones ON public.cupones FOR INSERT TO authenticat
 -- Name: artistas artista_insert_own; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY artista_insert_own ON public.artistas FOR INSERT TO authenticated WITH CHECK ((auth.uid() = user_id));
+CREATE POLICY artista_insert_own ON public.artistas FOR INSERT TO authenticated WITH CHECK (((auth.uid() = user_id) AND public.has_role(auth.uid(), 'artista'::public.app_role)));
 
 
 --
@@ -3468,5 +3476,5 @@ ALTER TABLE storage.vector_indexes ENABLE ROW LEVEL SECURITY;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Sqfcp0NW2XneICwhDMjRMgXYLeQRU6Qk0UxjZjdS6dAJatwdN05Kjf6aobuKs79
+\unrestrict g7MmyVlMSXfA1wC4ZIWlyCxbdthVfE8osBTMu1YXWFPBhXZuL5g8M6SIxloAi4V
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Music, UserPlus, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import Link from "next/link";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -82,36 +83,22 @@ export default function ArtistasPage() {
     setInvitando(true);
     const supabase = createClient();
 
-    // Intenta Edge Function primero
-    try {
-      const { error } = await supabase.functions.invoke("invitar-artista", {
-        body: { email: emailInvitar.trim() },
-      });
-      if (!error) {
-        toast.success("Invitación enviada por email");
-        setInvitarOpen(false);
-        setEmailInvitar("");
-        setInvitando(false);
-        return;
-      }
-    } catch {
-      // fallthrough al magic link directo
-    }
-
-    // Fallback: magic link real via Supabase Auth
-    const siteUrl = process.env.NEXT_PUBLIC_URL ?? window.location.origin;
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: emailInvitar.trim(),
-      options: {
-        shouldCreateUser: true,
-        emailRedirectTo: `${siteUrl}/registro`,
-      },
+    // Solo por la Edge Function: invita Y asigna el rol 'artista'. No hay plan B
+    // con signInWithOtp: crearía un usuario sin rol que después no puede entrar
+    // al panel (y dependía del registro público abierto).
+    const { error } = await supabase.functions.invoke("invitar-artista", {
+      body: { email: emailInvitar.trim() },
     });
 
-    if (otpError) {
-      toast.error(otpError.message);
+    if (error) {
+      let mensaje = error.message;
+      if (error instanceof FunctionsHttpError) {
+        const cuerpo = await error.context.json().catch(() => null);
+        if (cuerpo?.error) mensaje = cuerpo.error;
+      }
+      toast.error(`No se pudo invitar: ${mensaje}`);
     } else {
-      toast.success("Magic link enviado al email del artista");
+      toast.success("Invitación enviada por email");
       setInvitarOpen(false);
       setEmailInvitar("");
     }
