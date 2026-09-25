@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-07-27
+> Actualizado: 2026-09-25
 > Branch: `main` (único branch activo)
 
 ---
@@ -134,10 +134,8 @@ Sin ellas la moderación sería decorativa:
 
 - ✅ RLS probado en vivo con la anon key: `SELECT` responde `200 []`, `INSERT` es
   rechazado con `42501 new row violates row-level security policy` (HTTP 401).
-- ⚠️ **Las políticas de artista y admin NO están probadas end-to-end.** Requieren
-  sesión autenticada real de cada rol. La prueba concreta: entrar como artista,
-  crear una publicación e intentar `update` con `estado: 'publicada'` — debe
-  fallar con 42501. Y como admin, confirmar que sí ve las filas `pendiente`.
+- ✅ Políticas de artista probadas end-to-end (6/6) — ver "RLS de publicaciones
+  verificado" en la Tanda B.
 - ⚠️ No se pudieron leer las políticas RLS existentes de `productos`/`artistas`
   para contrastar estilo: `db dump` exige Docker, `inspect db` solo da
   estadísticas y el CLI no tiene runner de SQL genérico. La consistencia se
@@ -197,26 +195,20 @@ siguientes.
 - **El listado filtra por `artista_id` explícito** aunque el RLS ya lo garantiza.
   Defensa en profundidad: si alguien afloja la política, la query sigue acotada.
 
-#### ⚠️ PENDIENTE: prueba end-to-end del RLS con sesión de artista real
+#### ✅ RLS de publicaciones verificado end-to-end (6/6)
 
-**Sigue sin verificarse que un artista no pueda autopublicarse.** Lo único
-probado hasta ahora es la ruta anon (SELECT `200 []`, INSERT rechazado con
-42501). Las políticas de artista y admin necesitan sesión autenticada de cada
-rol.
+Verificado el 2026-07-25 y reconfirmado el 2026-09-25 con
+`npm run verificar:rls` (`scripts/verificar-rls-publicaciones.mjs`), que monta
+dos artistas reales con sesión autenticada vía service role, corre los casos y
+limpia sus datos de prueba:
 
-La prueba clave es sobre el `WITH CHECK` de `update_propias`: con una
-publicación en `borrador` (donde el `USING` sí deja pasar), forzar desde la
-consola del navegador un `PATCH` a `estado: 'publicada'`.
-
-- **Esperado**: `42501 new row violates row-level security policy`.
-- **Si en cambio devuelve la fila actualizada**, la moderación es evitable y hay
-  que arreglar la política antes de construir el panel de admin encima.
-
-Conviene también probar el aislamiento entre artistas: con una segunda cuenta,
-un `PATCH` contra el id de la primera debe devolver `[]` (el RLS ni la ve), no un
-error de permisos.
-
-Los pasos exactos con el snippet de consola quedaron en el reporte de la Tanda B.
+- ✓ (a) Artista INSERT con su propio `artista_id` → permitido
+- ✓ (b) Artista INSERT con `artista_id` ajeno → rechazado
+- ✓ (c) Artista UPDATE de contenido en su borrador → permitido
+- ✓ (d) Artista UPDATE de su borrador a `estado: 'publicada'` → rechazado por el
+  `WITH CHECK` de `update_propias`. **Un artista no puede autopublicarse.**
+- ✓ (e) Artista no ve ni edita publicaciones de otro → SELECT 0 filas, UPDATE 0
+- ✓ (f) Anon solo ve `publicada` + `publica`
 
 ---
 
@@ -626,6 +618,59 @@ aparece", sospechar de esto antes que del código.
 
 ---
 
+### Retoma 2026-09-25
+
+Proyecto retomado tras 2 meses sin tocar.
+
+**Estado verificado**
+- Supabase `rgskspvuvzwmvmsccoez` estaba **pausado** por inactividad (plan Free):
+  el host no resolvía DNS (`ENOTFOUND`). Restaurado desde el dashboard; conexión
+  confirmada (`artistas`: 5 filas).
+- `npm run verificar:rls` → **6/6** (ver Tanda B).
+- `npm run build` OK, y el sitemap ya consulta artistas sin error.
+- `tsc --noEmit` OK.
+- Baseline de esquema generado en `supabase/schema_baseline.sql` (ver
+  "Siguiente" punto 0).
+
+**Pendientes abiertos por esta retoma**
+- 🔐 **Rotar la service role key de Supabase y el token de Vercel** — se
+  filtraron en chats en julio. Tras rotar, actualizar `.env.local` y las env vars
+  del proyecto en Vercel.
+- **Keep-alive de Supabase Free** mientras no se lance: GitHub Action con cron
+  cada 3-4 días que haga una consulta simple, para que el proyecto no se vuelva a
+  pausar.
+- **Confirmar qué commit está desplegado en producción.** El deploy es manual
+  (`vercel --prod`), así que `origin/main` no implica producción.
+- **Lint: 11 errores** de las reglas de React Compiler — `set-state-in-effect`
+  (`carrito/page.tsx`, `CarritoDrawer.tsx`, `admin/artistas`,
+  `admin/configuracion`, `admin/productos`), "Cannot create components during
+  render" (`admin/configuracion`) y "This value cannot be modified"
+  (`carrito/page.tsx:136`). El build no los bloquea.
+- `app/sitemap.ts:32` tiene un TODO rancio: dice que `/tienda` no existe, pero ya
+  existe.
+- 🔐 **Storage: políticas UPDATE demasiado abiertas** (visto en el baseline).
+  `artistas_update` y `productos_update` permiten a cualquier `authenticated`
+  actualizar cualquier objeto del bucket, sin chequear dueño. Como las políticas
+  permisivas se suman con OR, anulan a `artistas_update_own` /
+  `productos_update_own`. Revisar y probablemente borrarlas (vía migración).
+- `lib/storage.ts:35` pide una política DELETE en `storage.objects`, pero el
+  baseline ya muestra `artistas_delete_own` y `productos_delete_own`. Confirmar
+  si cubren el caso del TODO y cerrarlo.
+
+---
+
+## 🚀 Bloqueos de lanzamiento (3)
+
+Los tres son deliberados y se quitan **solo** en el lanzamiento. Hay que quitar
+los tres: sacar uno deja el sitio bloqueado igual.
+
+1. `app/layout.tsx` → `robots: { index: false, follow: false }` global.
+2. `public/robots.txt` → `Disallow: /` (eclipsa a `app/robots.ts`).
+3. **Redirect del dominio en Vercel** — externo al código; se quita desde el
+   dashboard de Vercel, no desde el repo.
+
+---
+
 ## 🚧 En progreso / bugs conocidos
 
 - **Email de confirmación de compra**: la página `/checkout/exito` dice "Recibirás un email" pero no hay código de envío de email en ningún Route Handler
@@ -634,39 +679,35 @@ aparece", sospechar de esto antes que del código.
 
 ## ⏭️ Siguiente (prioridad)
 
-0. **Baseline de esquema** (pendiente de 2026-07-25). El pipeline ya funciona
-   (`crear_publicaciones` aplicada y trackeada), pero **falta la captura del
-   esquema anterior a él**: `artistas`, `productos`, `ordenes`, `cupones`,
-   `liquidaciones`, `categorias`, `user_roles`, `app_settings`, `has_role` y todas
-   sus políticas RLS existen solo en el servidor. Para cambios aditivos no molesta;
-   para alterar tablas existentes conviene tenerlo antes. `npx supabase db pull` no
-   sirve acá: exige Docker Desktop, que es un elefante para esta pulga.
+0. ✅ **Baseline de esquema — generado 2026-09-25** en
+   `supabase/schema_baseline.sql` (schemas `public` + `storage`). Contiene las 10
+   tablas (`artistas`, `productos`, `ordenes`, `cupones`, `liquidaciones`,
+   `publicaciones`, `suscriptores`, `categorias`, `user_roles`, `app_settings`),
+   las funciones `has_role`, `assign_artista_role`, `incrementar_usos_cupon`,
+   `publicaciones_set_updated_at` y sus políticas RLS (55 en total, 10 sobre
+   `storage.objects`). `npx supabase db pull` no sirve acá: exige Docker Desktop.
 
-   Alternativa sin Docker (Windows/Scoop):
+   Para regenerarlo (pg_dump 18 vía Scoop; no queda en el PATH, usar ruta completa):
    ```bash
    scoop install postgresql
 
-   pg_dump --schema-only --no-owner --no-privileges \
-     "postgresql://postgres:[PASSWORD]@db.rgskspvuvzwmvmsccoez.supabase.co:5432/postgres" \
-     > supabase/schema_baseline.sql
+   C:/Users/raice/scoop/apps/postgresql/current/bin/pg_dump.exe \
+     --schema-only --no-owner --no-privileges --schema=public --schema=storage \
+     -f supabase/schema_baseline.sql \
+     "postgresql://postgres:[PASSWORD]@db.rgskspvuvzwmvmsccoez.supabase.co:5432/postgres?sslmode=require"
    ```
-   Password en Dashboard → Settings → Database.
+   Password en Dashboard → Settings → Database. Correrlo en una terminal propia,
+   no con `!` en un chat: el comando lleva la contraseña.
 
    **Guardar como referencia, no como migración ejecutable** — por eso va en `supabase/schema_baseline.sql` y no en `supabase/migrations/`. Un archivo en `migrations/` sería marcado como aplicado por `db push` y enmascararía para siempre la ausencia del baseline real. (De hecho el `db pull` fallido de 2026-07-25 dejó una migración de 0 bytes que hubo que borrar por exactamente eso.)
 
-   Si la conexión directa falla por IPv6 (el host `db.<ref>.supabase.co` es IPv6-only en proyectos nuevos), usar el pooler en modo sesión: host `aws-0-us-west-2.pooler.supabase.com:5432`, usuario `postgres.rgskspvuvzwmvmsccoez`.
+   Si la conexión directa falla por IPv6 (el host `db.<ref>.supabase.co` es IPv6-only en proyectos nuevos), usar el pooler en modo sesión: host `aws-1-us-west-2.pooler.supabase.com:5432`, usuario `postgres.rgskspvuvzwmvmsccoez`.
 
-1. **Probar el RLS de `publicaciones` con sesión de artista real** — bloquea la
-   tanda de moderación del admin. Si el `WITH CHECK` de `update_propias` tiene un
-   hueco, el artista puede autopublicarse y la moderación entera es decorativa:
-   mejor descubrirlo antes de construir el panel de admin encima. Ver el detalle
-   en "Tanda B" más arriba.
-
-2. **Confirmar con una compra real de prueba** que el descuento del cupón ahora sí llega a MercadoPago (fix ya deployado en `93a9858`)
-3. **Probar flujo completo sin cupón** — confirmar que checkout sin cupón funciona 100% en producción
-4. **Email transaccional** — confirmación de compra al comprador y notificación al artista
-5. **WebPay / Transbank** — placeholders en `/checkout` y `/admin/configuracion`, marcados "Próximamente"
-6. **Integración Spotify** — badge "Próximamente: Conectar con Spotify" en `/panel/perfil`
+1. **Confirmar con una compra real de prueba** que el descuento del cupón ahora sí llega a MercadoPago (fix ya deployado en `93a9858`)
+2. **Probar flujo completo sin cupón** — confirmar que checkout sin cupón funciona 100% en producción
+3. **Email transaccional** — confirmación de compra al comprador y notificación al artista
+4. **WebPay / Transbank** — placeholders en `/checkout` y `/admin/configuracion`, marcados "Próximamente"
+5. **Integración Spotify** — badge "Próximamente: Conectar con Spotify" en `/panel/perfil`
 
 ---
 

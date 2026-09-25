@@ -38,7 +38,8 @@ monta `Header` + `Footer` una sola vez. Los paréntesis no aparecen en la URL:
 ```
 app/
 ├─ (publico)/          → layout con Header + Footer
-│  ├─ page.tsx         → /
+│  ├─ page.tsx         → / (portada; islas cliente en _portada/)
+│  ├─ tienda/          noticias/ (+ [slug])   privacidad/
 │  ├─ producto/[id]/   artista/[slug]/   carrito/
 │  ├─ checkout/        (+ exito, error, pendiente)
 │  └─ login/  registro/  recuperar/
@@ -57,7 +58,10 @@ Header y Footer. No importes `<Header/>` a mano en una página.
 
 | Ruta | Acceso | Descripción |
 |---|---|---|
-| `/` | público | Catálogo con filtros (categoría, región, tipo, orden, búsqueda) |
+| `/` | público | Portada: hero con la señal en vivo, videos destacados, últimas noticias |
+| `/tienda` | público | Catálogo con filtros (categoría, región, tipo, orden, búsqueda) |
+| `/noticias`, `/noticias/[slug]` | público | Feed de publicaciones y nota individual |
+| `/privacidad` | público | Política de privacidad (borrador, pendiente revisión legal) |
 | `/producto/[id]` | público | Ficha de producto |
 | `/artista/[slug]` | público | Ficha del artista (SSR con `generateMetadata`) |
 | `/carrito` | público | Carrito |
@@ -67,9 +71,9 @@ Header y Footer. No importes `<Header/>` a mano en una página.
 | `/panel/**` | rol: `artista` | Dashboard del artista |
 | `/admin/**` | rol: `admin` | Panel de administración |
 
-El menú del Header ya enlaza `/noticias`, `/convocatorias`, `/artistas` y
-`/tienda`, que **todavía no existen** (dan 404). Se crean en la reestructuración
-a plataforma de comunidad.
+El menú del Header también enlaza `/convocatorias` y `/artistas`, que **todavía
+no existen** (dan 404). Se crean en la reestructuración a plataforma de
+comunidad.
 
 ### Auth y roles
 
@@ -171,13 +175,15 @@ Tailwind v4 (breaking changes desde v3 — leer `node_modules/next/dist/docs/` a
 ### SEO
 
 El sitio está **fuera de los buscadores a propósito** mientras se construye, con
-dos bloqueos independientes:
+tres bloqueos independientes:
 
 1. `app/layout.tsx` → `robots: { index: false }` global.
 2. `public/robots.txt` → `Disallow: /`.
+3. **Redirect del dominio en Vercel** — externo al código: no vive en el repo,
+   se quita desde el dashboard de Vercel.
 
-⚠️ **Los dos son deliberados y se quitan SOLO en el lanzamiento** (ver Plan
-MuzikChile 2.0). Y hay que quitar **los dos**: sacar solo uno deja el sitio
+⚠️ **Los tres son deliberados y se quitan SOLO en el lanzamiento** (ver Plan
+MuzikChile 2.0). Y hay que quitar **los tres**: sacar solo uno deja el sitio
 bloqueado igual. Como los estáticos de `public/` tienen precedencia sobre las
 rutas del App Router, mientras `public/robots.txt` exista **`app/robots.ts` no se
 sirve** — está escrito y probado, pero eclipsado.
