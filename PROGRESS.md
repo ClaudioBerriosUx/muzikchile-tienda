@@ -648,14 +648,63 @@ Proyecto retomado tras 2 meses sin tocar.
   (`carrito/page.tsx:136`). El build no los bloquea.
 - `app/sitemap.ts:32` tiene un TODO rancio: dice que `/tienda` no existe, pero ya
   existe.
-- 🔐 **Storage: políticas UPDATE demasiado abiertas** (visto en el baseline).
-  `artistas_update` y `productos_update` permiten a cualquier `authenticated`
-  actualizar cualquier objeto del bucket, sin chequear dueño. Como las políticas
-  permisivas se suman con OR, anulan a `artistas_update_own` /
-  `productos_update_own`. Revisar y probablemente borrarlas (vía migración).
-- `lib/storage.ts:35` pide una política DELETE en `storage.objects`, pero el
-  baseline ya muestra `artistas_delete_own` y `productos_delete_own`. Confirmar
-  si cubren el caso del TODO y cerrarlo.
+- 🐛 **Carpetas inconsistentes de la foto de perfil** (pendiente de código). El
+  artista sube a `artistas/{user_id}/foto.jpg` (`panel/perfil`) y el admin a
+  `artistas/{artistas.id}/foto.{ext}` (`admin/artistas/[id]/editar`): la misma
+  foto vive en dos carpetas según quién la subió, y el archivo del otro queda
+  huérfano. Las políticas de storage cubren ambos casos (el admin escribe en
+  cualquier carpeta), así que no se rompe nada; es orden, no seguridad. Unificar
+  en `{user_id}` requiere que el admin conozca el `user_id` del artista (y los
+  perfiles sin `user_id`, como el editorial, no tienen).
+
+### Storage · Políticas por dueño en `artistas` y `productos` (2026-09-25)
+
+Hallazgo del baseline: **cualquier usuario autenticado podía sobrescribir
+cualquier archivo** de los dos buckets (`artistas_update` / `productos_update`
+abiertas, y las permisivas se suman con OR) y **crear archivos en carpetas
+ajenas** (INSERT abierto). Demostrado antes de arreglar: A pisó la foto de
+perfil de B sin error.
+
+Segundo hallazgo: en `productos` las políticas `*_own` **nunca coincidían**.
+Comparaban la primera carpeta con `auth.uid()`, pero las rutas de ese bucket
+empiezan con `artistas.id`, que es un uuid distinto de `user_id` (0 de 5
+artistas los tienen iguales). Por eso el `remove()` de `lib/storage.ts`
+devolvía éxito sin borrar nada.
+
+**Migración `20260925191923_storage_politicas_por_dueno`**
+
+| Bucket | Carpeta = | INSERT / UPDATE / DELETE del artista | Admin |
+|---|---|---|---|
+| `artistas` | `user_id` | `artistas_insert_own` (nueva), `*_update_own`, `*_delete_own` (se mantienen) | `artistas_admin_{insert,update,delete}` |
+| `productos` | `artistas.id` | `productos_{insert,update,delete}_own` con subselect a `artistas where user_id = auth.uid()` | `productos_admin_{insert,update,delete}` |
+
+Borradas: `artistas_update`, `artistas_upload`, `productos_update`,
+`productos_upload`, y las `productos_*_own` viejas. SELECT sin cambios (lectura
+pública). Admin vía `public.has_role(auth.uid(), 'admin')`.
+
+**Publicaciones editoriales**: no tienen `artista_id` null — apuntan al perfil
+`muzikchile` (`es_editorial`, sin `user_id`). Sus 8 imágenes viven en el Storage
+del Channel (`yxqhtljhoceopnbcwdiy`), cargadas por `migrar-noticias-channel.mjs`
+con service role, y **no existe UI donde el admin suba imágenes de
+publicaciones** (el editor TipTap inserta por URL). Si se agrega, la ruta natural
+`productos/{id_editorial}/publicaciones/…` queda cubierta por la política admin
+(caso j).
+
+**Verificación: `npm run verificar:rls-storage`** (`scripts/verificar-rls-storage.mjs`)
+— antes de la migración **5/10** (fallaban a, c, f, h, i), después **10/10**.
+Cada caso se decide leyendo el bucket con service role, no por el error: Storage
+no reporta los rechazos de `remove()` ni de `update()`.
+
+- (a) A sobrescribe la foto de B → rechazado · (b) A actualiza la suya → permitido
+- (c) A sobrescribe un archivo de B en productos → rechazado · (d) el suyo → permitido
+- (e) A borra la imagen de publicación de B → sigue ahí · (f) la suya → desaparece
+- (g) Admin reemplaza foto en `artistas/{artistas.id}/` → permitido
+- (h)/(i) A crea un archivo nuevo en la carpeta de B (artistas / productos) → rechazado
+- (j) Admin sube imagen de publicación editorial → permitido
+
+`verificar:rls` (publicaciones) sigue 6/6. `gen types` sin cambios de esquema
+(storage no está tipado; solo difería el formato del CLI nuevo, no se regeneró).
+El TODO de `lib/storage.ts` quedó cerrado.
 
 ---
 
@@ -679,13 +728,14 @@ los tres: sacar uno deja el sitio bloqueado igual.
 
 ## ⏭️ Siguiente (prioridad)
 
-0. ✅ **Baseline de esquema — generado 2026-09-25** en
-   `supabase/schema_baseline.sql` (schemas `public` + `storage`). Contiene las 10
+0. ✅ **Baseline de esquema — generado 2026-09-25**, regenerado tras la
+   migración de storage, en `supabase/schema_baseline.sql` (schemas `public` +
+   `storage`). Contiene las 10
    tablas (`artistas`, `productos`, `ordenes`, `cupones`, `liquidaciones`,
    `publicaciones`, `suscriptores`, `categorias`, `user_roles`, `app_settings`),
    las funciones `has_role`, `assign_artista_role`, `incrementar_usos_cupon`,
-   `publicaciones_set_updated_at` y sus políticas RLS (55 en total, 10 sobre
-   `storage.objects`). `npx supabase db pull` no sirve acá: exige Docker Desktop.
+   `publicaciones_set_updated_at` y sus políticas RLS (59 en total, 14 sobre
+   `storage.objects`). **Regenerarlo después de cada migración.** `npx supabase db pull` no sirve acá: exige Docker Desktop.
 
    Para regenerarlo (pg_dump 18 vía Scoop; no queda en el PATH, usar ruta completa):
    ```bash

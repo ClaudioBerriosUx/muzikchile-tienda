@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "verificar:rls": "node --env-file=.env.local scripts/verificar-rls-publicaciones.mjs"
+    "verificar:rls": "node --env-file=.env.local scripts/verificar-rls-publicaciones.mjs",
+    "verificar:rls-storage": "node --env-file=.env.local scripts/verificar-rls-storage.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

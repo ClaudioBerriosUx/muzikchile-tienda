@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict AVev0e10ageEIZ10FpHRlLurN110MS3nhgQpMAeie2vvaTWsHqwlEoIWauYmENx
+\restrict Sqfcp0NW2XneICwhDMjRMgXYLeQRU6Qk0UxjZjdS6dAJatwdN05Kjf6aobuKs79
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.6
@@ -3313,10 +3313,38 @@ CREATE POLICY "users see own roles" ON public.user_roles FOR SELECT TO authentic
 
 
 --
+-- Name: objects artistas_admin_delete; Type: POLICY; Schema: storage; Owner: -
+--
+
+CREATE POLICY artistas_admin_delete ON storage.objects FOR DELETE TO authenticated USING (((bucket_id = 'artistas'::text) AND public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
+-- Name: objects artistas_admin_insert; Type: POLICY; Schema: storage; Owner: -
+--
+
+CREATE POLICY artistas_admin_insert ON storage.objects FOR INSERT TO authenticated WITH CHECK (((bucket_id = 'artistas'::text) AND public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
+-- Name: objects artistas_admin_update; Type: POLICY; Schema: storage; Owner: -
+--
+
+CREATE POLICY artistas_admin_update ON storage.objects FOR UPDATE TO authenticated USING (((bucket_id = 'artistas'::text) AND public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
 -- Name: objects artistas_delete_own; Type: POLICY; Schema: storage; Owner: -
 --
 
 CREATE POLICY artistas_delete_own ON storage.objects FOR DELETE TO authenticated USING (((bucket_id = 'artistas'::text) AND ((auth.uid())::text = (storage.foldername(name))[1])));
+
+
+--
+-- Name: objects artistas_insert_own; Type: POLICY; Schema: storage; Owner: -
+--
+
+CREATE POLICY artistas_insert_own ON storage.objects FOR INSERT TO authenticated WITH CHECK (((bucket_id = 'artistas'::text) AND ((storage.foldername(name))[1] = (auth.uid())::text)));
 
 
 --
@@ -3327,24 +3355,10 @@ CREATE POLICY artistas_public_read ON storage.objects FOR SELECT USING ((bucket_
 
 
 --
--- Name: objects artistas_update; Type: POLICY; Schema: storage; Owner: -
---
-
-CREATE POLICY artistas_update ON storage.objects FOR UPDATE TO authenticated USING ((bucket_id = 'artistas'::text));
-
-
---
 -- Name: objects artistas_update_own; Type: POLICY; Schema: storage; Owner: -
 --
 
 CREATE POLICY artistas_update_own ON storage.objects FOR UPDATE TO authenticated USING (((bucket_id = 'artistas'::text) AND ((auth.uid())::text = (storage.foldername(name))[1])));
-
-
---
--- Name: objects artistas_upload; Type: POLICY; Schema: storage; Owner: -
---
-
-CREATE POLICY artistas_upload ON storage.objects FOR INSERT TO authenticated WITH CHECK ((bucket_id = 'artistas'::text));
 
 
 --
@@ -3378,10 +3392,42 @@ ALTER TABLE storage.migrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: objects productos_admin_delete; Type: POLICY; Schema: storage; Owner: -
+--
+
+CREATE POLICY productos_admin_delete ON storage.objects FOR DELETE TO authenticated USING (((bucket_id = 'productos'::text) AND public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
+-- Name: objects productos_admin_insert; Type: POLICY; Schema: storage; Owner: -
+--
+
+CREATE POLICY productos_admin_insert ON storage.objects FOR INSERT TO authenticated WITH CHECK (((bucket_id = 'productos'::text) AND public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
+-- Name: objects productos_admin_update; Type: POLICY; Schema: storage; Owner: -
+--
+
+CREATE POLICY productos_admin_update ON storage.objects FOR UPDATE TO authenticated USING (((bucket_id = 'productos'::text) AND public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
 -- Name: objects productos_delete_own; Type: POLICY; Schema: storage; Owner: -
 --
 
-CREATE POLICY productos_delete_own ON storage.objects FOR DELETE TO authenticated USING (((bucket_id = 'productos'::text) AND ((auth.uid())::text = (storage.foldername(name))[1])));
+CREATE POLICY productos_delete_own ON storage.objects FOR DELETE TO authenticated USING (((bucket_id = 'productos'::text) AND ((storage.foldername(name))[1] IN ( SELECT (a.id)::text AS id
+   FROM public.artistas a
+  WHERE (a.user_id = auth.uid())))));
+
+
+--
+-- Name: objects productos_insert_own; Type: POLICY; Schema: storage; Owner: -
+--
+
+CREATE POLICY productos_insert_own ON storage.objects FOR INSERT TO authenticated WITH CHECK (((bucket_id = 'productos'::text) AND ((storage.foldername(name))[1] IN ( SELECT (a.id)::text AS id
+   FROM public.artistas a
+  WHERE (a.user_id = auth.uid())))));
 
 
 --
@@ -3392,24 +3438,12 @@ CREATE POLICY productos_public_read ON storage.objects FOR SELECT USING ((bucket
 
 
 --
--- Name: objects productos_update; Type: POLICY; Schema: storage; Owner: -
---
-
-CREATE POLICY productos_update ON storage.objects FOR UPDATE TO authenticated USING ((bucket_id = 'productos'::text));
-
-
---
 -- Name: objects productos_update_own; Type: POLICY; Schema: storage; Owner: -
 --
 
-CREATE POLICY productos_update_own ON storage.objects FOR UPDATE TO authenticated USING (((bucket_id = 'productos'::text) AND ((auth.uid())::text = (storage.foldername(name))[1])));
-
-
---
--- Name: objects productos_upload; Type: POLICY; Schema: storage; Owner: -
---
-
-CREATE POLICY productos_upload ON storage.objects FOR INSERT TO authenticated WITH CHECK ((bucket_id = 'productos'::text));
+CREATE POLICY productos_update_own ON storage.objects FOR UPDATE TO authenticated USING (((bucket_id = 'productos'::text) AND ((storage.foldername(name))[1] IN ( SELECT (a.id)::text AS id
+   FROM public.artistas a
+  WHERE (a.user_id = auth.uid())))));
 
 
 --
@@ -3434,5 +3468,5 @@ ALTER TABLE storage.vector_indexes ENABLE ROW LEVEL SECURITY;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict AVev0e10ageEIZ10FpHRlLurN110MS3nhgQpMAeie2vvaTWsHqwlEoIWauYmENx
+\unrestrict Sqfcp0NW2XneICwhDMjRMgXYLeQRU6Qk0UxjZjdS6dAJatwdN05Kjf6aobuKs79
 
