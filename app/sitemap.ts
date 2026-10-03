@@ -37,10 +37,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  const supabase = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) throw new Error("[sitemap] faltan NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY");
+
+  const supabase = createClient<Database>(url, key);
 
   const { data: artistas, error } = await supabase
     .from("artistas")
@@ -53,9 +54,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .order("created_at", { ascending: false });
 
   if (error) {
-    // Un sitemap incompleto es preferible a un build roto.
+    // Lanza en vez de devolver solo las estáticas: un sitemap sin artistas se
+    // cacharía una hora (o quedaría fijo en el build) y les diría a los
+    // buscadores que las fichas desaparecieron. Lanzando, el build falla y sigue
+    // el deploy anterior, o la regeneración falla y se sirve el último sitemap
+    // bueno. Mismo patrón que lib/noticias.ts (incidente del 2026-10-03).
     console.error("[sitemap] error consultando artistas:", error.message);
-    return estaticas;
+    throw new Error(`[sitemap] error consultando artistas: ${error.message}`);
   }
 
   const fichas: MetadataRoute.Sitemap = (artistas ?? [])

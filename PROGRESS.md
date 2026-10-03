@@ -834,7 +834,7 @@ Las variables de Vercel están marcadas Sensitive: `vercel env pull` devuelve
 `[SENSITIVE]`. Para ver qué clave usa producción, las `NEXT_PUBLIC_*` están en
 el JS público del sitio.
 
-⚠️ Mismo patrón todavía vivo en `app/sitemap.ts` (loguea y devuelve vacío).
+`app/sitemap.ts` tenía el mismo patrón (devolvía solo las estáticas ante un error); corregido para que lance igual que `lib/noticias.ts`.
 
 ---
 
