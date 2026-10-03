@@ -33,7 +33,8 @@ export interface NoticiaLista {
   imagen_url: string | null;
   slug: string;
   categoria: string | null;
-  created_at: string;
+  /** Fecha visible y de orden. Solo el admin la edita (ver la migración 20261003205430). */
+  fecha_publicacion: string;
   artistas: { nombre: string; slug: string } | null;
   /**
    * Texto para la tarjeta: la bajada o, si viene vacía, un extracto del cuerpo.
@@ -59,13 +60,13 @@ export interface NoticiaDetalle extends Omit<NoticiaLista, "resumen"> {
 
 // `cuerpo` va solo para armar el extracto de respaldo; no sale en NoticiaLista.
 const CAMPOS_LISTA =
-  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, created_at, artistas(nombre, slug)";
+  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, fecha_publicacion, artistas(nombre, slug)";
 
 /** Largo del extracto de respaldo, en caracteres. */
 const LARGO_RESUMEN = 160;
 
 const CAMPOS_DETALLE =
-  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, created_at, artistas(nombre, slug, foto_url, es_editorial)";
+  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, fecha_publicacion, artistas(nombre, slug, foto_url, es_editorial)";
 
 /**
  * La bajada, o un extracto del cuerpo en texto plano si la bajada está vacía
@@ -94,7 +95,7 @@ export async function traerNoticias(limite?: number): Promise<NoticiaLista[]> {
     .select(CAMPOS_LISTA)
     .eq("estado", "publicada")
     .eq("tipo", "noticia")
-    .order("created_at", { ascending: false });
+    .order("fecha_publicacion", { ascending: false });
 
   if (limite) q = q.limit(limite);
 

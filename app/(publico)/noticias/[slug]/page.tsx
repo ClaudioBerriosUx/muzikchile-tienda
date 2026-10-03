@@ -128,7 +128,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: noticia.imagen_url ? [noticia.imagen_url] : [],
       url: `${BASE_URL}/noticias/${noticia.slug}`,
       type: "article",
-      publishedTime: noticia.created_at,
+      publishedTime: noticia.fecha_publicacion,
     },
     twitter: {
       card: "summary_large_image",
@@ -199,7 +199,7 @@ export default async function NoticiaPage({ params }: Props) {
             </span>
           )}
           <span style={{ fontFamily: F.body, fontSize: "13px", color: C.grisTenue }}>
-            {fechaLarga(noticia.created_at)}
+            {fechaLarga(noticia.fecha_publicacion)}
           </span>
         </div>
 

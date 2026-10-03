@@ -6,58 +6,67 @@ import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import PublicacionForm from "@/components/publicaciones/PublicacionForm";
 
-export default function NuevaPublicacionPage() {
+/**
+ * Nueva noticia editorial: firma el perfil MuzikChile (`artistas` con
+ * slug 'muzikchile' y es_editorial = true), la misma convención de las noticias
+ * migradas del Channel. Se busca por slug y no por UUID fijo.
+ *
+ * El guard de rol vive en AdminShell; la protección real es el RLS
+ * (`publicaciones_insert_admin`).
+ */
+export default function NuevaNoticiaEditorialPage() {
   const supabase = createClient();
 
-  const { data: artista, isLoading } = useQuery({
-    queryKey: ["panel-artista"],
+  const { data: editorial, isLoading, error } = useQuery({
+    queryKey: ["perfil-editorial"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("artistas")
         .select("id, nombre")
-        .eq("user_id", user.id)
-        .single();
-      return data ?? null;
+        .eq("slug", "muzikchile")
+        .eq("es_editorial", true)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
     },
   });
 
   return (
-    <div>
+    <div className="max-w-6xl">
       <Link
-        href="/panel/publicaciones"
+        href="/admin/publicaciones"
         className="inline-flex items-center gap-1.5 mb-4 text-sm transition-colors"
         style={{ fontFamily: "var(--font-body)", color: "#666666" }}
       >
         <ArrowLeft size={14} />
-        Mis publicaciones
+        Publicaciones
       </Link>
 
       <h1
         className="mb-2"
         style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}
       >
-        Nueva publicación
+        Nueva noticia
       </h1>
       <p
         className="mb-8"
         style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}
       >
-        Una noticia tuya: un lanzamiento, un show, una nota de prensa.
+        Nota editorial firmada por MuzikChile.
       </p>
 
       {isLoading ? (
         <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Cargando...</p>
-      ) : !artista ? (
+      ) : error || !editorial ? (
         <div className="rounded-xl border border-[#e8e8e8] p-8 text-center" style={{ backgroundColor: "#f8f7f5" }}>
           <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
-            No se encontró tu perfil de artista.{" "}
-            <Link href="/panel/perfil" style={{ color: "#e8003d" }}>Complétalo primero</Link>.
+            {error
+              ? `Error buscando el perfil editorial: ${error.message}`
+              : "No existe el perfil editorial MuzikChile (slug 'muzikchile', es_editorial = true)."}
           </p>
         </div>
       ) : (
-        <PublicacionForm artistaId={artista.id} />
+        <PublicacionForm artistaId={editorial.id} modo="editorial" />
       )}
     </div>
   );

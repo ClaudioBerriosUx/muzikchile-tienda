@@ -151,7 +151,7 @@ export default async function UltimasNoticias() {
               <Badge categoria={principal.categoria} />
               <Autor nombre={principal.artistas?.nombre} />
               <span style={{ color: C.grisTenue, fontSize: "12px" }} aria-hidden>·</span>
-              <Fecha iso={principal.created_at} />
+              <Fecha iso={principal.fecha_publicacion} />
             </div>
 
             <h3
@@ -220,7 +220,7 @@ export default async function UltimasNoticias() {
                 <div className="p-5 flex flex-col gap-3">
                   <div className="flex items-center gap-3 flex-wrap">
                     <Badge categoria={n.categoria} />
-                    <Fecha iso={n.created_at} />
+                    <Fecha iso={n.fecha_publicacion} />
                   </div>
 
                   <h4

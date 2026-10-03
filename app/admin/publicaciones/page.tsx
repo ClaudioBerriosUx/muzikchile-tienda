@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, Undo2, Newspaper, Trash2, EyeOff, ExternalLink } from "lucide-react";
+import { CheckCircle, Undo2, Newspaper, Trash2, EyeOff, ExternalLink, Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -19,7 +19,7 @@ type PublicacionRow = Database["public"]["Tables"]["publicaciones"]["Row"];
 
 /** El join a artistas es a-uno por el FK artista_id. */
 type Publicacion = PublicacionRow & {
-  artistas: { nombre: string } | null;
+  artistas: { nombre: string; es_editorial: boolean } | null;
 };
 
 const ESTADOS_FILTRO = [
@@ -48,7 +48,7 @@ export default function ModerarPublicacionesPage() {
       const supabase = createClient();
       let q = supabase
         .from("publicaciones")
-        .select("*, artistas(nombre)")
+        .select("*, artistas(nombre, es_editorial)")
         .order("created_at", { ascending: true });
 
       if (tab === "pendientes") {
@@ -214,6 +214,17 @@ export default function ModerarPublicacionesPage() {
     <div className="-m-8 flex" style={{ height: "calc(100vh - 64px)" }}>
       {/* ── Panel izquierdo: la cola ── */}
       <div className="flex flex-col border-r border-[#e8e8e8] overflow-hidden" style={{ width: "38%" }}>
+        {/* Noticia editorial: la escribe el admin, firma MuzikChile. */}
+        <div className="px-3 py-3 border-b border-[#e8e8e8] shrink-0 bg-white">
+          <Link
+            href="/admin/publicaciones/nueva"
+            className="w-full h-10 rounded-md text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+            style={{ fontFamily: "var(--font-body)", fontSize: "14px", fontWeight: 600, backgroundColor: "#e8003d" }}
+          >
+            <Plus size={16} /> Nueva noticia
+          </Link>
+        </div>
+
         {/* Tabs */}
         <div className="flex border-b border-[#e8e8e8] shrink-0">
           {([
@@ -318,6 +329,17 @@ export default function ModerarPublicacionesPage() {
           </div>
         ) : (
           <div className="max-w-2xl">
+            {/* Las editoriales se editan; las de artistas solo se moderan. */}
+            {seleccionada.artistas?.es_editorial && (
+              <Link
+                href={`/admin/publicaciones/${seleccionada.id}/editar`}
+                className="mb-4 inline-flex items-center gap-2 h-9 px-4 rounded-md border transition-colors hover:bg-white"
+                style={{ fontFamily: "var(--font-body)", fontSize: "14px", borderColor: "#111111", color: "#111111" }}
+              >
+                <Pencil size={14} /> Editar noticia editorial
+              </Link>
+            )}
+
             {/* Portada */}
             {seleccionada.imagen_url && (
               // 4:5 con recorte al centro, igual que las tarjetas públicas

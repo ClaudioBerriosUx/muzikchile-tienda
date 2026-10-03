@@ -9,6 +9,8 @@ export const revalidate = 3600;
 /**
  * Sirve /sitemap.xml.
  *
+ * Incluye /noticias y cada nota publicada, ordenadas por `fecha_publicacion`.
+ *
  * Solo entran artistas con `tienda_activa` o `verificado`: los perfiles recién
  * creados (el layout de /panel crea una fila en `artistas` al primer login)
  * están vacíos y no aportan nada al índice.
@@ -72,5 +74,36 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
-  return [...estaticas, ...fichas];
+  // Noticias: mismos filtros que lib/noticias.ts (el RLS ya limita a
+  // publicada + publica), ordenadas por fecha de publicación. `lastModified`
+  // es `updated_at`: lo que le importa al buscador es cuándo cambió la página,
+  // no la fecha que se muestra.
+  const { data: noticias, error: errNoticias } = await supabase
+    .from("publicaciones")
+    .select("slug, fecha_publicacion, updated_at")
+    .eq("estado", "publicada")
+    .eq("tipo", "noticia")
+    .order("fecha_publicacion", { ascending: false });
+
+  if (errNoticias) {
+    console.error("[sitemap] error consultando noticias:", errNoticias.message);
+    throw new Error(`[sitemap] error consultando noticias: ${errNoticias.message}`);
+  }
+
+  const notas: MetadataRoute.Sitemap = [
+    {
+      url: `${BASE_URL}/noticias`,
+      lastModified: noticias?.[0] ? new Date(noticias[0].fecha_publicacion) : new Date(),
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    },
+    ...(noticias ?? []).map((n) => ({
+      url: `${BASE_URL}/noticias/${n.slug}`,
+      lastModified: new Date(n.updated_at),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
+  ];
+
+  return [...estaticas, ...notas, ...fichas];
 }

@@ -836,6 +836,54 @@ el JS público del sitio.
 
 `app/sitemap.ts` tenía el mismo patrón (devolvía solo las estáticas ante un error); corregido para que lance igual que `lib/noticias.ts`.
 
+### Noticias editoriales desde el admin + `fecha_publicacion` (2026-10-03)
+
+Contexto: la noticia "Café Rock" se subió desde el admin del **Channel** a su
+tabla `noticias` (otro Supabase); la tienda lee `publicaciones` y nunca la vio.
+Ahora el admin de la tienda escribe editoriales directo.
+
+**Convención editorial** (la de las 8 migradas): `artista_id` = perfil
+`muzikchile` (`c532a692…`, `es_editorial = true`, `user_id = null`). Nunca null.
+El código lo busca por slug + `es_editorial`, no por UUID fijo.
+
+**Migración `20261003205430_fecha_publicacion_y_editorial_admin`:**
+- `fecha_publicacion timestamptz not null default now()`, rellenada con
+  `created_at` (las 8 conservan su fecha visible; efecto colateral: su
+  `updated_at` quedó en 2026-10-03 por el trigger de updated_at).
+- **`publicaciones_insert_admin`**: antes el admin NO podía insertar.
+- Trigger `publicaciones_fecha_publicacion`: artista INSERT → fecha = now();
+  artista UPDATE de la fecha → 42501; pasar a `publicada` sin tocar la fecha →
+  now() (también al aprobar en moderación); fecha futura → 22007 (no hay
+  programación). La service role pasa intacta.
+
+**Código:**
+- `components/publicaciones/PublicacionForm.tsx` (movido desde el panel) con
+  `modo: "artista" | "editorial"`. Editorial: firma MuzikChile, titular 200
+  (`TITULAR_MAX_EDITORIAL`), campo fecha, "Guardar borrador"/"Publicar"; ya
+  publicada → "Pasar a borrador"/"Guardar cambios". La fecha solo se envía si
+  el admin la tocó (si no, el datetime-local sin segundos parecería un cambio
+  manual y el trigger no pondría now() al publicar).
+- `/admin/publicaciones/nueva`, `/admin/publicaciones/[id]/editar` (solo
+  editoriales; las de artistas se moderan, no se editan), botón "Nueva
+  noticia" y "Editar noticia editorial" en la lista.
+- Portada, `/noticias`, `/noticias/[slug]` y sitemap ordenan y muestran por
+  `fecha_publicacion`. El sitemap ahora incluye /noticias y cada nota.
+- `scripts/migrar-noticias-channel.mjs`: mapea a `fecha_publicacion` y acepta
+  `--slug=`. Café Rock migrada con fecha 2026-09-28 19:23.
+
+**Verificado:** `verificar:rls` 14/14 (nuevos: g–n), `verificar:rls-storage`
+10/10, build OK, flujo en local con admin de prueba (crear borrador → publicar
+borrador viejo → fecha = now), todo limpiado.
+
+**Pendientes:**
+- **Chinoy y MUDA** (27-09) siguen solo en el Channel: correr el script sin
+  `--slug` si se quieren.
+- El modal de moderación del admin muestra el cuerpo como HTML crudo
+  (`<p>…`); es previo a esta tanda.
+- Decidir si el admin del Channel se deja de usar para noticias (hoy hay dos
+  tablas que no se sincronizan).
+- Regenerar `supabase/schema_baseline.sql` (pg_dump, lo corre Claudio).
+
 ---
 
 ## 🚀 Bloqueos de lanzamiento (3)

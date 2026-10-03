@@ -7,7 +7,7 @@ import { ArrowLeft, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { esEditable } from "@/lib/publicaciones";
-import PublicacionForm, { type PublicacionExistente } from "../../PublicacionForm";
+import PublicacionForm, { type PublicacionExistente } from "@/components/publicaciones/PublicacionForm";
 
 export default function EditarPublicacionPage() {
   const { id } = useParams<{ id: string }>();

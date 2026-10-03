@@ -152,7 +152,7 @@ export default async function NoticiasPage() {
                     <span
                       style={{ fontFamily: F.body, fontSize: "12px", color: C.grisTenue }}
                     >
-                      {fechaCorta(n.created_at)}
+                      {fechaCorta(n.fecha_publicacion)}
                     </span>
                   </div>
                 </div>

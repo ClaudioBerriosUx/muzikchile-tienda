@@ -124,6 +124,40 @@ async function crearArtistaDePrueba(sufijo) {
 }
 
 /**
+ * Admin de prueba: usuario de auth con rol 'admin' y sin fila en `artistas`.
+ * Lo barre `limpiar()` por el prefijo del email.
+ */
+async function crearAdminDePrueba() {
+  const email = `${PREFIJO}-admin@example.com`;
+  const password = `${crypto.randomUUID()}Aa1!`;
+
+  const { data: userData, error: userErr } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  if (userErr) throw new Error(`No se pudo crear el admin: ${userErr.message}`);
+  const userId = userData.user.id;
+
+  const { error: rolErr } = await admin.from("user_roles").insert({ user_id: userId, role: "admin" });
+  if (rolErr && rolErr.code !== "23505") throw new Error(`No se pudo dar rol admin: ${rolErr.message}`);
+
+  const cliente = createClient(URL, ANON_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  const { error: loginErr } = await cliente.auth.signInWithPassword({ email, password });
+  if (loginErr) throw new Error(`No se pudo iniciar sesión como admin: ${loginErr.message}`);
+
+  return { userId, cliente };
+}
+
+/** ¿`iso` cae dentro de los últimos `min` minutos? Para fechas que fija now(). */
+function esReciente(iso, min = 5) {
+  const t = new Date(iso).getTime();
+  return Number.isFinite(t) && Math.abs(Date.now() - t) < min * 60_000;
+}
+
+/**
  * Limpieza por PREFIJO, no por el estado en memoria.
  *
  * Si el montaje falla a medias (por ejemplo: el usuario de auth se creó pero la
@@ -338,6 +372,156 @@ async function main() {
       "(f) Anon solo ve publicada + publica",
       soloLaPublica,
       soloLaPublica ? null : `Anon vio: ${slugs.length ? slugs.join(", ") : "(nada)"}`
+    );
+
+    // ── Editoriales y fecha_publicacion (migración 20261003205430) ───────────
+    //
+    // Las editoriales de prueba cuelgan del perfil MuzikChile REAL (no hay otro
+    // editorial), pero llevan slug con el prefijo rlstest-: `limpiar()` las
+    // borra por slug y nunca toca el perfil ni las noticias reales.
+
+    const { data: perfilEditorial, error: errPerfil } = await admin
+      .from("artistas")
+      .select("id")
+      .eq("slug", "muzikchile")
+      .eq("es_editorial", true)
+      .single();
+    if (errPerfil) throw new Error(`No se encontró el perfil editorial: ${errPerfil.message}`);
+    const EDITORIAL = perfilEditorial.id;
+
+    const ADM = await crearAdminDePrueba();
+    const base = { tipo: "noticia", categoria: "general", cuerpo: "Contenido de prueba editorial." };
+
+    // (g) Un artista NO puede crear una publicación a nombre del editorial.
+    const { error: errG } = await A.cliente.from("publicaciones").insert({
+      ...base,
+      artista_id: EDITORIAL,
+      titular: "Suplantación editorial",
+      slug: `${PREFIJO}-suplanta-editorial`,
+      estado: "borrador",
+    });
+    check(
+      "(g) Artista INSERT con artista_id del perfil editorial → rechazado",
+      esRechazoRLS(errG),
+      errG ? null : "NO fue rechazado: un artista puede firmar como MuzikChile."
+    );
+
+    // (h) Un artista NO puede editar una editorial.
+    const { data: semilla, error: errSemilla } = await admin
+      .from("publicaciones")
+      .insert({ ...base, artista_id: EDITORIAL, titular: "Editorial sembrada", slug: `${PREFIJO}-editorial-semilla`, estado: "borrador" })
+      .select("id")
+      .single();
+    if (errSemilla) throw new Error(`No se pudo sembrar la editorial: ${errSemilla.message}`);
+    const { data: tocadaH } = await A.cliente
+      .from("publicaciones")
+      .update({ titular: "Editada por un artista" })
+      .eq("id", semilla.id)
+      .select("id");
+    check(
+      "(h) Artista UPDATE de una editorial → 0 filas",
+      (tocadaH?.length ?? 0) === 0,
+      `UPDATE afectó ${tocadaH?.length ?? 0} fila(s)`
+    );
+
+    // (i) Un artista que manda fecha_publicacion al crear: se ignora, queda now().
+    const { data: conFecha, error: errI } = await A.cliente
+      .from("publicaciones")
+      .insert({
+        ...base,
+        artista_id: A.artistaId,
+        titular: "Con fecha retroactiva",
+        slug: `${PREFIJO}-fecha-retro`,
+        estado: "borrador",
+        fecha_publicacion: "2020-01-01T00:00:00Z",
+      })
+      .select("id, fecha_publicacion")
+      .single();
+    check(
+      "(i) Artista INSERT con fecha_publicacion del pasado → se guarda now()",
+      !errI && esReciente(conFecha?.fecha_publicacion),
+      errI ? `Falló el insert: ${errI.message}` : `Quedó ${conFecha?.fecha_publicacion}`
+    );
+
+    // (j) Un artista NO puede cambiar fecha_publicacion de su borrador.
+    let errJ = null;
+    let fechaJ = null;
+    if (conFecha) {
+      ({ error: errJ } = await A.cliente
+        .from("publicaciones")
+        .update({ fecha_publicacion: "2021-06-01T00:00:00Z" })
+        .eq("id", conFecha.id));
+      ({ data: { fecha_publicacion: fechaJ } } = await admin
+        .from("publicaciones").select("fecha_publicacion").eq("id", conFecha.id).single());
+    }
+    check(
+      "(j) Artista UPDATE de fecha_publicacion → rechazado (trigger)",
+      esRechazoRLS(errJ) && fechaJ === conFecha?.fecha_publicacion,
+      esRechazoRLS(errJ) ? null : `NO fue rechazado (${errJ?.message ?? "sin error"}); fecha quedó ${fechaJ}`
+    );
+
+    // (k) El admin publica una editorial directo, sin moderación.
+    const { data: directa, error: errK } = await ADM.cliente
+      .from("publicaciones")
+      .insert({ ...base, artista_id: EDITORIAL, titular: "Editorial directa", slug: `${PREFIJO}-editorial-directa`, estado: "publicada", visibilidad: "publica" })
+      .select("id, estado")
+      .single();
+    check(
+      "(k) Admin INSERT de editorial como 'publicada' → permitido",
+      !errK && directa?.estado === "publicada",
+      errK ? `Falló: ${errK.message}` : null
+    );
+
+    // (l) El admin puede fijar fecha_publicacion.
+    let errL = null;
+    let fechaL = null;
+    if (directa) {
+      const { data, error } = await ADM.cliente
+        .from("publicaciones")
+        .update({ fecha_publicacion: "2025-09-28T19:23:00Z" })
+        .eq("id", directa.id)
+        .select("fecha_publicacion")
+        .single();
+      errL = error;
+      fechaL = data?.fecha_publicacion;
+    }
+    check(
+      "(l) Admin UPDATE de fecha_publicacion → permitido",
+      !errL && fechaL && new Date(fechaL).toISOString() === "2025-09-28T19:23:00.000Z",
+      errL ? `Falló: ${errL.message}` : `Quedó ${fechaL}`
+    );
+
+    // (m) Publicar un borrador sin tocar la fecha → toma now().
+    const { data: viejo, error: errSemM } = await admin
+      .from("publicaciones")
+      .insert({ ...base, artista_id: EDITORIAL, titular: "Borrador viejo", slug: `${PREFIJO}-borrador-viejo`, estado: "borrador", fecha_publicacion: "2025-01-15T12:00:00Z" })
+      .select("id")
+      .single();
+    if (errSemM) throw new Error(`No se pudo sembrar el borrador viejo: ${errSemM.message}`);
+    const { data: publicadoM, error: errM } = await ADM.cliente
+      .from("publicaciones")
+      .update({ estado: "publicada" })
+      .eq("id", viejo.id)
+      .select("fecha_publicacion")
+      .single();
+    check(
+      "(m) Admin publica un borrador sin tocar la fecha → fecha = now()",
+      !errM && esReciente(publicadoM?.fecha_publicacion),
+      errM ? `Falló: ${errM.message}` : `Quedó ${publicadoM?.fecha_publicacion}`
+    );
+
+    // (n) Ni el admin puede poner una fecha futura (no hay programación).
+    let errN = null;
+    if (directa) {
+      ({ error: errN } = await ADM.cliente
+        .from("publicaciones")
+        .update({ fecha_publicacion: new Date(Date.now() + 86_400_000).toISOString() })
+        .eq("id", directa.id));
+    }
+    check(
+      "(n) Admin UPDATE con fecha_publicacion futura → rechazado",
+      errN?.code === "22007",
+      errN ? (errN.code === "22007" ? null : `Error inesperado: ${errN.message}`) : "NO fue rechazado"
     );
   } catch (err) {
     console.error("\nError montando o ejecutando la verificación:");

@@ -17,8 +17,17 @@ export function etiquetaCategoria(value: string | null): string {
   return CATEGORIAS_NOTICIA.find((c) => c.value === value)?.label ?? "—";
 }
 
-/** Máximo del titular. Coincide con el CHECK de la columna en la DB. */
+/**
+ * Máximo del titular para artistas. Es un límite de producto, más estricto que
+ * la DB: el CHECK `publicaciones_titular_check` permite 200.
+ */
 export const TITULAR_MAX = 80;
+
+/**
+ * Máximo para editoriales: el del CHECK de la DB. Los titulares periodísticos
+ * son más largos, y varias de las noticias migradas del Channel pasan de 80.
+ */
+export const TITULAR_MAX_EDITORIAL = 200;
 
 function slugify(texto: string): string {
   return texto

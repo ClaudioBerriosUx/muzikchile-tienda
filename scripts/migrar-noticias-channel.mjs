@@ -11,6 +11,10 @@
  *
  *   node --env-file=.env.local scripts/migrar-noticias-channel.mjs --dry-run
  *
+ * Con --slug=<slug> migra solo esa noticia (el resto se ignora, no se lista):
+ *
+ *   node --env-file=.env.local scripts/migrar-noticias-channel.mjs --slug=mi-noticia
+ *
  * Necesita en el entorno:
  *   NEXT_PUBLIC_CHANNEL_SUPABASE_URL / _ANON_KEY   (origen, solo lectura)
  *   NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY  (destino)
@@ -36,6 +40,8 @@ const TI_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const TI_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const DRY_RUN = process.argv.includes("--dry-run");
+const SOLO_SLUG =
+  process.argv.find((a) => a.startsWith("--slug="))?.slice("--slug=".length) || null;
 
 if (!CH_URL || !CH_KEY || !TI_URL || !TI_KEY) {
   console.error(
@@ -74,6 +80,7 @@ async function main() {
   console.log(`Origen:  ${CH_URL}`);
   console.log(`Destino: ${TI_URL}`);
   if (DRY_RUN) console.log("MODO DRY-RUN: no se escribe nada.");
+  if (SOLO_SLUG) console.log(`Solo el slug: ${SOLO_SLUG}`);
   console.log("");
 
   // ── Autor editorial ────────────────────────────────────────────────────────
@@ -126,6 +133,8 @@ async function main() {
   let insertadas = 0, saltadas = 0, fallidas = 0;
 
   for (const n of noticias) {
+    if (SOLO_SLUG && n.slug !== SOLO_SLUG) continue;
+
     const etiqueta = (n.slug ?? "(sin slug)").slice(0, 56);
 
     if (!n.titulo?.trim() || !n.slug?.trim()) {
@@ -160,8 +169,13 @@ async function main() {
       slug:        n.slug,
       estado:      "publicada",
       visibilidad: "publica",
-      // Preservar la fecha original importa: es el orden del feed y de la portada.
-      created_at:  n.fecha_publicacion,
+      // La fecha original del Channel va a fecha_publicacion, que es la que se
+      // muestra y por la que se ordena. created_at también la recibe, por
+      // consistencia con las 8 migradas antes de que existiera la columna.
+      // El trigger publicaciones_fecha_publicacion no interviene: la service
+      // role no tiene sesión de artista.
+      fecha_publicacion: n.fecha_publicacion,
+      created_at:        n.fecha_publicacion,
     };
 
     if (DRY_RUN) {
@@ -184,10 +198,15 @@ async function main() {
 
   // ── Resumen ────────────────────────────────────────────────────────────────
   console.log("\n" + "─".repeat(60));
-  console.log(`Encontradas: ${noticias.length}`);
+  console.log(`Encontradas: ${noticias.length}${SOLO_SLUG ? " (se procesó solo 1 slug)" : ""}`);
   console.log(`Insertadas:  ${insertadas}${DRY_RUN ? " (simulado)" : ""}`);
   console.log(`Saltadas:    ${saltadas} (ya existían)`);
   console.log(`Fallidas:    ${fallidas}`);
+
+  if (SOLO_SLUG && insertadas + saltadas + fallidas === 0) {
+    console.log(`\nNo hay ninguna noticia publicada con slug "${SOLO_SLUG}" en el Channel.`);
+    process.exit(1);
+  }
 
   if (fallidas > 0) {
     console.log("\nAlgunas no se migraron. Revisa los mensajes de arriba.");

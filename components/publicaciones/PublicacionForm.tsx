@@ -17,22 +17,43 @@ import {
   CATEGORIAS_NOTICIA,
   CATEGORIA_VALUES,
   TITULAR_MAX,
+  TITULAR_MAX_EDITORIAL,
   generarSlug,
 } from "@/lib/publicaciones";
 
-const schema = z.object({
-  categoria: z.enum(CATEGORIA_VALUES, { message: "Selecciona una categoría" }),
-  titular:   z.string()
-               .min(1, "El titular es obligatorio")
-               .max(TITULAR_MAX, `Máximo ${TITULAR_MAX} caracteres`),
-  bajada:    z.string().max(200, "Máximo 200 caracteres").optional().or(z.literal("")),
-  cuerpo:    z.string().min(30, "Escribe al menos 30 caracteres"),
-});
+/**
+ * Dos modos:
+ * - `artista` (panel): borrador o enviar a revisión. Nunca escribe 'publicada'
+ *   (lo bloquea el RLS) ni toca `fecha_publicacion` (lo bloquea el trigger).
+ * - `editorial` (admin): firma como el perfil MuzikChile, publica directo y
+ *   puede fijar la fecha de publicación. Titular hasta 200 caracteres.
+ */
+export type ModoFormulario = "artista" | "editorial";
 
-type FormData = z.infer<typeof schema>;
+function crearSchema(modo: ModoFormulario) {
+  const max = modo === "editorial" ? TITULAR_MAX_EDITORIAL : TITULAR_MAX;
+  return z.object({
+    categoria: z.enum(CATEGORIA_VALUES, { message: "Selecciona una categoría" }),
+    titular:   z.string()
+                 .min(1, "El titular es obligatorio")
+                 .max(max, `Máximo ${max} caracteres`),
+    bajada:    z.string().max(200, "Máximo 200 caracteres").optional().or(z.literal("")),
+    cuerpo:    z.string().min(30, "Escribe al menos 30 caracteres"),
+    // Solo se usa en modo editorial. Sin programación: no se aceptan fechas
+    // futuras (el trigger de la DB también lo rechaza).
+    fecha_publicacion: z
+      .string()
+      .optional()
+      .refine((v) => !v || new Date(v).getTime() <= Date.now() + 60_000, {
+        message: "La fecha no puede ser futura",
+      }),
+  });
+}
 
-/** Estado al que se envía. El artista nunca puede escribir 'publicada' (lo bloquea el RLS). */
-type EstadoDestino = "borrador" | "pendiente";
+type FormData = z.infer<ReturnType<typeof crearSchema>>;
+
+/** Estado al que se envía. 'publicada' solo existe en modo editorial. */
+type EstadoDestino = "borrador" | "pendiente" | "publicada";
 
 export interface PublicacionExistente {
   id: string;
@@ -44,20 +65,36 @@ export interface PublicacionExistente {
   slug: string;
   estado: string;
   comentario_moderacion: string | null;
+  fecha_publicacion?: string;
 }
 
 interface Props {
+  /** En modo editorial, el id del perfil MuzikChile (es_editorial). */
   artistaId: string;
   /** Si viene, el formulario edita esa fila en vez de crear una nueva. */
   publicacion?: PublicacionExistente;
+  modo?: ModoFormulario;
 }
 
-export default function PublicacionForm({ artistaId, publicacion }: Props) {
+/** ISO → valor de <input type="datetime-local"> en hora local ("2026-10-03T17:40"). */
+function aInputLocal(iso: string | Date): string {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+export default function PublicacionForm({ artistaId, publicacion, modo = "artista" }: Props) {
   const router = useRouter();
   const supabase = createClient();
   const queryClient = useQueryClient();
 
   const editando = !!publicacion;
+  const editorial = modo === "editorial";
+  const titularMax = editorial ? TITULAR_MAX_EDITORIAL : TITULAR_MAX;
+  const yaPublicada = publicacion?.estado === "publicada";
+  const [schema] = useState(() => crearSchema(modo));
+  /** El botón principal: el artista envía a revisión, el admin publica. */
+  const accionPrincipal: EstadoDestino = editorial ? "publicada" : "pendiente";
 
   const [archivo, setArchivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState<EstadoDestino | null>(null);
@@ -74,7 +111,7 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -82,11 +119,14 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
       titular:   publicacion?.titular ?? "",
       bajada:    publicacion?.bajada ?? "",
       cuerpo:    publicacion?.cuerpo ?? "",
+      fecha_publicacion: publicacion?.fecha_publicacion
+        ? aInputLocal(publicacion.fecha_publicacion)
+        : "",
     },
   });
 
   const titular = watch("titular") ?? "";
-  const restantes = TITULAR_MAX - titular.length;
+  const restantes = titularMax - titular.length;
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { "image/jpeg": [], "image/png": [], "image/webp": [] },
@@ -145,6 +185,18 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
        */
       const cuerpoLimpio = sanitizarHtml(data.cuerpo);
 
+      /**
+       * La fecha solo se manda si el admin la tocó. Si se mandara siempre, el
+       * input datetime-local (sin segundos) devolvería un valor apenas distinto
+       * del guardado y el trigger lo tomaría como un cambio manual: al publicar
+       * un borrador viejo se quedaría con la fecha vieja en vez de tomar now().
+       * Sin tocarla: al crear, default now(); al publicar, el trigger fija now().
+       */
+      const fecha =
+        editorial && dirtyFields.fecha_publicacion && data.fecha_publicacion
+          ? { fecha_publicacion: new Date(data.fecha_publicacion).toISOString() }
+          : {};
+
       if (editando) {
         const { error } = await supabase
           .from("publicaciones")
@@ -155,6 +207,7 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
             cuerpo:    cuerpoLimpio,
             imagen_url,
             estado,
+            ...fecha,
             // El slug NO se regenera: la URL pública de la publicación no debe
             // cambiar porque se corrigió el titular.
           })
@@ -172,6 +225,7 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
           slug:        generarSlug(data.titular),
           estado,
           visibilidad: "publica",
+          ...fecha,
         });
         if (error) throw error;
       }
@@ -179,10 +233,17 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
       toast.success(
         estado === "borrador"
           ? "Borrador guardado"
-          : "Enviada a revisión. Te avisaremos cuando la revisemos."
+          : estado === "publicada"
+            ? "Publicada. Aparece en el sitio en unos minutos."
+            : "Enviada a revisión. Te avisaremos cuando la revisemos."
       );
-      queryClient.invalidateQueries({ queryKey: ["panel-publicaciones"] });
-      router.push("/panel/publicaciones");
+      if (editorial) {
+        queryClient.invalidateQueries({ queryKey: ["admin-publicaciones"] });
+        router.push("/admin/publicaciones");
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["panel-publicaciones"] });
+        router.push("/panel/publicaciones");
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al guardar la publicación");
     } finally {
@@ -206,7 +267,7 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
   return (
     <form noValidate>
       {/* Feedback del admin cuando la publicación fue devuelta */}
-      {publicacion?.estado === "devuelta" && publicacion.comentario_moderacion && (
+      {!editorial && publicacion?.estado === "devuelta" && publicacion.comentario_moderacion && (
         <div
           className="mb-6 rounded-lg border p-4"
           style={{ backgroundColor: "#fff7ed", borderColor: "#fed7aa" }}
@@ -251,7 +312,7 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
             </label>
             <input
               {...register("titular")}
-              maxLength={TITULAR_MAX}
+              maxLength={titularMax}
               className={inputClass}
               style={fieldStyle}
               placeholder="Ej: Nuevo single de la banda"
@@ -296,6 +357,31 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
 
         {/* ── Columna derecha ── */}
         <div className="flex flex-col gap-5">
+          {editorial && (
+            <div>
+              <label className={labelClass} style={labelStyle}>
+                Fecha de publicación
+              </label>
+              <input
+                type="datetime-local"
+                {...register("fecha_publicacion")}
+                max={aInputLocal(new Date())}
+                className={inputClass}
+                style={fieldStyle}
+              />
+              <p
+                className="mt-1"
+                style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#999999", lineHeight: 1.5 }}
+              >
+                {editando
+                  ? "Déjala como está para conservarla. Si publicas un borrador sin cambiarla, toma la hora del momento."
+                  : "Vacía = ahora. Sirve para fechar una nota que salió antes en otro medio."}{" "}
+                No se aceptan fechas futuras.
+              </p>
+              {errorEl(errors.fecha_publicacion?.message)}
+            </div>
+          )}
+
           <div>
             <label className={labelClass} style={labelStyle}>
               Imagen {!editando && <span style={{ color: "#e8003d" }}>*</span>}
@@ -371,12 +457,16 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
             opacity: enviando ? 0.6 : 1,
           }}
         >
-          {enviando === "borrador" ? "Guardando..." : "Guardar borrador"}
+          {enviando === "borrador"
+            ? "Guardando..."
+            : editorial && yaPublicada
+              ? "Pasar a borrador"
+              : "Guardar borrador"}
         </button>
 
         <button
           type="button"
-          onClick={handleSubmit((d) => guardar(d, "pendiente"))}
+          onClick={handleSubmit((d) => guardar(d, accionPrincipal))}
           disabled={enviando !== null}
           className="flex-1 h-12 rounded-md text-white font-semibold transition-colors"
           style={{
@@ -386,7 +476,13 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
             cursor: enviando ? "not-allowed" : "pointer",
           }}
         >
-          {enviando === "pendiente" ? "Enviando..." : "Enviar a revisión"}
+          {enviando === accionPrincipal
+            ? editorial ? "Publicando..." : "Enviando..."
+            : !editorial
+              ? "Enviar a revisión"
+              : yaPublicada
+                ? "Guardar cambios"
+                : "Publicar"}
         </button>
       </div>
 
@@ -394,8 +490,9 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
         className="mt-3"
         style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#999999" }}
       >
-        Un borrador solo lo ves tú. Al enviar a revisión, el equipo la revisa antes
-        de publicarla.
+        {editorial
+          ? "Firma como MuzikChile. Publicar la deja visible en el sitio sin pasar por moderación (aparece en unos minutos)."
+          : "Un borrador solo lo ves tú. Al enviar a revisión, el equipo la revisa antes de publicarla."}
       </p>
     </form>
   );
