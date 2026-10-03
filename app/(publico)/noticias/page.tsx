@@ -4,6 +4,10 @@ import { Newspaper } from "lucide-react";
 import { C, F } from "@/lib/portada";
 import { etiquetaCategoria } from "@/lib/publicaciones";
 import { traerNoticias, fechaCorta } from "@/lib/noticias";
+import ImagenNoticia from "@/components/noticias/ImagenNoticia";
+
+/** Grilla de 3/2/1 columnas con gap-6 dentro de `max-w-6xl` (1104px útiles). */
+const SIZES_TARJETA = "(min-width: 1152px) 352px, (min-width: 1024px) 31vw, (min-width: 640px) 48vw, 100vw";
 
 export const metadata: Metadata = {
   title: "Noticias | MuzikChile",
@@ -90,19 +94,7 @@ export default async function NoticiasPage() {
                 className="group rounded-lg overflow-hidden border transition-all duration-200 hover:-translate-y-1 flex flex-col"
                 style={{ borderColor: C.borde, backgroundColor: C.negroSuave }}
               >
-                {/* Imagen */}
-                <div className="relative w-full overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
-                  {n.imagen_url ? (
-                    <img
-                      src={n.imagen_url}
-                      alt={n.titular}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full" style={{ backgroundColor: "#141414" }} />
-                  )}
-                </div>
+                <ImagenNoticia src={n.imagen_url} alt={n.titular} sizes={SIZES_TARJETA} />
 
                 {/* Contenido */}
                 <div className="p-5 flex flex-col gap-2 flex-1">
@@ -121,7 +113,8 @@ export default async function NoticiasPage() {
                     {n.titular}
                   </h2>
 
-                  {n.bajada && (
+                  {/* Bajada, o extracto del cuerpo si viene vacía. */}
+                  {n.resumen && (
                     <p
                       className="line-clamp-3"
                       style={{
@@ -131,7 +124,7 @@ export default async function NoticiasPage() {
                         lineHeight: 1.6,
                       }}
                     >
-                      {n.bajada}
+                      {n.resumen}
                     </p>
                   )}
 

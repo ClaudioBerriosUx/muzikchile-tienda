@@ -323,14 +323,20 @@ export default function PublicacionForm({ artistaId, publicacion }: Props) {
             <div
               style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#999999", marginTop: "6px", lineHeight: 1.5 }}
             >
-              📐 Se redimensiona a 1200 px de ancho<br />
+              📐 Formato recomendado: 1080×1350 px (vertical, como un post de Instagram)<br />
+              ✂️ Se recorta al centro en proporción 4:5; mira la vista previa<br />
               📁 Formatos: JPG, PNG, WEBP<br />
               🖼️ Una imagen, la portada de la noticia
             </div>
 
             {preview && (
-              <div className="relative mt-3 rounded-lg overflow-hidden border border-[#e8e8e8]">
-                <img src={preview} alt="Portada" className="w-full object-cover" style={{ maxHeight: "260px" }} />
+              // 4:5 y object-center como las tarjetas públicas (ImagenNoticia):
+              // el artista ve el recorte real antes de enviar.
+              <div
+                className="relative mt-3 rounded-lg overflow-hidden border border-[#e8e8e8] mx-auto"
+                style={{ aspectRatio: "4 / 5", maxWidth: "240px" }}
+              >
+                <img src={preview} alt="Portada" className="w-full h-full object-cover object-center" />
                 {archivo && (
                   <button
                     type="button"

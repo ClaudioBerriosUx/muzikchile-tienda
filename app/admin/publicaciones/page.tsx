@@ -320,12 +320,16 @@ export default function ModerarPublicacionesPage() {
           <div className="max-w-2xl">
             {/* Portada */}
             {seleccionada.imagen_url && (
-              <div className="rounded-lg overflow-hidden border border-[#e8e8e8] mb-6">
+              // 4:5 con recorte al centro, igual que las tarjetas públicas
+              // (ImagenNoticia): el admin modera viendo lo que verá el lector.
+              <div
+                className="rounded-lg overflow-hidden border border-[#e8e8e8] mb-6"
+                style={{ aspectRatio: "4 / 5", maxWidth: "304px" }}
+              >
                 <img
                   src={seleccionada.imagen_url}
                   alt={seleccionada.titular}
-                  className="w-full object-contain bg-[#f8f7f5]"
-                  style={{ maxHeight: "380px" }}
+                  className="w-full h-full object-cover object-center"
                 />
               </div>
             )}

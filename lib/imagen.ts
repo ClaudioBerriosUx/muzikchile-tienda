@@ -14,7 +14,12 @@
  * Solo funciona en el cliente: usa Image, canvas y URL.createObjectURL.
  *
  * @param archivo  Archivo de origen (JPG, PNG, WEBP...).
- * @param maxWidth Ancho máximo en px. 400 para avatares, 800 para productos.
+ * Solo limita el ancho y deriva el alto de la proporción original, así que no
+ * deforma imágenes verticales: una de 1080×1350 (noticia 4:5) con maxWidth 1200
+ * pasa intacta, y una de 2400×3000 queda en 1200×1500.
+ *
+ * @param maxWidth Ancho máximo en px. 400 para avatares, 800 para productos,
+ *                 1200 para publicaciones.
  * @param calidad  Calidad JPEG entre 0 y 1.
  * @returns El archivo comprimido, o el original si no se pudo procesar.
  */

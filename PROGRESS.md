@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-09-25
+> Actualizado: 2026-10-03
 > Branch: `main` (único branch activo)
 
 ---
@@ -760,6 +760,49 @@ cambios.
 **Pendiente (dashboard, fuera del repo):** Authentication → Sign In / Providers
 → desactivar **"Allow new users to sign up"**. Las invitaciones siguen
 funcionando con el registro cerrado. Cierra la puerta 2 por el otro lado.
+
+### Supabase pausado + keep-alive (2026-10-03)
+
+El proyecto principal se pausó por inactividad (plan gratuito, 7 días) y el
+sitio entero cayó: el dominio `rgsksp….supabase.co` daba NXDOMAIN. Tras
+restaurarlo, el DNS vuelve antes que los servicios: durante un rato la raíz
+`/rest/v1/` responde 401 pero cualquier tabla da **521**. "Activo" en el
+dashboard no significa listo.
+
+`.github/workflows/supabase-keep-alive.yml` (commit `44a901d`): cron cada 3
+días, `count` de `categorias` vía REST con la publishable key (secret
+`SUPABASE_PUBLISHABLE_KEY`). Falla en rojo si Supabase no responde. ⚠️ GitHub
+desactiva los crons tras 60 días sin commits en el repo.
+
+### Noticias en formato 4:5 · Portada + feed (2026-10-03)
+
+- **Portada** (`_portada/UltimasNoticias.tsx`): destacada a todo el ancho
+  (imagen 1/3 + texto centrado con "Leer nota completa →") y fila de 3
+  tarjetas. 1 columna en móvil, 2 en tablet con la 4ª noticia oculta (sin
+  huérfana), 3 en escritorio. Usa `traerNoticias(4)`; su consulta propia se
+  eliminó. Se quitó la tarjeta CTA "Revisa el archivo completo".
+- **`components/noticias/ImagenNoticia.tsx`**: contenedor 4:5 + `next/image`
+  `fill`/`object-cover`/`object-center` + placeholder del mismo tamaño. Lo usan
+  portada y `/noticias`. El og:image de `/noticias/[slug]` NO se tocó.
+- **`lib/noticias.ts`**: campo `resumen` = bajada o, si viene vacía, extracto
+  de 160 caracteres del cuerpo (`aTextoPlano`, corta en palabra completa).
+- **`next.config.ts`**: se agregó el Storage del Channel (`yxqhtl…`) a
+  `remotePatterns`. Las 8 noticias migradas sirven sus imágenes desde ahí; con
+  `next/image` y sin ese host, portada y feed daban 500.
+- Panel: texto "Formato recomendado: 1080×1350 px" y vista previa 4:5. Admin:
+  vista previa 4:5 en el modal de moderación. `comprimirImagen` no deforma
+  verticales (solo limita el ancho); solo se actualizó su comentario.
+- Revisado a 375/768/1280 px. Ojo: Chrome headless con `--window-size=375` no
+  baja el viewport real; para probar móvil hay que cargar la página en un
+  iframe de 375 px.
+
+**Las 8 imágenes migradas son horizontales 16:9** (se ve ~45% del ancho al
+recortar a 4:5). Pierden contenido importante: **Santiago Horror** (título y
+fechas del afiche cortados, hoy en la portada) y **Metalengua** (texto
+"Ojitos de Planeta" y gente de los costados). Menor: **31 Minutos** (músicos de
+los costados) y **Lechu** (borde del texto "Tranki"). Bien: Valparaíso, Rubio,
+Alondra Noctvrna, Sequía. Pendiente: resubir versiones 1080×1350 de las dos
+primeras.
 
 ---
 

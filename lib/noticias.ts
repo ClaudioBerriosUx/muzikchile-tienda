@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { aTextoPlano } from "@/lib/embeds";
 
 /**
  * Consultas de noticias públicas, server-side.
@@ -22,9 +23,14 @@ export interface NoticiaLista {
   categoria: string | null;
   created_at: string;
   artistas: { nombre: string; slug: string } | null;
+  /**
+   * Texto para la tarjeta: la bajada o, si viene vacía, un extracto del cuerpo.
+   * Se calcula acá para que el cuerpo completo no viaje a cada tarjeta.
+   */
+  resumen: string | null;
 }
 
-export interface NoticiaDetalle extends NoticiaLista {
+export interface NoticiaDetalle extends Omit<NoticiaLista, "resumen"> {
   cuerpo: string | null;
   /**
    * El autor. `es_editorial` distingue a la redacción MuzikChile de un artista
@@ -39,11 +45,25 @@ export interface NoticiaDetalle extends NoticiaLista {
   } | null;
 }
 
+// `cuerpo` va solo para armar el extracto de respaldo; no sale en NoticiaLista.
 const CAMPOS_LISTA =
-  "id, titular, bajada, imagen_url, slug, categoria, created_at, artistas(nombre, slug)";
+  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, created_at, artistas(nombre, slug)";
+
+/** Largo del extracto de respaldo, en caracteres. */
+const LARGO_RESUMEN = 160;
 
 const CAMPOS_DETALLE =
   "id, titular, bajada, cuerpo, imagen_url, slug, categoria, created_at, artistas(nombre, slug, foto_url, es_editorial)";
+
+/**
+ * La bajada, o un extracto del cuerpo en texto plano si la bajada está vacía
+ * (las noticias migradas del Channel suelen venir sin ella). `aTextoPlano`
+ * quita HTML y embeds y corta en palabra completa.
+ */
+export function resumenNoticia(bajada: string | null, cuerpo: string | null): string | null {
+  if (bajada?.trim()) return bajada.trim();
+  return cuerpo ? aTextoPlano(cuerpo, LARGO_RESUMEN) || null : null;
+}
 
 function cliente() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -72,7 +92,10 @@ export async function traerNoticias(limite?: number): Promise<NoticiaLista[]> {
     console.error("[noticias] error cargando el listado:", error.message);
     return [];
   }
-  return data ?? [];
+  return (data ?? []).map(({ cuerpo, ...n }) => ({
+    ...n,
+    resumen: resumenNoticia(n.bajada, cuerpo),
+  }));
 }
 
 /**

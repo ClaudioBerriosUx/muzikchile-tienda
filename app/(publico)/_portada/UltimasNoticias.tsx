@@ -1,62 +1,28 @@
 import Link from "next/link";
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/types";
 import { C, F } from "@/lib/portada";
 import { etiquetaCategoria } from "@/lib/publicaciones";
+import { traerNoticias, fechaCorta } from "@/lib/noticias";
+import ImagenNoticia from "@/components/noticias/ImagenNoticia";
 
 /**
- * Server Component: las noticias se leen en el servidor.
+ * Server Component: las noticias se leen en el servidor con `traerNoticias`
+ * (lib/noticias.ts), la misma consulta del feed /noticias.
  *
- * Usa el cliente anon directo (sin cookies) igual que `app/sitemap.ts`: no hace
- * falta sesión para leer publicaciones públicas, y evitar `cookies()` deja que
- * la ruta pueda cachearse en vez de volverse dinámica por sesión.
- *
- * El RLS `publicaciones_select_publico` ya limita a estado='publicada' +
- * visibilidad='publica'; los filtros explícitos son defensa en profundidad.
+ * Composición, imágenes en formato Instagram 4:5:
+ *   1. Destacada (la más reciente) a todo el ancho: imagen a 1/3, texto al lado.
+ *   2. Fila de 3 tarjetas (noticias 2–4): imagen arriba, badge + fecha y titular.
  */
-interface NoticiaPortada {
-  id: string;
-  titular: string;
-  bajada: string | null;
-  imagen_url: string | null;
-  slug: string;
-  categoria: string | null;
-  created_at: string;
-  artistas: { nombre: string } | null;
-}
 
-async function traerNoticias(): Promise<NoticiaPortada[]> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return [];
+/**
+ * `sizes` de cada imagen. Salen del contenedor `max-w-6xl` con `px-6`: 1104px
+ * útiles en escritorio.
+ * - Destacada: 1/3 de la tarjeta desde `sm`; en móvil, todo el ancho.
+ * - Fila: 3 columnas con gap-5 en `lg` (≈355px), 2 en `sm`, 1 en móvil.
+ */
+const SIZES_DESTACADA = "(min-width: 1152px) 368px, (min-width: 640px) 33vw, 100vw";
+const SIZES_FILA = "(min-width: 1152px) 355px, (min-width: 1024px) 31vw, (min-width: 640px) 48vw, 100vw";
 
-  const supabase = createClient<Database>(url, key);
-
-  const { data, error } = await supabase
-    .from("publicaciones")
-    .select("id, titular, bajada, imagen_url, slug, categoria, created_at, artistas(nombre)")
-    .eq("estado", "publicada")
-    .eq("tipo", "noticia")
-    .order("created_at", { ascending: false })
-    .limit(3);
-
-  if (error) {
-    // Una portada sin noticias es preferible a una portada caída.
-    console.error("[portada] error cargando noticias:", error.message);
-    return [];
-  }
-  return data ?? [];
-}
-
-function fecha(iso: string) {
-  return new Date(iso).toLocaleDateString("es-CL", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-/** Estilo de tarjeta compartido por las cuatro piezas de la grilla. */
+/** Estilo de tarjeta compartido por la destacada y las de la fila. */
 const TARJETA: React.CSSProperties = {
   borderColor: C.borde,
   backgroundColor: C.negro,
@@ -84,24 +50,31 @@ function Autor({ nombre }: { nombre: string | null | undefined }) {
   );
 }
 
+function Fecha({ iso }: { iso: string }) {
+  return (
+    <span style={{ fontFamily: F.body, fontSize: "12px", color: C.grisTenue }}>
+      {fechaCorta(iso)}
+    </span>
+  );
+}
+
 /**
  * Badge de categoría.
  *
  * `etiquetaCategoria` devuelve "—" para una categoría desconocida o nula; en
  * ese caso no se pinta nada, porque un badge con un guion es peor que ningún
- * badge. Por eso devuelve null en vez de renderizar el fallback.
+ * badge.
  *
  * ⚠️ Hoy las 8 noticias migradas son `categoria: 'general'`, así que todas
  * muestran "GENERAL". SHOW / PRENSA / LANZAMIENTO aparecerán cuando alguien
  * las clasifique — el vocabulario ya existe en `lib/publicaciones.ts`.
  */
-function Badge({ categoria, flotante = false }: { categoria: string | null; flotante?: boolean }) {
+function Badge({ categoria }: { categoria: string | null }) {
   const etiqueta = etiquetaCategoria(categoria);
   if (etiqueta === "—") return null;
 
   return (
     <span
-      className={flotante ? "absolute top-3 left-3" : "self-start"}
       style={{
         fontFamily: F.body,
         textTransform: "uppercase",
@@ -112,8 +85,6 @@ function Badge({ categoria, flotante = false }: { categoria: string | null; flot
         backgroundColor: C.rojo,
         padding: "4px 9px",
         borderRadius: "3px",
-        // Sobre la imagen necesita despegarse del fondo, que puede ser claro.
-        boxShadow: flotante ? "0 2px 8px rgba(0,0,0,0.45)" : undefined,
       }}
     >
       {etiqueta}
@@ -121,18 +92,13 @@ function Badge({ categoria, flotante = false }: { categoria: string | null; flot
   );
 }
 
-/** Marcador para cuando la noticia no trae imagen. */
-function SinImagen() {
-  return <div className="w-full h-full" style={{ backgroundColor: "#141414" }} />;
-}
-
 export default async function UltimasNoticias() {
-  const noticias = await traerNoticias();
+  const noticias = await traerNoticias(4);
 
-  // Igual que el original: sin noticias publicadas, la sección no existe.
+  // Sin noticias publicadas, la sección no existe.
   if (noticias.length === 0) return null;
 
-  const [principal, ...secundarias] = noticias;
+  const [principal, ...fila] = noticias;
 
   return (
     <section style={{ backgroundColor: C.negroSuave }} className="py-14">
@@ -169,161 +135,111 @@ export default async function UltimasNoticias() {
           </Link>
         </div>
 
-        {/*
-          Grilla 55/45. Las dos columnas quedan a la misma altura porque grid
-          estira los items por defecto (`align-items: stretch`): la destacada
-          crece hasta igualar a la columna derecha sin que haya que fijarle
-          alto. En móvil colapsa a una sola columna y el orden del DOM
-          —destacada, secundarias, CTA— es el orden de lectura correcto.
-        */}
-        <div className="grid grid-cols-1 lg:grid-cols-[55fr_45fr] gap-5">
-          {/* ── COLUMNA IZQUIERDA: la destacada ───────────────────────────── */}
-          <Link
-            href={`/noticias/${principal.slug}`}
-            className="group rounded-lg overflow-hidden border transition-all duration-200 hover:-translate-y-1 flex flex-col"
-            style={TARJETA}
-          >
-            <div className="relative w-full overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
-              {principal.imagen_url ? (
-                <img
-                  src={principal.imagen_url}
-                  alt={principal.titular}
-                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                />
-              ) : (
-                <SinImagen />
-              )}
-              <Badge categoria={principal.categoria} flotante />
+        {/* ── DESTACADA ─────────────────────────────────────────────────────
+            Móvil: imagen arriba a todo el ancho, texto abajo. Desde `sm`, dos
+            columnas 1fr/2fr con el texto centrado verticalmente: el alto lo
+            pone la imagen 4:5, y el texto se acomoda en el centro. */}
+        <Link
+          href={`/noticias/${principal.slug}`}
+          className="group grid grid-cols-1 sm:grid-cols-[1fr_2fr] rounded-lg overflow-hidden border transition-all duration-200 hover:-translate-y-1"
+          style={TARJETA}
+        >
+          <ImagenNoticia src={principal.imagen_url} alt={principal.titular} sizes={SIZES_DESTACADA} />
+
+          <div className="p-6 sm:p-8 lg:p-12 flex flex-col justify-center gap-4 min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <Badge categoria={principal.categoria} />
+              <Autor nombre={principal.artistas?.nombre} />
+              <span style={{ color: C.grisTenue, fontSize: "12px" }} aria-hidden>·</span>
+              <Fecha iso={principal.created_at} />
             </div>
 
-            {/* `flex-1` para que el bloque de texto absorba el alto sobrante
-                cuando la columna derecha es más alta que esta tarjeta. */}
-            <div className="p-6 flex flex-col gap-2.5 flex-1">
-              <div className="flex items-center gap-3">
-                <Autor nombre={principal.artistas?.nombre} />
-                <span style={{ fontFamily: F.body, fontSize: "12px", color: C.grisTenue }}>
-                  {fecha(principal.created_at)}
-                </span>
-              </div>
+            <h3
+              style={{
+                fontFamily: F.titulo,
+                fontSize: "clamp(28px, 3.5vw, 44px)",
+                lineHeight: 1.08,
+                letterSpacing: "0.02em",
+                color: C.blanco,
+              }}
+            >
+              {principal.titular}
+            </h3>
 
-              <h3
-                style={{
-                  fontFamily: F.titulo,
-                  fontSize: "32px",
-                  lineHeight: 1.12,
-                  letterSpacing: "0.02em",
-                  color: C.blanco,
-                }}
+            {/* Bajada, o extracto del cuerpo si viene vacía (lib/noticias.ts). */}
+            {principal.resumen && (
+              <p
+                className="line-clamp-4"
+                style={{ fontFamily: F.body, fontSize: "16px", color: C.gris, lineHeight: 1.65 }}
               >
-                {principal.titular}
-              </h3>
+                {principal.resumen}
+              </p>
+            )}
 
-              {/* Las dos noticias más recientes vienen con `bajada` vacía desde
-                  la migración del Channel, así que hoy esto no se pinta. */}
-              {principal.bajada && (
-                <p
-                  className="line-clamp-4"
-                  style={{ fontFamily: F.body, fontSize: "15px", color: C.gris, lineHeight: 1.65 }}
-                >
-                  {principal.bajada}
-                </p>
-              )}
-            </div>
-          </Link>
+            {/*
+              Un <span> y no un <Link>: toda la tarjeta ya es el enlace, y un
+              <a> dentro de otro es HTML inválido.
 
-          {/* ── COLUMNA DERECHA: dos horizontales + CTA ───────────────────── */}
-          <div className="flex flex-col gap-5">
-            {secundarias.map((n) => (
+              El color va por clases y NO inline: un estilo inline le gana en
+              especificidad a `group-hover:`, igual que en los iconos del
+              Footer. Los hexes son C.rojo y C.rojoAcento.
+            */}
+            <span
+              className="inline-flex items-center gap-2 self-start text-[#CC0000] transition-colors duration-200 group-hover:text-[#FF2200]"
+              style={{
+                fontFamily: F.body,
+                fontSize: "14px",
+                fontWeight: 600,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              Leer nota completa
+              <span className="inline-block transition-transform duration-200 group-hover:translate-x-1">→</span>
+            </span>
+          </div>
+        </Link>
+
+        {/* ── FILA: noticias 2, 3 y 4 ───────────────────────────────────────
+            1 columna en móvil, 3 en escritorio. En tablet (2 columnas) la
+            tercera tarjeta se oculta para que la fila quede 2 + 0 y no con una
+            tarjeta huérfana: `sm:hidden lg:flex` la saca solo entre sm y lg. */}
+        {fila.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-5">
+            {fila.map((n, i) => (
               <Link
                 key={n.id}
                 href={`/noticias/${n.slug}`}
-                className="group rounded-lg overflow-hidden border transition-all duration-200 hover:-translate-y-1 flex"
+                className={`group rounded-lg overflow-hidden border transition-all duration-200 hover:-translate-y-1 flex flex-col ${
+                  i === 2 ? "sm:hidden lg:flex" : ""
+                }`}
                 style={TARJETA}
               >
-                <div className="w-[120px] sm:w-[140px] shrink-0 overflow-hidden">
-                  {n.imagen_url ? (
-                    <img
-                      src={n.imagen_url}
-                      alt={n.titular}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  ) : (
-                    <SinImagen />
-                  )}
-                </div>
+                <ImagenNoticia src={n.imagen_url} alt={n.titular} sizes={SIZES_FILA} />
 
-                <div className="p-4 flex flex-col gap-2 min-w-0">
-                  <Badge categoria={n.categoria} />
+                <div className="p-5 flex flex-col gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Badge categoria={n.categoria} />
+                    <Fecha iso={n.created_at} />
+                  </div>
 
                   <h4
-                    className="line-clamp-2"
+                    className="line-clamp-3"
                     style={{
                       fontFamily: F.titulo,
-                      fontSize: "19px",
-                      lineHeight: 1.2,
+                      fontSize: "22px",
+                      lineHeight: 1.15,
                       letterSpacing: "0.02em",
                       color: C.blanco,
                     }}
                   >
                     {n.titular}
                   </h4>
-
-                  <div className="flex items-center gap-2 flex-wrap mt-auto">
-                    <span style={{ fontFamily: F.body, fontSize: "11px", color: C.grisTenue }}>
-                      {fecha(n.created_at)}
-                    </span>
-                    <Autor nombre={n.artistas?.nombre} />
-                  </div>
                 </div>
               </Link>
             ))}
-
-            {/*
-              CTA al archivo. Misma tarjeta que las demás pero sin imagen.
-
-              `mt-auto` lo empuja al fondo de la columna: si la destacada es más
-              alta, el hueco sobrante queda ARRIBA del CTA y no entre las dos
-              noticias, que es lo que mantiene el bloque alineado por abajo.
-            */}
-            <Link
-              href="/noticias"
-              className="group mt-auto rounded-lg border transition-all duration-200 hover:-translate-y-1 flex items-center justify-between gap-4 p-5"
-              style={TARJETA}
-            >
-              <span
-                style={{
-                  fontFamily: F.titulo,
-                  fontSize: "20px",
-                  lineHeight: 1.2,
-                  letterSpacing: "0.02em",
-                  color: C.blanco,
-                  textTransform: "uppercase",
-                }}
-              >
-                Revisa el archivo completo de notas
-              </span>
-
-              {/*
-                La flecha se corre a la derecha y se enciende en el hover.
-
-                El color va por clases y NO en el `style` inline: un estilo
-                inline le gana en especificidad a `hover:`, así que mientras
-                `color` estuviera ahí el cambio de tono no se vería. Es el mismo
-                tropiezo que ya documentó el Footer con los iconos de redes.
-                Los hexes son C.rojo y C.rojoAcento.
-
-                `inline-block` porque `translate` no aplica a un elemento
-                inline, que es lo que sería un <span> por defecto.
-              */}
-              <span
-                className="inline-block shrink-0 text-[#CC0000] transition-all duration-200 group-hover:translate-x-1 group-hover:text-[#FF2200]"
-                style={{ fontSize: "26px", lineHeight: 1 }}
-              >
-                →
-              </span>
-            </Link>
           </div>
-        </div>
+        )}
       </div>
     </section>
   );
