@@ -1,0 +1,61 @@
+# Keep-alive de Supabase.
+#
+# El plan gratuito pausa el proyecto tras 7 días sin actividad, y pausado el
+# sitio entero cae (le pasó en octubre de 2026). Cada 3 días hacemos una
+# consulta liviana de solo lectura a la API REST para que cuente como actividad.
+#
+# Si Supabase no responde, el job falla y GitHub lo marca en rojo y avisa por
+# correo al dueño del repo: esa falla ES la alarma, no la silencies.
+#
+# ⚠️ GitHub desactiva los workflows programados tras 60 días sin commits en el
+# repo. Si el proyecto se queda quieto tanto tiempo, revisa la pestaña Actions.
+#
+# Secret requerido (Settings → Secrets and variables → Actions):
+#   SUPABASE_PUBLISHABLE_KEY — la misma de NEXT_PUBLIC_SUPABASE_ANON_KEY
+#   (sb_publishable_…). Es pública por diseño; va como secret para no
+#   repetirla en el repo.
+
+name: Supabase keep-alive
+
+on:
+  schedule:
+    # 12:00 UTC los días 1, 4, 7… de cada mes. Al cambiar de mes el salto
+    # puede ser de 1 o 2 días; nunca supera los 7 que gatillan la pausa.
+    - cron: "0 12 */3 * *"
+  # Para probarlo a mano desde la pestaña Actions.
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # La URL no es secreta: ya está en next.config.ts.
+      SUPABASE_URL: https://rgskspvuvzwmvmsccoez.supabase.co
+      SUPABASE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
+    steps:
+      - name: Contar categorías (solo lectura)
+        run: |
+          if [ -z "$SUPABASE_KEY" ]; then
+            echo "::error::Falta el secret SUPABASE_PUBLISHABLE_KEY"
+            exit 1
+          fi
+
+          # Range 0-0 + count=exact: devuelve a lo sumo una fila y el total
+          # viaja en el header Content-Range. --retry cubre un tropiezo de red
+          # puntual; un proyecto pausado falla los tres intentos igual.
+          respuesta=$(curl --silent --show-error --fail-with-body \
+            --retry 3 --retry-delay 10 --retry-all-errors --max-time 30 \
+            --dump-header - --output /dev/null \
+            "$SUPABASE_URL/rest/v1/categorias?select=id" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Prefer: count=exact" \
+            -H "Range: 0-0") || {
+              echo "::error::Supabase no respondió. ¿Proyecto pausado? Revisa el dashboard."
+              exit 1
+            }
+
+          total=$(printf '%s' "$respuesta" | tr -d '\r' | grep -i '^content-range:' | sed 's#.*/##')
+          echo "Supabase responde. categorias: ${total:-?} filas."
