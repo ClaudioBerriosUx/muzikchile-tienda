@@ -9,6 +9,14 @@ import ImagenNoticia from "@/components/noticias/ImagenNoticia";
 /** Grilla de 3/2/1 columnas con gap-6 dentro de `max-w-6xl` (1104px útiles). */
 const SIZES_TARJETA = "(min-width: 1152px) 352px, (min-width: 1024px) 31vw, (min-width: 640px) 48vw, 100vw";
 
+/**
+ * ISR cada 5 minutos. Sin esto la página era estática pura: una noticia recién
+ * publicada no aparecía hasta el siguiente deploy, y un build hecho con Supabase
+ * caído dejaba el feed vacío congelado. Si una regeneración falla
+ * (`traerNoticias` lanza), Next sigue sirviendo la última versión buena.
+ */
+export const revalidate = 300;
+
 export const metadata: Metadata = {
   title: "Noticias | MuzikChile",
   description:

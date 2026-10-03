@@ -7,6 +7,12 @@ import UltimasNoticias from "./_portada/UltimasNoticias";
 import GrainOverlay from "@/components/ui/GrainOverlay";
 import PopupSuscripcion from "@/components/ui/PopupSuscripcion";
 
+/**
+ * ISR cada 5 minutos, por "Últimas noticias" (ver `app/(publico)/noticias`).
+ * Si la regeneración falla, se sigue sirviendo la última portada buena.
+ */
+export const revalidate = 300;
+
 export const metadata: Metadata = {
   title: "MuzikChile — Conéctate con la música chilena",
   description:

@@ -801,8 +801,40 @@ recortar a 4:5). Pierden contenido importante: **Santiago Horror** (título y
 fechas del afiche cortados, hoy en la portada) y **Metalengua** (texto
 "Ojitos de Planeta" y gente de los costados). Menor: **31 Minutos** (músicos de
 los costados) y **Lechu** (borde del texto "Tranki"). Bien: Valparaíso, Rubio,
-Alondra Noctvrna, Sequía. Pendiente: resubir versiones 1080×1350 de las dos
-primeras.
+Alondra Noctvrna, Sequía.
+
+**Resuelto en `2f4cdd9`:** `ImagenNoticia` mide la proporción en `onLoad` y, si
+la imagen es más ancha que 4:5, la muestra completa (`object-contain`) sobre la
+misma imagen desenfocada y oscurecida. Santiago Horror y Metalengua ya se leen
+enteras. Fondo y frente comparten `src` + `sizes`: verificado por CDP, sin
+descargas duplicadas. ⚠️ **Lechu quedó peor**: su archivo es un 16:9 con el
+afiche vertical y barras negras horneadas, así que en `contain` el afiche se ve
+diminuto. Pendiente: resubir el afiche vertical original de Lechu.
+
+### Incidente: producción sin noticias tras la pausa (2026-10-03)
+
+Producción mostraba "Todavía no hay noticias" y la portada sin la sección. **No
+era la clave** (es `sb_publishable_…`, la misma que local, y responde 200 con
+las 8 filas) ni caché del CDN: era **el build**. El deploy de `44a901d` corrió
+mientras Supabase terminaba de restaurarse (PostgREST: *"Could not find the
+table 'public.publicaciones' in the schema cache"*); `traerNoticias` devolvía
+`[]` ante el error, y `/` y `/noticias` eran estáticas sin revalidación, así
+que el vacío quedó congelado. Los deploys siguientes ya salieron bien.
+
+Arreglo de fondo:
+- `lib/noticias.ts`: un error de Supabase (o faltan las env vars) **lanza**;
+  ya no se convierte en `[]` / `null`. En `traerNoticiaPorSlug` evita además
+  un 404 falso.
+- `/` y `/noticias`: `revalidate = 300` (ISR). Una noticia nueva aparece sin
+  deploy, y si una regeneración falla Next sigue sirviendo la última buena.
+- Probado: build con URL de Supabase inválida → falla con "Error occurred
+  prerendering page /noticias" (en Vercel queda vivo el deploy anterior).
+
+Las variables de Vercel están marcadas Sensitive: `vercel env pull` devuelve
+`[SENSITIVE]`. Para ver qué clave usa producción, las `NEXT_PUBLIC_*` están en
+el JS público del sitio.
+
+⚠️ Mismo patrón todavía vivo en `app/sitemap.ts` (loguea y devuelve vacío).
 
 ---
 

@@ -12,6 +12,18 @@ import { aTextoPlano } from "@/lib/embeds";
  * El RLS `publicaciones_select_publico` ya limita a estado='publicada' +
  * visibilidad='publica'. Los filtros explícitos de acá son defensa en
  * profundidad: si alguien afloja la política, estas queries siguen acotadas.
+ *
+ * ⚠️ **Un error de Supabase LANZA, nunca se devuelve como lista vacía.** El
+ * 2026-10-03 un build corrió mientras Supabase se restauraba de una pausa;
+ * `traerNoticias` convirtió el error en `[]` y `/` y `/noticias`, que son
+ * estáticas, quedaron congeladas diciendo "Todavía no hay noticias". Es el mismo
+ * patrón de los bugs silenciosos de cupones y liquidaciones.
+ *
+ * Lanzar es lo correcto en los dos momentos en que corre esto:
+ * - en el build, el deploy falla y sigue vivo el anterior, que estaba bien;
+ * - en una regeneración ISR, Next sigue sirviendo la última versión buena y
+ *   reintenta en la próxima petición.
+ * "Cero noticias" queda reservado para cuando de verdad no hay ninguna.
  */
 
 export interface NoticiaLista {
@@ -68,14 +80,14 @@ export function resumenNoticia(bajada: string | null, cuerpo: string | null): st
 function cliente() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
+  // Sin credenciales es un error de configuración, no "cero noticias".
+  if (!url || !key) throw new Error("[noticias] faltan NEXT_PUBLIC_SUPABASE_URL / _ANON_KEY");
   return createClient<Database>(url, key);
 }
 
 /** Todas las noticias publicadas, más recientes primero. */
 export async function traerNoticias(limite?: number): Promise<NoticiaLista[]> {
   const supabase = cliente();
-  if (!supabase) return [];
 
   let q = supabase
     .from("publicaciones")
@@ -88,9 +100,8 @@ export async function traerNoticias(limite?: number): Promise<NoticiaLista[]> {
 
   const { data, error } = await q;
   if (error) {
-    // Un feed vacío es preferible a una página caída.
     console.error("[noticias] error cargando el listado:", error.message);
-    return [];
+    throw new Error(`[noticias] error cargando el listado: ${error.message}`);
   }
   return (data ?? []).map(({ cuerpo, ...n }) => ({
     ...n,
@@ -106,7 +117,6 @@ export async function traerNoticiaPorSlug(
   slug: string
 ): Promise<NoticiaDetalle | null> {
   const supabase = cliente();
-  if (!supabase) return null;
 
   const { data, error } = await supabase
     .from("publicaciones")
@@ -118,8 +128,9 @@ export async function traerNoticiaPorSlug(
     .maybeSingle();
 
   if (error) {
+    // Un error no es "no existe": devolver null acá daría un 404 falso.
     console.error("[noticias] error cargando la noticia:", error.message);
-    return null;
+    throw new Error(`[noticias] error cargando la noticia: ${error.message}`);
   }
   return data;
 }
