@@ -17,10 +17,15 @@ const SIZES_TARJETA = "(min-width: 1152px) 352px, (min-width: 1024px) 31vw, (min
  */
 export const revalidate = 300;
 
+const TITULO = "Noticias | MuzikChile";
+const DESCRIPCION =
+  "Lanzamientos, shows y notas de prensa de los artistas de la comunidad MuzikChile.";
+
 export const metadata: Metadata = {
-  title: "Noticias | MuzikChile",
-  description:
-    "Lanzamientos, shows y notas de prensa de los artistas de la comunidad MuzikChile.",
+  title: TITULO,
+  description: DESCRIPCION,
+  alternates: { canonical: "/noticias" },
+  openGraph: { title: TITULO, description: DESCRIPCION, url: "/noticias", type: "website" },
 };
 
 /** Badge de categoría, con el pill rojo de la portada. */

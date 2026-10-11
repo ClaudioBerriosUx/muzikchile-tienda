@@ -122,6 +122,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${titulo} | MuzikChile`,
     description: descripcion,
+    alternates: { canonical: `/noticias/${noticia.slug}` },
     openGraph: {
       title: titulo,
       description: descripcion,

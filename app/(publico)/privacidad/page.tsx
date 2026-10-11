@@ -26,10 +26,15 @@ import { CORREO_CONTACTO } from "@/lib/site";
    Cuando se complete, borrar este bloque y el aviso visible de "borrador".
    ─────────────────────────────────────────────────────────────────────────── */
 
+const TITULO = "Política de Privacidad — MuzikChile";
+const DESCRIPCION =
+  "Qué datos recoge MuzikChile, para qué los usa y cómo pedir la baja.";
+
 export const metadata: Metadata = {
-  title: "Política de Privacidad — MuzikChile",
-  description:
-    "Qué datos recoge MuzikChile, para qué los usa y cómo pedir la baja.",
+  title: TITULO,
+  description: DESCRIPCION,
+  alternates: { canonical: "/privacidad" },
+  openGraph: { title: TITULO, description: DESCRIPCION, url: "/privacidad", type: "website" },
 };
 
 /** Última revisión del texto. Actualizar al editarlo. */

@@ -2,9 +2,14 @@ import type { Metadata } from "next";
 import { C } from "@/lib/portada";
 import { CORREO_CONTACTO } from "@/lib/site";
 
+const TITULO = "Contacto — MuzikChile";
+const DESCRIPCION = "Cómo escribirle al equipo de MuzikChile.";
+
 export const metadata: Metadata = {
-  title: "Contacto — MuzikChile",
-  description: "Cómo escribirle al equipo de MuzikChile.",
+  title: TITULO,
+  description: DESCRIPCION,
+  alternates: { canonical: "/contacto" },
+  openGraph: { title: TITULO, description: DESCRIPCION, url: "/contacto", type: "website" },
 };
 
 export default function ContactoPage() {

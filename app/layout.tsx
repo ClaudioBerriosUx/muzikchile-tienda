@@ -3,6 +3,7 @@ import { Geist_Mono, Anton, DM_Sans } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
+import { BASE_URL } from "@/lib/site";
 
 /**
  * Las DOS tipografías del sitio. No hay una tercera: cualquier familia que se
@@ -40,6 +41,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Base de las URLs relativas de la metadata (canonical, og:url). El
+  // canonical NO va acá: lo heredaría cualquier página que no declare el suyo
+  // (carrito, checkout…) apuntando a la portada. Cada página pública lo declara.
+  metadataBase: new URL(BASE_URL),
   title: "MuzikChile Tienda",
   description: "Marketplace de música chilena",
   // ⚠️ noindex global — quitar SOLO en el lanzamiento (ver Plan MuzikChile 2.0).

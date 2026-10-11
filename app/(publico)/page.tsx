@@ -13,10 +13,15 @@ import PopupSuscripcion from "@/components/ui/PopupSuscripcion";
  */
 export const revalidate = 300;
 
+const TITULO = "MuzikChile — Conéctate con la música chilena";
+const DESCRIPCION =
+  "Videos, noticias, convocatorias y merch de artistas chilenos. La señal online de MuzikChile.";
+
 export const metadata: Metadata = {
-  title: "MuzikChile — Conéctate con la música chilena",
-  description:
-    "Videos, noticias, convocatorias y merch de artistas chilenos. La señal online de MuzikChile.",
+  title: TITULO,
+  description: DESCRIPCION,
+  alternates: { canonical: "/" },
+  openGraph: { title: TITULO, description: DESCRIPCION, url: "/", type: "website" },
 };
 
 /**
