@@ -921,6 +921,12 @@ lanzamiento completados el 11-oct-2026; el sitio es indexable.
 - **Claves de Supabase rotadas** (formato `sb_publishable_`/`sb_secret_`,
   legacy desactivadas); los 3 tests de RLS pasan con las nuevas.
 
+### Acceso artistas — rediseño (2026-10-11)
+- `/login` (opción 2A: formulario + mosaico de beneficios; carrusel en móvil), `/recuperar` (con "Reenviar el enlace" y espera de 60 s) y `/registro` (requisitos en vivo, variante invitación/recuperación, enlace vencido) con el diseño de Claude Design "Acceso Artistas". Solo UI: la lógica de auth no cambió (el bloque de verificación de `/registro` es idéntico línea a línea).
+- Paleta nueva como tokens globales `--tema-*` (ver CLAUDE.md). El resto del sitio no cambió de colores.
+- Fotos del mosaico opcionales: `public/acceso/{ficha,tienda,noticias,senal}.webp` (se detectan en el build; sin archivo, solo degradado).
+- Pendiente: login real con admin (→ `/admin`) y con credenciales malas, hecho por Claudio.
+
 ### Pendiente
 - **En 2–4 semanas (≈ 25-oct a 8-nov-2026)**: convertir tienda.muzikchile.cl
   en **redirect de dominio en Vercel** (→ www). Antes no: hoy `/api` de tienda.

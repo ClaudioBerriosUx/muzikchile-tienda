@@ -235,6 +235,90 @@
   --color-texto-tenue: var(--texto-tenue);
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   TEMA — paleta del rediseño (Claude Design · "Acceso Artistas", 2026-10)
+
+   Paleta oscura neutra con el rojo y el azul de la marca. Hoy la usan /login,
+   /recuperar y /registro; el rediseño de la tienda la va a reutilizar. NO
+   reemplaza todavía a los tokens de marca de arriba (`--brand-*`, `--bg-*`):
+   el resto del sitio sigue con sus colores hasta que se migre.
+
+   Regla de contraste: el rojo y el azul de marca van en botones, bordes y
+   fondos. Para TEXTO chico sobre fondo oscuro se usan sus variantes claras
+   (`-texto`), que llegan a AA. Nunca texto en `--tema-rojo` / `--tema-azul`.
+
+   Tailwind: `bg-tema-fondo`, `text-tema-azul-texto`, `border-tema-borde`…
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* ── Superficies ──────────────────────────────────────────────────────── */
+  /** Fondo de página. */
+  --tema-fondo: #161616;
+  /** Panel o tarjeta sobre el fondo (el mosaico, columnas laterales). */
+  --tema-superficie: #1C1C1C;
+  /** Campos de formulario y cajas de información. */
+  --tema-campo: #1E1E1E;
+  /** Hover sutil sobre superficies (botones fantasma). */
+  --tema-hover: #242424;
+  /** Separadores y bordes de tarjetas. */
+  --tema-borde: #2A2A2A;
+  /** Borde de inputs en reposo. */
+  --tema-borde-campo: #3A3A3A;
+
+  /* ── Texto ────────────────────────────────────────────────────────────── */
+  --tema-texto: #EDEDED;
+  /** Bajadas y párrafos. */
+  --tema-texto-2: #A8A8A8;
+  /** Notas, labels en mayúscula, ayudas. */
+  --tema-texto-3: #9A9A9A;
+
+  /* ── Rojo: acción y error ─────────────────────────────────────────────── */
+  --tema-rojo: #B02F3C;
+  /** Botón primario mientras carga. */
+  --tema-rojo-oscuro: #7E2530;
+  /** Texto de error sobre oscuro (AA). */
+  --tema-rojo-texto: #F0919A;
+  /** Texto dentro de un aviso de error. */
+  --tema-rojo-texto-suave: #F4C3C8;
+  /** Fondo de aviso de error. */
+  --tema-rojo-fondo: #2A1416;
+
+  /* ── Azul: información y enlaces ──────────────────────────────────────── */
+  --tema-azul: #2C567F;
+  /** Enlaces y texto informativo sobre oscuro (AA). */
+  --tema-azul-texto: #7FA6D3;
+  --tema-azul-texto-hover: #A9C6E8;
+  /** Texto dentro de un aviso informativo. */
+  --tema-azul-texto-suave: #C9D9EC;
+  /** Fondo de aviso informativo e íconos en caja. */
+  --tema-azul-fondo: #131F2C;
+
+  /* ── Estado OK ────────────────────────────────────────────────────────── */
+  --tema-ok: #3E7D5A;
+}
+
+@theme {
+  --color-tema-fondo: var(--tema-fondo);
+  --color-tema-superficie: var(--tema-superficie);
+  --color-tema-campo: var(--tema-campo);
+  --color-tema-hover: var(--tema-hover);
+  --color-tema-borde: var(--tema-borde);
+  --color-tema-borde-campo: var(--tema-borde-campo);
+  --color-tema-texto: var(--tema-texto);
+  --color-tema-texto-2: var(--tema-texto-2);
+  --color-tema-texto-3: var(--tema-texto-3);
+  --color-tema-rojo: var(--tema-rojo);
+  --color-tema-rojo-oscuro: var(--tema-rojo-oscuro);
+  --color-tema-rojo-texto: var(--tema-rojo-texto);
+  --color-tema-rojo-texto-suave: var(--tema-rojo-texto-suave);
+  --color-tema-rojo-fondo: var(--tema-rojo-fondo);
+  --color-tema-azul: var(--tema-azul);
+  --color-tema-azul-texto: var(--tema-azul-texto);
+  --color-tema-azul-texto-hover: var(--tema-azul-texto-hover);
+  --color-tema-azul-texto-suave: var(--tema-azul-texto-suave);
+  --color-tema-azul-fondo: var(--tema-azul-fondo);
+  --color-tema-ok: var(--tema-ok);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

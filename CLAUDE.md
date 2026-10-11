@@ -178,6 +178,7 @@ Tailwind v4 (breaking changes desde v3 — leer `node_modules/next/dist/docs/` a
 - Headings: `font-family: Oswald` | Body: `font-family: Barlow` — vía `style={{}}` inline, no clases Tailwind
 - Color marca: `#e8003d` | Fondo: `#f8f7f5`
 - Inline styles y Tailwind coexisten intencionalmente
+- **Paleta del rediseño**: tokens `--tema-*` en `app/globals.css` (Tailwind: `bg-tema-fondo`, `text-tema-azul-texto`…). Hoy los usan `/login`, `/recuperar` y `/registro` (piezas en `components/acceso/`); el rediseño de la tienda los reutiliza. Texto chico rojo/azul sobre oscuro va en las variantes `-texto` (AA), nunca en `tema-rojo`/`tema-azul`.
 - Imágenes en Supabase Storage; host whitelisted en `next.config.ts`
 - `export const dynamic = 'force-dynamic'` necesario en páginas con `useSearchParams` o para evitar SSG en Vercel
 

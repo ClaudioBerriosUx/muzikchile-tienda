@@ -4,8 +4,38 @@ export const dynamic = 'force-dynamic';
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { CORREO_CONTACTO } from "@/lib/site";
+import {
+  Aviso,
+  Bajada,
+  BotonPrimario,
+  CampoContrasena,
+  Enlace,
+  EnlaceBoton,
+  IconoCheck,
+  IconoEstado,
+  IconoReloj,
+  PantallaTarjeta,
+  Titulo,
+} from "@/components/acceso/ui";
+import { cn } from "@/lib/utils";
+
+/**
+ * De dónde viene el enlace, solo para elegir los textos. No interviene en la
+ * verificación: se lee de la URL tal como llega.
+ * - Invitación: el implicit flow trae `type=invite` en el hash.
+ * - Recuperación: `type=recovery` (hash o query), o `?code=` del PKCE, que
+ *   solo usa /recuperar.
+ */
+function origenEnlace(): "invitacion" | "recuperacion" {
+  if (typeof window === "undefined") return "invitacion";
+  const hash = new URLSearchParams(window.location.hash.slice(1));
+  const query = new URLSearchParams(window.location.search);
+  const tipo = hash.get("type") ?? query.get("type");
+  if (tipo === "recovery" || query.has("code")) return "recuperacion";
+  return "invitacion";
+}
 
 function RegistroContent() {
   const router = useRouter();
@@ -16,6 +46,11 @@ function RegistroContent() {
   const [confirm, setConfirm] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  // Se lee en el primer render, antes de que el cliente de Supabase limpie el
+  // hash de la URL al canjear la sesión. En el servidor da "invitacion", pero
+  // ese primer render muestra "Verificando…", que no usa `origen`.
+  const [origen] = useState(origenEnlace);
+  const [mostrar, setMostrar] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -101,140 +136,152 @@ function RegistroContent() {
     }
   };
 
-  const inputClass = "w-full rounded-md px-3 py-2.5 text-sm border focus:outline-none transition-colors";
-  const inputStyle = { fontFamily: "var(--font-body)", borderColor: "#e8e8e8", color: "#111111" };
+  // ── Presentación ─────────────────────────────────────────────────────────
+  const largoOk = password.length >= 8;
+  const coinciden = password.length > 0 && password === confirm;
+  const noCoinciden = confirm.length > 0 && password !== confirm;
+  const listo = largoOk && coinciden;
 
   if (estado === "verificando") {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Verificando enlace...</p>
-      </div>
+      <PantallaTarjeta>
+        <div role="status" className="flex items-center gap-3 text-tema-texto-2">
+          <span className="inline-block h-[18px] w-[18px] animate-spin rounded-full border-[2.5px] border-tema-texto/30 border-t-tema-texto" />
+          Verificando el enlace…
+        </div>
+      </PantallaTarjeta>
     );
   }
 
   if (estado === "invalido") {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: "#f8f7f5" }}>
-        <div
-          className="w-full max-w-md rounded-xl border p-10 text-center"
-          style={{ backgroundColor: "#ffffff", borderColor: "#e8e8e8", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}
-        >
-          <div className="mb-6">
-            <span style={{ fontFamily: "var(--font-titulo)", fontSize: "26px", letterSpacing: "0.02em" }}>
-              <span style={{ color: "#111111" }}>MuzikChile</span>
-              <span style={{ color: "#e8003d" }}>·</span>
-            </span>
-          </div>
-          <p style={{ fontFamily: "var(--font-body)", fontSize: "20px", fontWeight: "600", color: "#111111", marginBottom: "12px" }}>
-            Enlace inválido o expirado
-          </p>
-          <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666", lineHeight: 1.6, marginBottom: "24px" }}>
-            Este enlace ya no es válido, o se abrió en un navegador distinto al que lo pidió. Si estabas recuperando tu contraseña, pide un enlace nuevo; si era una invitación, solicita otra al administrador.
-          </p>
-          <div className="flex flex-col gap-2">
-            <Link
-              href="/recuperar"
-              style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#e8003d" }}
-            >
-              Pedir un enlace nuevo →
-            </Link>
-            <Link
-              href="/login"
-              style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}
-            >
-              Ir al login
-            </Link>
-          </div>
+      <PantallaTarjeta>
+        <IconoEstado tipo="error">
+          <IconoReloj className="h-[26px] w-[26px]" />
+        </IconoEstado>
+        <div className="flex flex-col gap-3">
+          <Titulo>Este enlace ya no sirve</Titulo>
+          <Bajada>
+            Los enlaces vencen y se pueden usar una sola vez. También dejan de funcionar si se abren en
+            un navegador distinto al que los pidió. Pide uno nuevo y te lo mandamos al tiro.
+          </Bajada>
         </div>
-      </div>
+        <div className="flex flex-col items-stretch gap-3.5">
+          <EnlaceBoton href="/recuperar">Pedir un enlace nuevo</EnlaceBoton>
+          <Enlace href="/login" className="self-center text-sm">Volver al acceso</Enlace>
+        </div>
+        <p className="m-0 border-t border-tema-borde pt-[18px] text-sm leading-[1.6] text-tema-texto-3">
+          ¿Sigue sin funcionar? Escríbenos a{" "}
+          <Enlace href={`mailto:${CORREO_CONTACTO}`} className="font-bold">{CORREO_CONTACTO}</Enlace> y te
+          ayudamos.
+        </p>
+      </PantallaTarjeta>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: "#f8f7f5" }}>
-      <div
-        className="w-full max-w-md rounded-xl border p-10"
-        style={{ backgroundColor: "#ffffff", borderColor: "#e8e8e8", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}
-      >
-        <div className="text-center mb-8">
-          <span style={{ fontFamily: "var(--font-body)", fontSize: "24px", fontWeight: "700" }}>
-            <span style={{ color: "#111111" }}>MuzikChile</span>
-            <span style={{ color: "#e8003d" }}>·</span>
-          </span>
-        </div>
-
-        <h1 className="mb-2" style={{ fontFamily: "var(--font-titulo)", fontSize: "20px", color: "#111111" }}>
-          Crea tu contraseña
-        </h1>
-        <p className="mb-6" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666", lineHeight: 1.6 }}>
-          Configura una contraseña para acceder a tu panel de artista.
-        </p>
-
-        <div className="flex flex-col gap-5">
-          <div className="flex flex-col gap-1.5">
-            <label style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#444444" }}>
-              Contraseña
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 8 caracteres"
-              className={inputClass}
-              style={inputStyle}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#e8003d")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "#e8e8e8")}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#444444" }}>
-              Confirmar contraseña
-            </label>
-            <input
-              type="password"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              placeholder="Repite tu contraseña"
-              className={inputClass}
-              style={inputStyle}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "#e8003d")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "#e8e8e8")}
-            />
-          </div>
-
-          {errorMsg && (
-            <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#e8003d" }}>{errorMsg}</p>
-          )}
-
-          <button
-            onClick={crearPassword}
-            disabled={guardando || !password || !confirm}
-            className="w-full h-11 rounded-md font-semibold transition-colors"
-            style={{
-              fontFamily: "var(--font-body)",
-              backgroundColor: guardando || !password || !confirm ? "#f0a0b0" : "#e8003d",
-              color: "#ffffff",
-              cursor: guardando ? "not-allowed" : "pointer",
-            }}
-            onMouseEnter={(e) => { if (!guardando && password && confirm) e.currentTarget.style.backgroundColor = "#c5002e"; }}
-            onMouseLeave={(e) => { if (!guardando && password && confirm) e.currentTarget.style.backgroundColor = "#e8003d"; }}
-          >
-            {guardando ? "Guardando..." : "Guardar contraseña"}
-          </button>
-        </div>
+    <PantallaTarjeta>
+      <div className="flex flex-col gap-3">
+        {origen === "invitacion" ? (
+          <>
+            <div className="flex items-center gap-2 self-start rounded-md bg-tema-azul px-[11px] py-[5px] text-[11px] font-bold uppercase tracking-[0.16em] text-tema-texto">
+              <IconoCheck className="h-[11px] w-[11px]" />
+              Invitación aceptada
+            </div>
+            <Titulo>Bienvenido/a a MuzikChile</Titulo>
+            <Bajada>
+              Te invitamos porque tu música tiene lugar acá. Crea tu contraseña y entra a tu panel para
+              armar tu ficha, tu tienda y tus noticias.
+            </Bajada>
+          </>
+        ) : (
+          <>
+            <Titulo>Crea una contraseña nueva</Titulo>
+            <Bajada>
+              Elige una contraseña nueva para tu acceso. Con ella vas a entrar a tu panel la próxima vez.
+            </Bajada>
+          </>
+        )}
       </div>
+
+      {errorMsg && <Aviso tipo="error"><strong>No pudimos guardar la contraseña.</strong> {errorMsg}</Aviso>}
+
+      <form
+        noValidate
+        onSubmit={(e) => { e.preventDefault(); crearPassword(); }}
+        className="flex flex-col gap-4 md:gap-5"
+      >
+        <CampoContrasena
+          id="password"
+          etiqueta="Contraseña nueva"
+          autoComplete="new-password"
+          placeholder="Mínimo 8 caracteres"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          aria-describedby="requisitos"
+          mostrar={mostrar}
+          onMostrarChange={setMostrar}
+        />
+
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="confirm" className="text-sm font-medium text-tema-texto">Repite la contraseña</label>
+          <input
+            id="confirm"
+            type={mostrar ? "text" : "password"}
+            autoComplete="new-password"
+            placeholder="Escríbela otra vez"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            aria-invalid={noCoinciden || undefined}
+            className={cn(
+              "box-border h-[50px] w-full rounded-[10px] border bg-tema-campo px-4 text-base text-tema-texto placeholder:text-tema-texto-3 outline-none transition-[border-color,box-shadow] focus:border-tema-azul-texto focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--tema-azul)_60%,transparent)]",
+              noCoinciden ? "border-tema-rojo" : "border-tema-borde-campo"
+            )}
+          />
+        </div>
+
+        <div id="requisitos" className="flex flex-col gap-2.5 rounded-[10px] border border-tema-borde bg-tema-campo px-4 py-3.5">
+          <p className="m-0 text-[11px] font-bold uppercase tracking-[0.18em] text-tema-texto-3">Requisitos</p>
+          <Requisito ok={largoOk}>
+            Mínimo 8 caracteres
+            <span className="ml-auto tabular-nums text-tema-texto-3">{Math.min(password.length, 99)}/8</span>
+          </Requisito>
+          <Requisito ok={coinciden} error={noCoinciden}>Las dos contraseñas coinciden</Requisito>
+        </div>
+
+        <BotonPrimario disabled={!listo} cargando={guardando} textoCargando="Guardando…">
+          Guardar contraseña y entrar
+        </BotonPrimario>
+      </form>
+    </PantallaTarjeta>
+  );
+}
+
+function Requisito({ ok, error = false, children }: { ok: boolean; error?: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-2.5 text-sm",
+        ok ? "text-tema-texto" : error ? "text-tema-rojo-texto" : "text-tema-texto-2"
+      )}
+    >
+      <span
+        className={cn(
+          "box-border flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-[1.5px]",
+          ok ? "border-tema-ok bg-tema-ok" : error ? "border-tema-rojo" : "border-tema-texto-3/60"
+        )}
+      >
+        <IconoCheck className={cn("h-2.5 w-2.5 text-tema-texto", ok ? "opacity-100" : "opacity-0")} />
+      </span>
+      {children}
+      <span className="sr-only">{ok ? "(cumplido)" : "(pendiente)"}</span>
     </div>
   );
 }
 
 export default function RegistroPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Cargando...</p>
-      </div>
-    }>
+    <Suspense fallback={<PantallaTarjeta><div className="text-tema-texto-2">Cargando…</div></PantallaTarjeta>}>
       <RegistroContent />
     </Suspense>
   );
