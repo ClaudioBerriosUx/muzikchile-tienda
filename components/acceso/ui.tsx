@@ -321,7 +321,7 @@ export function PantallaTarjeta({ children }: { children: ReactNode }) {
   return (
     <section className="relative overflow-hidden bg-tema-fondo text-tema-texto">
       <Brillos />
-      <div className="relative flex min-h-[calc(100svh-64px)] flex-col items-stretch px-[22px] py-6 md:items-center md:justify-center md:px-6 md:py-10">
+      <div className="relative flex min-h-[calc(100dvh-64px)] flex-col items-stretch px-[22px] py-6 md:items-center md:justify-center md:px-6 md:py-10">
         <div className="flex w-full flex-col gap-4 md:max-w-[460px] md:gap-5 md:rounded-xl md:border md:border-tema-borde md:bg-tema-campo md:px-10 md:pb-9 md:pt-10">
           {children}
         </div>

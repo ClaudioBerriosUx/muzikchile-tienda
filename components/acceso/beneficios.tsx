@@ -145,41 +145,47 @@ function CajaIcono({ b, tam }: { b: Beneficio; tam: "lg" | "md" | "sm" }) {
   );
 }
 
-/** Desktop: la ficha ocupa la columna izquierda entera; las otras tres, apiladas. */
+/** Desktop: la ficha ocupa la columna izquierda entera; las otras tres, apiladas. El `className` debe incluir el display (`flex`), p. ej. `hidden lg:flex`. */
 export function MosaicoBeneficios({ className }: { className?: string }) {
   const [principal, ...resto] = BENEFICIOS;
   return (
     <aside
       aria-label="Qué ganas al estar en MuzikChile"
       className={cn(
-        "relative grid min-w-0 grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] grid-rows-3 gap-3 border-l border-tema-borde bg-tema-superficie p-4",
+        "relative min-w-0 items-center justify-center py-4 pr-4 xl:py-8 xl:pr-8",
         className
       )}
     >
-      <Tarjeta b={principal} medio={52} className="row-span-3">
-        <div className="flex flex-col gap-3 px-6 py-[26px]">
-          <CajaIcono b={principal} tam="lg" />
-          <p className="m-0 font-heading text-[40px]/none uppercase text-tema-texto">{principal.titulo}</p>
-          <p className="m-0 max-w-[300px] text-[15px] leading-[1.6] text-tema-texto">{principal.texto}</p>
-          <div
-            aria-hidden
-            className="mb-0.5 mt-2 h-px"
-            style={{ background: "color-mix(in srgb, var(--tema-texto) 28%, transparent)" }}
-          />
-          <p className="m-0 font-heading text-[30px]/none uppercase text-tema-texto text-balance">
-            La escena se escucha acá
-          </p>
-        </div>
-      </Tarjeta>
-      {resto.map((b) => (
-        <Tarjeta key={b.clave} b={b} medio={60} className="min-h-0">
-          <div className="flex flex-col gap-2 px-[18px] py-4">
-            <CajaIcono b={b} tam="md" />
-            <p className="m-0 font-heading text-[26px]/none uppercase text-tema-texto">{b.titulo}</p>
-            <p className="m-0 text-[13px] leading-[1.5] text-tema-texto">{b.texto}</p>
+      {/* Panel enmarcado con tope de 880×960: en pantallas muy anchas o altas
+          no se estira, se centra en la columna y las tarjetas mantienen su
+          forma. El fondo va en el panel y no en la columna, para que no
+          queden franjas vacías arriba y abajo. */}
+      <div className="grid h-full max-h-[960px] w-full max-w-[880px] grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] grid-rows-3 gap-3 rounded-2xl border border-tema-borde bg-tema-superficie p-3">
+        <Tarjeta b={principal} medio={52} className="row-span-3">
+          <div className="flex flex-col gap-3 px-6 py-[26px]">
+            <CajaIcono b={principal} tam="lg" />
+            <p className="m-0 font-heading text-[40px]/none uppercase text-tema-texto">{principal.titulo}</p>
+            <p className="m-0 max-w-[300px] text-[15px] leading-[1.6] text-tema-texto">{principal.texto}</p>
+            <div
+              aria-hidden
+              className="mb-0.5 mt-2 h-px"
+              style={{ background: "color-mix(in srgb, var(--tema-texto) 28%, transparent)" }}
+            />
+            <p className="m-0 font-heading text-[30px]/none uppercase text-tema-texto text-balance">
+              La escena se escucha acá
+            </p>
           </div>
         </Tarjeta>
-      ))}
+        {resto.map((b) => (
+          <Tarjeta key={b.clave} b={b} medio={60} className="min-h-0">
+            <div className="flex flex-col gap-2 px-[18px] py-4">
+              <CajaIcono b={b} tam="md" />
+              <p className="m-0 font-heading text-[26px]/none uppercase text-tema-texto">{b.titulo}</p>
+              <p className="m-0 text-[13px] leading-[1.5] text-tema-texto">{b.texto}</p>
+            </div>
+          </Tarjeta>
+        ))}
+      </div>
     </aside>
   );
 }

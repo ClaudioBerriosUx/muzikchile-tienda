@@ -13,5 +13,7 @@ export default function RegistroLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  // Fondo del tema también en el contenedor: aunque la página quedara más baja
+  // que la pantalla, nunca asoma el fondo claro del body.
+  return <div className="bg-tema-fondo">{children}</div>;
 }
