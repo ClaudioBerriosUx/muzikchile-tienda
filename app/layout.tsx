@@ -47,18 +47,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: "MuzikChile Tienda",
   description: "Marketplace de música chilena",
-  // ⚠️ noindex global — quitar SOLO en el lanzamiento (ver Plan MuzikChile 2.0).
-  //
-  // Bloquea el sitio completo para buscadores. Es deliberado mientras la
-  // plataforma está en construcción; NO es un descuido.
-  //
-  // Al quitarlo, las rutas privadas NO quedan expuestas: /panel, /admin,
-  // /checkout, /carrito, /login y /registro declaran su propio noindex en sus
-  // layouts, y robots.ts bloquea /panel, /admin y /api.
-  robots: {
-    index: false,
-    follow: false,
-  },
+  // Sin `robots` acá: el sitio es indexable desde el lanzamiento (2026-10-11).
+  // Las rutas privadas declaran su propio noindex en sus layouts (/panel,
+  // /admin, /checkout, /carrito, /login, /registro, /recuperar), y robots.ts
+  // bloquea el rastreo de /panel, /admin y /api. Una ruta privada nueva
+  // necesita su propio noindex: no lo hereda de ningún lado.
 };
 
 export default function RootLayout({

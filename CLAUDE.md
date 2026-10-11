@@ -183,30 +183,21 @@ Tailwind v4 (breaking changes desde v3 — leer `node_modules/next/dist/docs/` a
 
 ### SEO
 
-El sitio está **fuera de los buscadores a propósito** hasta el lanzamiento. Queda
-**un solo bloqueo en el código**:
+El sitio es **indexable desde el lanzamiento (2026-10-11)**. No hay noindex
+global en `app/layout.tsx`.
 
-- `app/layout.tsx` → `robots: { index: false, follow: false }` global. Es lo
-  último que se quita, una vez que www.muzikchile.cl ya sirve este proyecto.
-
-Lo que antes se contaba como bloqueos 2 y 3:
-
-- **`public/robots.txt` (`Disallow: /`) se borró** en la rama `lanzamiento`.
-  Nunca bloqueó nada: producción servía `app/robots.ts` (`Allow: /`) y no ese
-  archivo — comprobado el 2026-10-11 con `curl /robots.txt`. La idea de que un
-  estático de `public/` eclipsa a `app/robots.ts` era falsa.
-- **"Redirect del dominio en Vercel"**: lo que dejaba a la Tienda fuera del
-  dominio principal es que www.muzikchile.cl apuntaba al proyecto del Channel.
-  Se resuelve con el cambio de dominio (mover www y la raíz al proyecto de la
-  Tienda), no con un toggle aparte.
-
-La infraestructura ya está lista para ese día:
-- `/panel`, `/admin`, `/checkout`, `/carrito`, `/login`, `/registro` y
-  `/recuperar` declaran su propio `noindex` en sus layouts, así que **al quitar
-  el global no quedan expuestas**.
-- `app/robots.ts` — permite todo salvo `/panel`, `/admin`, `/api`.
-- `app/sitemap.ts` — home, `/tienda` y las fichas `/artista/[slug]` de artistas
-  con `tienda_activa` o `verificado`. Revalida cada hora.
+- **Rutas privadas**: `/panel`, `/admin`, `/checkout`, `/carrito`, `/login`,
+  `/registro` y `/recuperar` declaran su propio `noindex` en sus layouts. **Una
+  ruta privada nueva tiene que declarar el suyo**: no lo hereda de ningún lado.
+- **Canonical**: `metadataBase` (= `BASE_URL`) va en el layout raíz, pero el
+  canonical NO — lo heredarían las páginas que no declaran uno. Cada página
+  pública declara `alternates.canonical` y `openGraph.url` con ruta relativa.
+  Una página pública nueva tiene que declarar los dos.
+- `app/robots.ts` — único robots.txt (no agregues `public/robots.txt`): permite
+  todo salvo `/panel`, `/admin`, `/api`.
+- `app/sitemap.ts` — home, `/tienda`, `/noticias`, las noticias publicadas y
+  las fichas `/artista/[slug]` de artistas con `tienda_activa` o `verificado`.
+  Revalida cada hora.
 
 Un `Disallow` en robots.txt **no** es un `noindex`: una URL bloqueada puede
 indexarse igual si alguien la enlaza. Por eso las rutas privadas llevan las dos

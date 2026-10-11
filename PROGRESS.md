@@ -1,7 +1,7 @@
 # PROGRESS.md — MuzikChile Tienda
 
 > Actualizado: 2026-10-11
-> Branch: `main` + `lanzamiento` (preparación del cambio de dominio, sin mergear)
+> Branch: `main` (lanzamiento mergeado y en producción en www.muzikchile.cl)
 
 ---
 
@@ -886,63 +886,58 @@ borrador viejo → fecha = now), todo limpiado.
 
 ---
 
-## 🚀 Lanzamiento: www.muzikchile.cl — rama `lanzamiento` (2026-10-11)
+## 🚀 Lanzamiento: www.muzikchile.cl — HECHO (2026-10-11)
 
-tienda.muzikchile.cl pasa a ser **www.muzikchile.cl** (canónico; la raíz
-redirige a www). Hoy www y la raíz todavía sirven el **Channel**.
+tienda.muzikchile.cl pasó a ser **www.muzikchile.cl** (canónico; la raíz
+redirige 308 a www). El Channel quedó en **tv.muzikchile.cl**. Pasos 1–7 del
+lanzamiento completados el 11-oct-2026; el sitio es indexable.
 
-### Hecho en la rama
-- Redirects en `next.config.ts`: tienda. → www (salvo `/api`, por los webhooks
-  de MP con el host viejo), `/?categoria=` → `/tienda?categoria=`, `/tv` y
-  utilitarias/admin del Channel → tv.muzikchile.cl, `/admin/noticias/*` →
-  `/admin/publicaciones` (302). Probados con `next start` + header `Host`.
-- URLs de OG de artista y producto, y el prefijo de `panel/perfil`, salen de
-  `BASE_URL` (fallback ahora www).
-- Header/Footer: fuera Convocatorias, Artistas, Términos y Despachos (404).
-  Nueva `/contacto`; `/privacidad` usa `hola@muzikchile.cl` (`CORREO_CONTACTO`).
-- **`/recuperar` arreglado**: `'recovery'` ya estaba en el `verifyOtp`; la causa
-  real era que el cliente del navegador (singleton, PKCE, `detectSessionInUrl`)
-  canjea el `?code=` al inicializarse y el `exchangeCodeForSession` manual
-  fallaba → "enlace inválido" aunque la sesión existía. Ahora `/registro` mira
-  `getSession()` primero y respeta `type` en los `token_hash`. Probado en local
-  con hash, token_hash y enlace reutilizado; el `?code=` real (correo) queda por
-  probar con un correo de verdad.
-- Migradas las 2 noticias que faltaban (chinoy-…, muda-2026-…): estaban sin
-  migrar. Channel y Tienda coinciden 11/11 en slug.
-- Borrado `public/robots.txt`: no bloqueaba nada (producción servía
-  `app/robots.ts`).
+### Qué quedó en producción
+- **Dominios** (Vercel): www y la raíz en el proyecto de la Tienda; tv. en el
+  Channel. `NEXT_PUBLIC_URL=https://www.muzikchile.cl`.
+- **Redirects** (`next.config.ts`): tienda. → www salvo `/api` (webhooks de MP
+  con el host viejo), `/?categoria=` → `/tienda?categoria=`, `/tv`,
+  `/bootstrap-admin`, `/reset-password` y `/admin/settings` → tv.,
+  `/admin/noticias/*` → `/admin/publicaciones` (302). Verificados en producción.
+- **SEO**: `metadataBase` = www; canonical y `og:url` en portada, `/tienda`,
+  `/noticias`, `/noticias/[slug]`, `/artista/[slug]`, `/producto/[id]`,
+  `/contacto` y `/privacidad`. **Noindex global quitado**; las rutas privadas
+  (`/panel`, `/admin`, `/checkout`, `/carrito`, `/login`, `/registro`,
+  `/recuperar`) mantienen el suyo. `app/robots.ts` es el único robots.txt;
+  sitemap en www (home, /tienda, /noticias, noticias y artistas).
+- **Channel** (repo muzik-channel, `main`): canonical/OG de `/` y `/tv` en tv.;
+  noticias con canonical a www (mismo slug); sitemap de tv. sin noticias; el
+  reproductor solo acepta `muzik_pause`/`muzik_play` de su propio origen, www y
+  tienda. (quitar tienda. cuando ese host solo redirija).
+- **Noticias**: 500 de `/noticias/[slug]` resuelto (5bd17be): jsdom vía
+  `isomorphic-dompurify` daba `ERR_REQUIRE_ESM` en Vercel; `lib/sanitizar.ts`
+  usa `sanitize-html` con la misma allowlist (`npm run verificar:sanitizacion`,
+  15/15). Las 11 noticias del Channel están migradas con el mismo slug.
+- **Navegación**: fuera Convocatorias, Artistas, Términos y Despachos (daban
+  404); nueva `/contacto` con `hola@muzikchile.cl` (`CORREO_CONTACTO`, también
+  en `/privacidad`).
+- **`/recuperar`**: `/registro` ya no descarta la sesión que el cliente PKCE
+  canjea solo al inicializarse. Supabase Auth acepta www en Redirect URLs.
+- **Claves de Supabase rotadas** (formato `sb_publishable_`/`sb_secret_`,
+  legacy desactivadas); los 3 tests de RLS pasan con las nuevas.
 
-### Bloqueo que queda
-- `app/layout.tsx` → `robots: { index: false, follow: false }`. **Último paso**
-  del lanzamiento, después del cambio de dominio.
-
-### Pendiente antes de cambiar el dominio
-- ✅ **500 en toda ficha `/noticias/[slug]`** — resuelto en `main` (5bd17be).
-  Era jsdom (vía `isomorphic-dompurify`): `ERR_REQUIRE_ESM` en
-  `html-encoding-sniffer` → `@exodus/bytes` en el runtime de Vercel, aun con
-  Node 24.x (no era la versión). Se eliminó la dependencia: `lib/sanitizar.ts`
-  pasa a `sanitize-html` con la misma allowlist; `engines.node: 24.x`.
-  Test nuevo `npm run verificar:sanitizacion` (15/15); las 11 noticias salen
-  idénticas con la librería vieja y la nueva. Falta confirmar en producción
-  tras el deploy de main.
-- Supabase Auth (Tienda): agregar `https://www.muzikchile.cl/**` a Redirect
-  URLs y cambiar Site URL. Hoy solo acepta `tienda.muzikchile.cl/registro`: con
-  www, el enlace de recuperación cae en la raíz y nunca muestra el formulario.
-- Supabase Auth (Channel): agregar `https://tv.muzikchile.cl/**`.
-- Webhook en el panel de MercadoPago, si hay uno: pasarlo a www.
-
-### Orden del cambio de dominio
-1. Mergear `lanzamiento` (los redirects no afectan a tienda. mientras www no
-   apunte acá) y hacer los cambios de Supabase Auth.
-2. Vercel: quitar www y la raíz del proyecto Channel y agregarlos a la Tienda
-   (raíz → www). Confirmar que tv. sigue en el Channel.
-3. Justo después: `NEXT_PUBLIC_URL=https://www.muzikchile.cl` + redeploy (antes
-   no: los `back_urls` mandarían a los compradores al Channel); secret `SITE_URL`
-   de `invitar-artista`.
-4. No poner tienda. como redirect de dominio en Vercel (rompería `/api`); en 2–4
-   semanas, cuando no queden pagos pendientes con el host viejo, sí.
-5. Probar compra sandbox, `/noticias/<slug>`, `/tv`, login y `/recuperar`.
-6. Quitar el `noindex` y enviar el sitemap a Search Console.
+### Pendiente
+- **En 2–4 semanas (≈ 25-oct a 8-nov-2026)**: convertir tienda.muzikchile.cl
+  en **redirect de dominio en Vercel** (→ www). Antes no: hoy `/api` de tienda.
+  sigue respondiendo para los webhooks de MercadoPago de preferencias creadas
+  con el host viejo (pagos pendientes, p. ej. en efectivo). Al hacerlo, quitar
+  también el redirect por `host` de `next.config.ts` y `tienda.muzikchile.cl`
+  de `ALLOWED_PARENT_ORIGINS` en el reproductor del Channel.
+- Probar `/recuperar` de punta a punta con un correo real (el camino `?code=`
+  solo se probó por código; hash y token_hash sí, en local).
+- Confirmar: Site URL de Supabase Auth en www, secret `SITE_URL` de
+  `invitar-artista`, Redirect URLs del Supabase del Channel con tv., y el
+  webhook del panel de MercadoPago (si hay uno) en www.
+- Enviar el sitemap de www a Search Console.
+- Edge Functions `sitemap` y `llms` del Channel: actualizadas en el repo pero
+  se despliegan aparte (`supabase functions deploy sitemap llms`).
+- Lovable empuja directo a `main` del Channel: revisar que no reintroduzca
+  `https://muzikchile.cl` en canonicals.
 
 ---
 
