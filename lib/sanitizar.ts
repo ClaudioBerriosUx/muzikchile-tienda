@@ -1,4 +1,4 @@
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtml from "sanitize-html";
 
 /**
  * Sanitización del HTML de las noticias.
@@ -11,8 +11,17 @@ import DOMPurify from "isomorphic-dompurify";
  * Se usa allowlist (lo permitido se enumera; todo lo demás se borra), no
  * denylist. Una denylist siempre se queda corta.
  *
- * Corre en el servidor: `isomorphic-dompurify` usa jsdom en Node y el DOM real
- * en el navegador, así que el mismo módulo sirve en Server Components.
+ * Usa `sanitize-html` (parser htmlparser2, JS puro) y no DOMPurify: en Node,
+ * `isomorphic-dompurify` arrastra jsdom, y jsdom hace `require()` de paquetes
+ * ESM (`html-encoding-sniffer` → `@exodus/bytes`). En el runtime de Vercel eso
+ * tiraba ERR_REQUIRE_ESM al cargar el módulo (aun con Node 24.x), y TODA ficha
+ * /noticias/[slug] daba 500 en producción — incluso un slug inexistente. No
+ * reintroducir jsdom ni nada que lo arrastre. La configuración de
+ * abajo reproduce exactamente la de DOMPurify que había antes; las diferencias
+ * de comportamiento entre las dos librerías están compensadas una por una.
+ *
+ * Corre igual en el servidor (ContenidoNoticia) y en el navegador
+ * (PublicacionForm, que sanitiza antes de guardar).
  */
 
 /** Etiquetas permitidas. Nada de script, style, iframe, form, object, embed. */
@@ -31,68 +40,108 @@ const TAGS_PERMITIDOS = [
 ];
 
 /**
- * Atributos permitidos.
+ * Atributos permitidos, en cualquier etiqueta permitida.
  *
  * Ojo con lo que NO está: `style` (permite exfiltración vía url()), `srcset`,
- * `on*` (los quita DOMPurify igual), `id` (rompe las anclas de la página).
+ * `on*`, `id` (rompe las anclas de la página).
  *
  * Tampoco hay `data-*`, y es a propósito: los bloques de embed de TipTap se
- * extraen ANTES de sanitizar (ver `trocearContenido`). Se probó la vía
- * contraria y no funciona — DOMPurify con `ALLOW_DATA_ATTR: false` borra todos
- * los data-* aunque estén listados acá, y el `<div data-embed …>` llegaba vacío.
+ * extraen ANTES de sanitizar (ver `trocearContenido`), así que el sanitizador
+ * nunca necesita conservarlos.
  */
 const ATRIBUTOS_PERMITIDOS = [
   "href", "src", "alt", "title", "class",
 ];
 
-let ganchosListos = false;
+/**
+ * Valores permitidos en `href` y `src`: http(s), mailto, rutas absolutas y
+ * anclas. Bloquea javascript:, data:text/html, vbscript: y también las rutas
+ * relativas sin barra. Es la misma regex que tenía DOMPurify
+ * (`ALLOWED_URI_REGEXP`).
+ */
+const URI_PERMITIDA = /^(?:https?:|mailto:|\/|#)/i;
 
 /**
- * Fuerza `target="_blank"` + `rel="noopener noreferrer"` en todos los enlaces.
- *
- * Sin `noopener`, la página destino recibe `window.opener` y puede redirigir la
- * pestaña original a un phishing (tabnabbing).
+ * Espacios y controles que el navegador ignora dentro de una URL: con ellos
+ * `java\tscript:` sigue siendo `javascript:`. Se quitan antes de comparar
+ * (igual que el ATTR_WHITESPACE de DOMPurify).
  */
-function registrarGanchos() {
-  if (ganchosListos) return;
+const ESPACIOS_URI = /[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g;
 
-  DOMPurify.addHook("afterSanitizeAttributes", (nodo) => {
-    if (nodo.tagName === "A") {
-      nodo.setAttribute("target", "_blank");
-      nodo.setAttribute("rel", "noopener noreferrer");
-    }
-  });
+/**
+ * Etiquetas cuyo contenido se descarta entero, no solo la etiqueta. Es la lista
+ * FORBID_CONTENTS de DOMPurify: sin ella, sanitize-html conservaría como texto
+ * lo que haya dentro de un <svg>, <template>, <iframe>, etc.
+ */
+const SIN_CONTENIDO = [
+  "annotation-xml", "audio", "colgroup", "desc", "foreignobject", "head",
+  "iframe", "math", "mi", "mn", "mo", "ms", "mtext", "noembed", "noframes",
+  "noscript", "plaintext", "script", "style", "svg", "template", "thead",
+  "title", "video", "xmp",
+];
 
-  ganchosListos = true;
+/** Quita `href`/`src` cuyo valor no pase la allowlist de URIs. */
+function filtrarUris(
+  etiqueta: string,
+  atributos: sanitizeHtml.Attributes
+): sanitizeHtml.Attributes {
+  for (const nombre of ["href", "src"] as const) {
+    const valor = atributos[nombre];
+    if (valor === undefined) continue;
+
+    const limpio = valor.replace(ESPACIOS_URI, "");
+    // DOMPurify deja pasar data: en <img src> (no ejecuta nada dentro de una
+    // imagen); se conserva para no cambiar el comportamiento.
+    const dataEnImg = etiqueta === "img" && nombre === "src" && /^data:/i.test(limpio);
+
+    if (!URI_PERMITIDA.test(limpio) && !dataEnImg) delete atributos[nombre];
+  }
+  return atributos;
 }
+
+const OPCIONES: sanitizeHtml.IOptions = {
+  allowedTags: TAGS_PERMITIDOS,
+  allowedAttributes: {
+    "*": ATRIBUTOS_PERMITIDOS,
+    // Solo para que sobrevivan los valores que fija el transform de <a>; los
+    // que traiga el HTML original se pisan siempre.
+    a: ["target", "rel"],
+  },
+  // Las etiquetas no permitidas se quitan pero su texto se conserva (como el
+  // KEEP_CONTENT por defecto de DOMPurify), salvo las de SIN_CONTENIDO.
+  disallowedTagsMode: "discard",
+  nonTextTags: SIN_CONTENIDO,
+  // Segunda capa, además de `filtrarUris`.
+  allowedSchemes: ["http", "https", "mailto"],
+  allowedSchemesByTag: { img: ["http", "https", "data"] },
+  allowedSchemesAppliedToAttributes: ["href", "src"],
+  allowProtocolRelative: true,
+  // `style` no está permitido; que ni se intente parsear.
+  parseStyleAttributes: false,
+  transformTags: {
+    "*": (tagName, attribs) => ({
+      tagName,
+      attribs: filtrarUris(tagName, attribs),
+    }),
+    /**
+     * Fuerza `target="_blank"` + `rel="noopener noreferrer"` en todos los
+     * enlaces.
+     *
+     * Sin `noopener`, la página destino recibe `window.opener` y puede
+     * redirigir la pestaña original a un phishing (tabnabbing).
+     */
+    a: (tagName, attribs) => ({
+      tagName,
+      attribs: {
+        ...filtrarUris(tagName, attribs),
+        target: "_blank",
+        rel: "noopener noreferrer",
+      },
+    }),
+  },
+};
 
 /** Limpia el HTML del cuerpo de una publicación dejándolo apto para renderizar. */
 export function sanitizarHtml(html: string): string {
-  registrarGanchos();
-
-  return DOMPurify.sanitize(html, {
-    ALLOWED_TAGS: TAGS_PERMITIDOS,
-    ALLOWED_ATTR: ATRIBUTOS_PERMITIDOS,
-    // Permite data-* solo dentro de la allowlist de arriba.
-    ALLOW_DATA_ATTR: false,
-    // Bloquea javascript:, data:text/html y similares en href/src.
-    ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|\/|#)/i,
-
-    /**
-     * NO usar `USE_PROFILES`. Se probó con `{ html: true }` y AMPLÍA la
-     * allowlist en vez de restringirla: reintroduce el perfil HTML completo de
-     * DOMPurify y pisa `ALLOWED_TAGS`/`ALLOWED_ATTR`. En esa configuración
-     * pasaban `<form>` (un artista podía incrustar un formulario de phishing en
-     * medio de su noticia) y el atributo `style` (permite exfiltrar datos con
-     * `url()` y superponer capas invisibles sobre la página).
-     *
-     * Con las listas explícitas de arriba y sin perfiles, svg/math/form/style
-     * quedan fuera por omisión, que es como debe funcionar una allowlist.
-     *
-     * Tampoco usar `KEEP_CONTENT: false`. Se probó y borra los NODOS DE TEXTO:
-     * `<h2>Título</h2>` salía como `<h2></h2>`, o sea, artículos vacíos. El
-     * default (true) conserva el texto, y el contenido de `<script>`/`<style>`
-     * se descarta igual porque DOMPurify los trae en FORBID_CONTENTS.
-     */
-  });
+  return sanitizeHtml(html, OPCIONES);
 }

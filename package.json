@@ -2,6 +2,9 @@
   "name": "muzikchile-tienda",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -9,7 +12,8 @@
     "lint": "eslint",
     "verificar:rls": "node --env-file=.env.local scripts/verificar-rls-publicaciones.mjs",
     "verificar:rls-storage": "node --env-file=.env.local scripts/verificar-rls-storage.mjs",
-    "verificar:invitar": "node --env-file=.env.local scripts/verificar-invitar-artista.mjs"
+    "verificar:invitar": "node --env-file=.env.local scripts/verificar-invitar-artista.mjs",
+    "verificar:sanitizacion": "node scripts/verificar-sanitizacion.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -25,7 +29,6 @@
     "@tiptap/starter-kit": "^3.29.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "isomorphic-dompurify": "^3.19.0",
     "lucide-react": "^1.17.0",
     "mercadopago": "^3.0.0",
     "next": "16.2.6",
@@ -36,6 +39,7 @@
     "react-dropzone": "^15.0.0",
     "react-hook-form": "^7.77.0",
     "recharts": "^3.8.1",
+    "sanitize-html": "2.17.7",
     "shadcn": "^4.9.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
@@ -48,9 +52,13 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/sanitize-html": "2.16.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "launder": "1.7.1"
   }
 }

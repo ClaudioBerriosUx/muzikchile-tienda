@@ -23,7 +23,7 @@ import {
  *   4. Cada embed se renderiza como componente React con una URL construida
  *      desde cero a partir de un ID ya validado.
  *
- * El paso 2 va antes del 3 a propósito: DOMPurify borra los `data-*` de los
+ * El paso 2 va antes del 3 a propósito: el sanitizador borra los `data-*` de los
  * bloques de TipTap, así que si se sanitizara primero, la info del embed se
  * perdería. Y no debilita nada: el HTML nunca se renderiza sin sanitizar, y de
  * los embeds solo se extraen tipo e id, que se validan contra patrones
