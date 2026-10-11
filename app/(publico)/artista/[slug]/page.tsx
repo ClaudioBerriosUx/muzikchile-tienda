@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { traerArtistaPorSlug } from "@/lib/artistas";
 import ArtistaClient from "./ArtistaClient";
+import { BASE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: titulo,
       description: descripcion,
       images: artista.foto_url ? [artista.foto_url] : [],
-      url: `https://tienda.muzikchile.cl/artista/${artista.slug}`,
+      url: `${BASE_URL}/artista/${artista.slug}`,
       type: "profile",
     },
     twitter: {

@@ -48,17 +48,31 @@ function RegistroContent() {
 
       // Caso 2: PKCE flow — ?code= (es lo que manda resetPasswordForEmail
       // cuando el cliente usa PKCE, que es el default de createBrowserClient)
+      //
+      // El cliente del navegador es singleton y nace con detectSessionInUrl:
+      // al inicializarse (acá o antes, en el Header) ya canjea el ?code= solo
+      // y borra el code verifier. Un exchangeCodeForSession manual después
+      // falla con "code verifier not found" aunque la sesión ya exista — por
+      // eso /recuperar terminaba siempre en "enlace inválido". getSession()
+      // espera esa inicialización; el canje manual queda de respaldo.
       const code = searchParams.get("code");
       if (code) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) { setEstado("valido"); return; }
+
+        // Sin sesión: el enlace se abrió en otro navegador (el verifier vive
+        // en el que pidió el correo) o ya expiró.
         const { error } = await supabase.auth.exchangeCodeForSession(code);
         setEstado(error ? "invalido" : "valido");
         return;
       }
 
-      // Caso 3: token_hash en query string
+      // Caso 3: token_hash en query string. Si el enlace trae `type`, se usa
+      // ese; si no, se prueban todos.
       const token_hash = searchParams.get("token_hash") ?? searchParams.get("token");
       if (token_hash) {
-        for (const type of TIPOS_TOKEN) {
+        const tipoUrl = TIPOS_TOKEN.find((t) => t === searchParams.get("type"));
+        for (const type of tipoUrl ? [tipoUrl] : TIPOS_TOKEN) {
           const { error } = await supabase.auth.verifyOtp({ token_hash, type });
           if (!error) { setEstado("valido"); return; }
         }
@@ -93,7 +107,7 @@ function RegistroContent() {
   if (estado === "verificando") {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Verificando invitación...</p>
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Verificando enlace...</p>
       </div>
     );
   }
@@ -115,14 +129,22 @@ function RegistroContent() {
             Enlace inválido o expirado
           </p>
           <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666", lineHeight: 1.6, marginBottom: "24px" }}>
-            Este enlace de invitación ya no es válido. Solicita uno nuevo al administrador o intenta ingresar directamente.
+            Este enlace ya no es válido, o se abrió en un navegador distinto al que lo pidió. Si estabas recuperando tu contraseña, pide un enlace nuevo; si era una invitación, solicita otra al administrador.
           </p>
-          <Link
-            href="/login"
-            style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#e8003d" }}
-          >
-            Ir al login →
-          </Link>
+          <div className="flex flex-col gap-2">
+            <Link
+              href="/recuperar"
+              style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#e8003d" }}
+            >
+              Pedir un enlace nuevo →
+            </Link>
+            <Link
+              href="/login"
+              style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}
+            >
+              Ir al login
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -198,7 +220,7 @@ function RegistroContent() {
             onMouseEnter={(e) => { if (!guardando && password && confirm) e.currentTarget.style.backgroundColor = "#c5002e"; }}
             onMouseLeave={(e) => { if (!guardando && password && confirm) e.currentTarget.style.backgroundColor = "#e8003d"; }}
           >
-            {guardando ? "Guardando..." : "Crear cuenta"}
+            {guardando ? "Guardando..." : "Guardar contraseña"}
           </button>
         </div>
       </div>

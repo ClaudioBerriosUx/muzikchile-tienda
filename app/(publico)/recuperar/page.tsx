@@ -92,8 +92,8 @@ export default function RecuperarPage() {
               style={{ fontFamily: "var(--font-body)", fontSize: "15px", color: "#666666", lineHeight: 1.6 }}
             >
               Si <strong style={{ color: "#111111" }}>{enviado}</strong> está registrado,
-              te enviamos un enlace para crear una contraseña nueva. El enlace
-              vence en una hora.
+              te enviamos un enlace para crear una contraseña nueva. Ábrelo en
+              este mismo navegador; vence en una hora.
             </p>
 
             <p

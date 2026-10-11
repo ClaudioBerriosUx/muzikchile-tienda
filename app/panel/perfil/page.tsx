@@ -12,6 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 import { REGIONES_CHILE, BANCOS_CHILE } from "@/lib/constants";
 import { comprimirImagen } from "@/lib/imagen";
 import ColorPicker from "@/components/ui/ColorPicker";
+import { BASE_URL } from "@/lib/site";
 
 const TIPOS_CUENTA = ["Cuenta Corriente", "Cuenta Vista", "Cuenta de Ahorro", "Cuenta RUT"];
 
@@ -428,7 +429,7 @@ export default function PerfilPage() {
                   className="px-3 py-2.5 text-sm bg-[#f8f7f5] border-r border-[#e8e8e8] shrink-0"
                   style={{ fontFamily: "var(--font-body)", color: "#999999" }}
                 >
-                  tienda.muzikchile.cl/artista/
+                  {new URL(BASE_URL).host}/artista/
                 </span>
                 <input
                   {...register("slug")}

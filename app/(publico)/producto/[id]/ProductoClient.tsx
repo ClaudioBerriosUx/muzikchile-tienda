@@ -176,7 +176,7 @@ export default function ProductoClient({ id }: { id: string }) {
               {categoria && (
                 <>
                   <span>/</span>
-                  <Link href={`/?categoria=${categoria.slug}`} className="hover:text-[#e8003d] transition-colors">
+                  <Link href={`/tienda?categoria=${categoria.slug}`} className="hover:text-[#e8003d] transition-colors">
                     {categoria.nombre}
                   </Link>
                 </>

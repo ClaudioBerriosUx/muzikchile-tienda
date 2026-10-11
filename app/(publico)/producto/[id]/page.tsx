@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { traerProductoPorId } from "@/lib/productos";
 import ProductoClient from "./ProductoClient";
+import { BASE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: titulo,
       description: descripcion,
       images: imagen ? [imagen] : [],
-      url: `https://tienda.muzikchile.cl/producto/${id}`,
+      url: `${BASE_URL}/producto/${id}`,
       type: "website",
     },
     twitter: {

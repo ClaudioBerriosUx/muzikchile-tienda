@@ -15,15 +15,14 @@ export interface NavLink {
  * Navegación principal del sitio público. Header y Footer consumen esta misma
  * lista para que no se desincronicen.
  *
- * Nota: /noticias, /convocatorias, /artistas y /tienda todavía no existen como
- * rutas — se crean en la siguiente tanda. Los links ya apuntan ahí a propósito.
+ * Solo rutas que existen. "Convocatorias" (/convocatorias) y "Artistas"
+ * (/artistas) se sacaron para el lanzamiento porque daban 404; vuelven cuando
+ * esas páginas existan.
  */
 export const NAV_LINKS: NavLink[] = [
-  { label: "Inicio",        href: "/" },
-  { label: "Noticias",      href: "/noticias" },
-  { label: "Convocatorias", href: "/convocatorias" },
-  { label: "Artistas",      href: "/artistas" },
-  { label: "Tienda",        href: "/tienda" },
+  { label: "Inicio",   href: "/" },
+  { label: "Noticias", href: "/noticias" },
+  { label: "Tienda",   href: "/tienda" },
 ];
 
 /** Acceso al panel de artista. Ya funciona hoy: el guard de /panel respeta redirectTo. */

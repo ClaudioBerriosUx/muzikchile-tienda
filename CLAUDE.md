@@ -67,13 +67,22 @@ Header y Footer. No importes `<Header/>` a mano en una página.
 | `/carrito` | público | Carrito |
 | `/checkout` | público | Formulario + MercadoPago |
 | `/checkout/exito|error|pendiente` | público | Resultado del pago |
-| `/login`, `/registro`, `/recuperar` | público | Auth (registro = set-password tras invitación) |
+| `/contacto` | público | Correo de contacto |
+| `/login`, `/registro`, `/recuperar` | público | Auth (registro = set-password tras invitación o recuperación) |
 | `/panel/**` | rol: `artista` | Dashboard del artista |
 | `/admin/**` | rol: `admin` | Panel de administración |
 
-El menú del Header también enlaza `/convocatorias` y `/artistas`, que **todavía
-no existen** (dan 404). Se crean en la reestructuración a plataforma de
-comunidad.
+`/contacto` es una página simple con `CORREO_CONTACTO` (`lib/site.ts`).
+`/convocatorias`, `/artistas`, `/terminos` y `/despachos` **no existen** y se
+sacaron del Header y el Footer; al crearlas, se vuelven a enlazar.
+
+### Dominio y redirects
+
+Dominio canónico: **www.muzikchile.cl** (`muzikchile.cl` → www en Vercel). Los
+redirects viven en `next.config.ts`: `tienda.muzikchile.cl` → www salvo `/api`
+(webhooks de MercadoPago con el host viejo), `/?categoria=` → `/tienda`, y las
+rutas del Channel sin equivalente acá → `tv.muzikchile.cl`, donde sigue el
+Channel (reproductor y su admin).
 
 ### Auth y roles
 
@@ -174,19 +183,22 @@ Tailwind v4 (breaking changes desde v3 — leer `node_modules/next/dist/docs/` a
 
 ### SEO
 
-El sitio está **fuera de los buscadores a propósito** mientras se construye, con
-tres bloqueos independientes:
+El sitio está **fuera de los buscadores a propósito** hasta el lanzamiento. Queda
+**un solo bloqueo en el código**:
 
-1. `app/layout.tsx` → `robots: { index: false }` global.
-2. `public/robots.txt` → `Disallow: /`.
-3. **Redirect del dominio en Vercel** — externo al código: no vive en el repo,
-   se quita desde el dashboard de Vercel.
+- `app/layout.tsx` → `robots: { index: false, follow: false }` global. Es lo
+  último que se quita, una vez que www.muzikchile.cl ya sirve este proyecto.
 
-⚠️ **Los tres son deliberados y se quitan SOLO en el lanzamiento** (ver Plan
-MuzikChile 2.0). Y hay que quitar **los tres**: sacar solo uno deja el sitio
-bloqueado igual. Como los estáticos de `public/` tienen precedencia sobre las
-rutas del App Router, mientras `public/robots.txt` exista **`app/robots.ts` no se
-sirve** — está escrito y probado, pero eclipsado.
+Lo que antes se contaba como bloqueos 2 y 3:
+
+- **`public/robots.txt` (`Disallow: /`) se borró** en la rama `lanzamiento`.
+  Nunca bloqueó nada: producción servía `app/robots.ts` (`Allow: /`) y no ese
+  archivo — comprobado el 2026-10-11 con `curl /robots.txt`. La idea de que un
+  estático de `public/` eclipsa a `app/robots.ts` era falsa.
+- **"Redirect del dominio en Vercel"**: lo que dejaba a la Tienda fuera del
+  dominio principal es que www.muzikchile.cl apuntaba al proyecto del Channel.
+  Se resuelve con el cambio de dominio (mover www y la raíz al proyecto de la
+  Tienda), no con un toggle aparte.
 
 La infraestructura ya está lista para ese día:
 - `/panel`, `/admin`, `/checkout`, `/carrito`, `/login`, `/registro` y
@@ -208,6 +220,7 @@ cosas.
   reencoda a JPEG en el navegador antes de subir a Storage. **Úsala en vez de
   reescribirla**; estuvo duplicada en `panel/perfil` (400px) y
   `panel/productos/nuevo` (800px). Nunca rechaza: ante error devuelve el original.
-- `lib/site.ts` — `BASE_URL` (desde `NEXT_PUBLIC_URL`), para robots y sitemap
+- `lib/site.ts` — `BASE_URL` (desde `NEXT_PUBLIC_URL`), para robots, sitemap y
+  OpenGraph; `CORREO_CONTACTO`. No escribas el dominio a mano en una página.
 - `components/layout/nav-links.ts` — `NAV_LINKS` y `ACCESO_ARTISTAS_HREF`,
   compartidos por Header y Footer para que no se desincronicen

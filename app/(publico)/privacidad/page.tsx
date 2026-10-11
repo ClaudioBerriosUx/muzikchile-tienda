@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { C } from "@/lib/portada";
+import { CORREO_CONTACTO } from "@/lib/site";
 
 /* ───────────────────────────────────────────────────────────────────────────
    TODO: revisar con detalle legal antes del lanzamiento.
@@ -13,8 +14,6 @@ import { C } from "@/lib/portada";
    es internacional (RGPD si hay visitantes de la UE):
 
      · Identificar al responsable del tratamiento: razón social, RUT, domicilio.
-     · Un email de contacto real para bajas y ejercicio de derechos. Hoy hay un
-       placeholder — ver CORREO_CONTACTO abajo.
      · Base legal del tratamiento (consentimiento) y cómo se acredita. Va de la
        mano con el doble opt-in, que todavía no está implementado.
      · Plazo de conservación de los datos.
@@ -32,9 +31,6 @@ export const metadata: Metadata = {
   description:
     "Qué datos recoge MuzikChile, para qué los usa y cómo pedir la baja.",
 };
-
-/** TODO: reemplazar por la casilla real antes del lanzamiento. */
-const CORREO_CONTACTO = "contacto@muzikchile.cl";
 
 /** Última revisión del texto. Actualizar al editarlo. */
 const ACTUALIZADO = "27 de julio de 2026";

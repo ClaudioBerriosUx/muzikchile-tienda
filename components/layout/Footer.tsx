@@ -35,11 +35,12 @@ const REDES = [
   { label: "Spotify",   href: "https://open.spotify.com/user/31vwdbu464l2bt3lqquh76gwhuda",  path: PATHS.spotify },
 ];
 
-/** Placeholders: estas rutas todavía no existen. */
+/**
+ * Solo rutas que existen. "Términos y condiciones" (/terminos) y "Despachos y
+ * devoluciones" (/despachos) se sacaron para el lanzamiento porque daban 404.
+ */
 const LEGALES = [
-  { label: "Términos y condiciones", href: "/terminos" },
   { label: "Política de privacidad", href: "/privacidad" },
-  { label: "Despachos y devoluciones", href: "/despachos" },
   { label: "Contacto", href: "/contacto" },
 ];
 
