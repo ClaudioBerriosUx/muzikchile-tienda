@@ -47,10 +47,10 @@ const nextConfig: NextConfig = {
       { source: "/tv", destination: "https://tv.muzikchile.cl/tv", permanent: true },
       // Channel: utilitarias y admin sin equivalente acá. /admin y
       // /admin/suscriptores no se redirigen: chocan con los de la Tienda.
+      // (/admin/instagram tampoco: el Channel lo eliminó.)
       { source: "/bootstrap-admin", destination: "https://tv.muzikchile.cl/bootstrap-admin", permanent: true },
       { source: "/reset-password",  destination: "https://tv.muzikchile.cl/reset-password",  permanent: true },
       { source: "/admin/settings",  destination: "https://tv.muzikchile.cl/admin/settings",  permanent: true },
-      { source: "/admin/instagram", destination: "https://tv.muzikchile.cl/admin/instagram", permanent: true },
       // Las noticias ahora se administran acá. Temporal (302) por si cambia.
       { source: "/admin/noticias/:rest*", destination: "/admin/publicaciones", permanent: false },
     ];
