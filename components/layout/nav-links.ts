@@ -12,6 +12,13 @@ export interface NavLink {
 }
 
 /**
+ * La tienda está oculta de la navegación (Header y Footer), pero /tienda, las
+ * fichas de producto y el carrito siguen funcionando para quien entre por URL.
+ * Para volver a mostrarla en los menús, pon esto en true.
+ */
+export const TIENDA_VISIBLE = false;
+
+/**
  * Navegación principal del sitio público. Header y Footer consumen esta misma
  * lista para que no se desincronicen.
  *
@@ -22,7 +29,7 @@ export interface NavLink {
 export const NAV_LINKS: NavLink[] = [
   { label: "Inicio",   href: "/" },
   { label: "Noticias", href: "/noticias" },
-  { label: "Tienda",   href: "/tienda" },
+  ...(TIENDA_VISIBLE ? [{ label: "Tienda", href: "/tienda" }] : []),
 ];
 
 /** Acceso al panel de artista. Ya funciona hoy: el guard de /panel respeta redirectTo. */

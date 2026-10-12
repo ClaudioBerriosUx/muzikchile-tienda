@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import Logo from "./Logo";
-import { NAV_LINKS, ACCESO_ARTISTAS_HREF } from "./nav-links";
+import { NAV_LINKS, ACCESO_ARTISTAS_HREF, TIENDA_VISIBLE } from "./nav-links";
 import { C, F } from "@/lib/portada";
 
 /**
@@ -63,7 +63,7 @@ const linkStyle: React.CSSProperties = {
 export default function Footer() {
   return (
     <footer style={{ backgroundColor: C.negro }} className="mt-auto">
-      <div className="max-w-6xl mx-auto px-6 py-12 grid gap-10 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className={`max-w-6xl mx-auto px-6 py-12 grid gap-10 grid-cols-1 sm:grid-cols-2 ${TIENDA_VISIBLE ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
         {/* Marca */}
         <div>
           <Logo alto={44} />
@@ -153,22 +153,24 @@ export default function Footer() {
           </ul>
         </div>
 
-        {/* Tienda */}
-        <div>
-          <h2 style={tituloColumna}>Tienda</h2>
-          <ul className="flex flex-col gap-2.5">
-            <li>
-              <Link href="/tienda" className="hover:text-white transition-colors" style={linkStyle}>
-                Ver catálogo
-              </Link>
-            </li>
-            <li>
-              <Link href="/carrito" className="hover:text-white transition-colors" style={linkStyle}>
-                Mi carrito
-              </Link>
-            </li>
-          </ul>
-        </div>
+        {/* Tienda: oculta en los menús mientras TIENDA_VISIBLE sea false. */}
+        {TIENDA_VISIBLE && (
+          <div>
+            <h2 style={tituloColumna}>Tienda</h2>
+            <ul className="flex flex-col gap-2.5">
+              <li>
+                <Link href="/tienda" className="hover:text-white transition-colors" style={linkStyle}>
+                  Ver catálogo
+                </Link>
+              </li>
+              <li>
+                <Link href="/carrito" className="hover:text-white transition-colors" style={linkStyle}>
+                  Mi carrito
+                </Link>
+              </li>
+            </ul>
+          </div>
+        )}
       </div>
 
       <div style={{ borderTop: `1px solid ${C.borde}` }}>
