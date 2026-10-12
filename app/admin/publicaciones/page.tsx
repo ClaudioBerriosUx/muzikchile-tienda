@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { etiquetaCategoria } from "@/lib/publicaciones";
+import ContenidoNoticia from "@/components/contenido/ContenidoNoticia";
 import { borrarImagenDePublicacion } from "@/lib/storage";
 import {
   Dialog, DialogContent, DialogHeader,
@@ -380,13 +381,13 @@ export default function ModerarPublicacionesPage() {
               </p>
             )}
 
+            {/* El cuerpo es HTML (editor TipTap + embeds): se renderiza con el
+                mismo componente que /noticias/[slug], que lo sanitiza, sobre
+                fondo oscuro como en el sitio público. */}
             {seleccionada.cuerpo && (
-              <p
-                className="mt-4 whitespace-pre-wrap"
-                style={{ fontFamily: "var(--font-body)", fontSize: "15px", color: "#444444", lineHeight: 1.75 }}
-              >
-                {seleccionada.cuerpo}
-              </p>
+              <div className="mt-6 rounded-lg bg-black px-5 pb-1 pt-px">
+                <ContenidoNoticia cuerpo={seleccionada.cuerpo} />
+              </div>
             )}
 
             {/* Comentario previo, si ya fue devuelta antes */}
