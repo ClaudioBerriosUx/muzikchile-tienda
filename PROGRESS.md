@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-10-11
+> Actualizado: 2026-10-13
 > Branch: `main` (lanzamiento mergeado y en producción en www.muzikchile.cl)
 
 ---
@@ -944,6 +944,34 @@ lanzamiento completados el 11-oct-2026; el sitio es indexable.
   se despliegan aparte (`supabase functions deploy sitemap llms`).
 - Lovable empuja directo a `main` del Channel: revisar que no reintroduzca
   `https://muzikchile.cl` en canonicals.
+
+---
+
+## 📊 Google Analytics 4 — 2026-10-13
+
+- Mismo ID que el Channel (`G-V78FLFM201`, GA4, hardcodeado en
+  `muzik-channel/index.html`, que se deja igual). Las visitas de www y tv caen en la
+  misma propiedad; se separan por nombre de host.
+- `components/Analitica.tsx` con `next/script` (sin `@next/third-parties`). Se
+  monta en `app/(publico)/layout.tsx` y no en el layout raíz, así la etiqueta no
+  sale en el HTML de /admin ni /panel.
+- Solo se renderiza si `VERCEL_ENV === "production"` y existe `NEXT_PUBLIC_GA_ID`
+  (en Vercel, cargada solo para Production).
+- Las rutas privadas (/admin, /panel, /checkout/**, /carrito, /login, /registro,
+  /recuperar) no se miden: usa `window['ga-disable-<ID>']`, que se recalcula en
+  cada pushState/replaceState/popstate, antes de que GA reaccione.
+- Los page_views de la navegación cliente los cuenta la medición mejorada de GA4
+  (historial del navegador). No hay page_view manual.
+- `/privacidad`: sección "Analítica" con links a la política de Google y al
+  complemento de exclusión.
+
+### Pendiente
+- Después del deploy: comprobar que hay `collect?en=page_view` al navegar
+  `/` → `/noticias` y que no hay ninguno al entrar a `/login` o `/carrito`.
+- Revisar en GA4 → Flujo de datos web que "Cambios de página según el historial
+  del navegador" esté activo.
+- Legal: con visitas de la UE, el RGPD probablemente exige un aviso de cookies con
+  consentimiento previo, que hoy no existe.
 
 ---
 

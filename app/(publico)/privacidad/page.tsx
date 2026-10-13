@@ -20,7 +20,9 @@ import { CORREO_CONTACTO } from "@/lib/site";
      · Encargados de tratamiento: Supabase aloja los datos; si más adelante se
        usa un proveedor de envío (Resend, Mailchimp…), hay que nombrarlo.
      · Transferencias internacionales de datos y su salvaguarda.
-     · Cookies y analítica, si alguna vez se agregan.
+     · Cookies y analítica: hoy está Google Analytics 4 (sección "Analítica").
+       Si llegan visitas de la UE, el RGPD probablemente exige un aviso de
+       cookies con consentimiento previo; hoy no lo hay.
      · Ley 19.628 (Chile) y su reforma; RGPD para la UE.
 
    Cuando se complete, borrar este bloque y el aviso visible de "borrador".
@@ -38,7 +40,7 @@ export const metadata: Metadata = {
 };
 
 /** Última revisión del texto. Actualizar al editarlo. */
-const ACTUALIZADO = "27 de julio de 2026";
+const ACTUALIZADO = "13 de octubre de 2026";
 
 export default function PrivacidadPage() {
   return (
@@ -98,7 +100,44 @@ export default function PrivacidadPage() {
           </P>
           <P>
             Navegar por MuzikChile sin suscribirte no deja ningún dato personal
-            tuyo en nuestros registros.
+            tuyo en nuestros registros. Las visitas sí se miden de forma
+            agregada con Google Analytics (ver más abajo).
+          </P>
+        </Seccion>
+
+        <Seccion titulo="Analítica">
+          <P>
+            Usamos <strong style={{ color: C.blanco }}>Google Analytics</strong>{" "}
+            para medir las visitas de forma agregada: cuántas personas entran,
+            qué páginas ven, desde qué país y con qué tipo de dispositivo. Nos
+            sirve para saber qué contenido interesa, no para identificarte.
+            Google Analytics usa cookies propias en tu navegador.
+          </P>
+          <P>
+            No medimos el panel de artistas, el carrito, el pago ni las
+            páginas de acceso.
+          </P>
+          <P>
+            Google trata esos datos según su{" "}
+            <a
+              href="https://policies.google.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#2C567F", textDecoration: "underline" }}
+            >
+              política de privacidad
+            </a>
+            . Si no quieres que te mida, puedes bloquear las cookies de Google
+            en tu navegador o instalar el{" "}
+            <a
+              href="https://tools.google.com/dlpage/gaoptout"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#2C567F", textDecoration: "underline" }}
+            >
+              complemento de exclusión de Google Analytics
+            </a>
+            .
           </P>
         </Seccion>
 
