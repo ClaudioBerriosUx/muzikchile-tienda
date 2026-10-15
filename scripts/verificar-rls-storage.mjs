@@ -1,6 +1,6 @@
 /**
  * Verificación end-to-end de las políticas de `storage.objects` en los buckets
- * `artistas` y `productos`.
+ * `artistas`, `productos` y `noticias`.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * CÓMO CORRERLO
@@ -39,6 +39,11 @@
  *   artistas/{artistas.id}/…           foto subida por el admin
  *   productos/{artistas.id}/…          imágenes de productos
  *   productos/{artistas.id}/publicaciones/…
+ *   noticias/…                         notas editoriales (solo admin, raíz plana)
+ *
+ * El bucket `noticias` además limita tamaño (5 MB) y tipo (JPG, PNG, WEBP) en
+ * el propio bucket: esos casos se prueban con el admin, para que el rechazo
+ * venga del límite y no del RLS.
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -76,6 +81,9 @@ function check(caso, ok, detalle) {
 // ── Storage helpers ──────────────────────────────────────────────────────────
 
 const archivo = (texto) => new Blob([texto], { type: "image/jpeg" });
+
+const BUCKET_NOTICIAS = "noticias";
+const MAX_BYTES_NOTICIAS = 5 * 1024 * 1024;
 
 /** Contenido real del archivo según la service role, o null si no existe. */
 async function leer(bucket, ruta) {
@@ -169,10 +177,12 @@ async function idEditorial() {
  * artistas de prueba para saber qué carpetas mirar— y después las filas.
  */
 async function borrarArchivosDeTest(bucket, carpeta) {
-  const { data } = await admin.storage.from(bucket).list(carpeta, { limit: 1000 });
+  const { data } = await admin.storage
+    .from(bucket)
+    .list(carpeta, { limit: 1000, search: FAMILIA });
   const rutas = (data ?? [])
     .filter((o) => o.id && o.name.startsWith(FAMILIA))
-    .map((o) => `${carpeta}/${o.name}`);
+    .map((o) => (carpeta ? `${carpeta}/${o.name}` : o.name));
   if (rutas.length) await admin.storage.from(bucket).remove(rutas);
   return rutas.length;
 }
@@ -204,6 +214,8 @@ async function limpiar() {
     const ed = await idEditorial();
     carpetas.add(`productos|${ed}/publicaciones`);
   } catch { /* sin editorial no hay nada que barrer ahí */ }
+  // `noticias` es plano: los archivos de prueba viven en la raíz.
+  carpetas.add(`${BUCKET_NOTICIAS}|`);
 
   for (const c of carpetas) {
     const [bucket, carpeta] = c.split("|");
@@ -227,7 +239,7 @@ async function limpiar() {
 // ── Casos ────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log("Verificación de RLS · storage (buckets artistas y productos)");
+  console.log("Verificación de RLS · storage (buckets artistas, productos y noticias)");
   console.log(`Proyecto: ${URL}`);
   console.log(`Prefijo de datos de prueba: ${PREFIJO}\n`);
 
@@ -253,7 +265,18 @@ async function main() {
       intrusoArt: `${B.userId}/${FAMILIA}intruso.jpg`,
       intrusoPrd: `${B.artistaId}/${FAMILIA}intruso.jpg`,
       editorial:  `${editorial}/publicaciones/${FAMILIA}editorial.jpg`,
+      notAnon:    `${PREFIJO}-anon.jpg`,
+      notArt:     `${PREFIJO}-artista.jpg`,
+      notAdm:     `${PREFIJO}-admin.jpg`,
+      notGrande:  `${PREFIJO}-grande.jpg`,
+      notSvg:     `${PREFIJO}-tipo.svg`,
+      notHtml:    `${PREFIJO}-tipo.html`,
     };
+
+    // Cliente sin sesión: lo que puede hacer cualquiera con la anon key pública.
+    const anon = createClient(URL, ANON_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
     await sembrar("artistas", R.fotoA, "A-original");
     await sembrar("artistas", R.fotoB, "B-original");
@@ -376,6 +399,95 @@ async function main() {
         "(j) Admin sube la imagen de una publicación editorial → permitido",
         c === "editorial",
         c === "editorial" ? null : `No quedó el archivo (${msg(error)})`
+      );
+    }
+
+    // ── Bucket `noticias` (migración 20261014212954) ──────────────────────────
+
+    // (k) Anónimo NO puede subir.
+    {
+      const { error } = await anon.storage.from(BUCKET_NOTICIAS).upload(R.notAnon, archivo("anon"));
+      const c = await leer(BUCKET_NOTICIAS, R.notAnon);
+      check(
+        "(k) Anónimo sube a noticias → rechazado",
+        c === null,
+        c === null ? null : `El archivo se creó (${msg(error)})`
+      );
+    }
+
+    // (l) Un artista NO puede subir: el bucket es solo del admin.
+    {
+      const { error } = await A.cliente.storage.from(BUCKET_NOTICIAS).upload(R.notArt, archivo("artista"));
+      const c = await leer(BUCKET_NOTICIAS, R.notArt);
+      check(
+        "(l) Artista sube a noticias → rechazado",
+        c === null,
+        c === null ? null : `El archivo se creó (${msg(error)})`
+      );
+    }
+
+    // (m) El admin sí puede subir (botón "Subir imagen" del formulario editorial).
+    {
+      const { error } = await ADM.cliente.storage
+        .from(BUCKET_NOTICIAS)
+        .upload(R.notAdm, archivo("admin-noticia"), { contentType: "image/jpeg" });
+      const c = await leer(BUCKET_NOTICIAS, R.notAdm);
+      check(
+        "(m) Admin sube a noticias → permitido",
+        c === "admin-noticia",
+        c === "admin-noticia" ? null : `No quedó el archivo (${msg(error)})`
+      );
+    }
+
+    // (n) Lectura pública: la URL de getPublicUrl sin sesión (lo que hace la
+    // portada) y download() con la anon key (política noticias_select_publico).
+    {
+      const { data: { publicUrl } } = anon.storage.from(BUCKET_NOTICIAS).getPublicUrl(R.notAdm);
+      const res = await fetch(publicUrl);
+      const texto = res.ok ? await res.text() : null;
+      const { data: blob, error } = await anon.storage.from(BUCKET_NOTICIAS).download(R.notAdm);
+      const viaApi = blob ? await blob.text() : null;
+      const ok = texto === "admin-noticia" && viaApi === "admin-noticia";
+      check(
+        "(n) Anónimo lee una imagen de noticias (URL pública y API) → permitido",
+        ok,
+        ok ? null : `URL pública: HTTP ${res.status}; download(): ${viaApi === null ? msg(error) : `"${viaApi}"`}`
+      );
+    }
+
+    // (o) Más de 5 MB → rechazado por file_size_limit del bucket, aunque suba
+    // el admin (el formulario ya lo frena; esta es la segunda capa).
+    {
+      const grande = new Blob([new Uint8Array(MAX_BYTES_NOTICIAS + 1)], { type: "image/jpeg" });
+      const { error } = await ADM.cliente.storage
+        .from(BUCKET_NOTICIAS)
+        .upload(R.notGrande, grande, { contentType: "image/jpeg" });
+      const c = await leer(BUCKET_NOTICIAS, R.notGrande);
+      check(
+        "(o) Admin sube 5 MB + 1 byte a noticias → rechazado",
+        c === null,
+        c === null ? `rechazo: ${msg(error)}` : `El archivo se creó (${msg(error)})`
+      );
+    }
+
+    // (p) Tipo no permitido → rechazado por allowed_mime_types, aunque suba el
+    // admin. SVG y HTML son los peligrosos: los dos pueden llevar scripts.
+    {
+      const svg = await ADM.cliente.storage
+        .from(BUCKET_NOTICIAS)
+        .upload(R.notSvg, new Blob(["<svg/>"], { type: "image/svg+xml" }), { contentType: "image/svg+xml" });
+      const html = await ADM.cliente.storage
+        .from(BUCKET_NOTICIAS)
+        .upload(R.notHtml, new Blob(["<p>x</p>"], { type: "text/html" }), { contentType: "text/html" });
+      const cSvg = await leer(BUCKET_NOTICIAS, R.notSvg);
+      const cHtml = await leer(BUCKET_NOTICIAS, R.notHtml);
+      const ok = cSvg === null && cHtml === null;
+      check(
+        "(p) Admin sube SVG y HTML a noticias → rechazados",
+        ok,
+        ok
+          ? `rechazo: ${msg(svg.error)} / ${msg(html.error)}`
+          : `Se creó: ${[cSvg !== null && "SVG", cHtml !== null && "HTML"].filter(Boolean).join(", ")}`
       );
     }
   } catch (err) {

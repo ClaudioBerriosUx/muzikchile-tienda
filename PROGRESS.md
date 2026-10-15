@@ -1044,17 +1044,26 @@ lanzamiento completados el 11-oct-2026; el sitio es indexable.
   (`borrarImagenDePublicacion` solo borra la portada).
 
 ### Estado al 2026-10-15
-- **Tanda commiteada** (código + migración), sin deploy.
-- **La migración del bucket `noticias` sigue SIN aplicar**: Storage responde
-  `Bucket not found` para `noticias`. `npx supabase migration list` da 403
-  (`DbConfigLoginRoleStatusError`: la cuenta del CLI no tiene privilegios), así
-  que puede que `db push` falle igual; revisar el acceso del CLI o aplicar el SQL
-  desde el dashboard y registrarla como aplicada. Después, regenerar
-  `types.ts` (probablemente sin cambios: Storage no está tipado) y desplegar.
-  **No desplegar antes de aplicarla**: la subida del admin fallaría.
+- **Tanda commiteada**, sin push ni deploy: `e541987` (código + migración) y
+  el commit siguiente (casos de `noticias` en `verificar:rls-storage` y este
+  PROGRESS).
+- **Migración `20261014212954_bucket_noticias` aplicada** con `db push` (el 403
+  del CLI era la sesión de otra cuenta; se resolvió con login de la cuenta
+  dueña). El bucket responde. `types.ts` regenerado: idéntico byte a byte
+  (Storage no está tipado), sin cambios que commitear.
+- **`verificar:rls-storage` cubre `noticias`**: casos (k) anónimo sube →
+  rechazado, (l) artista sube → rechazado, (m) admin sube → permitido,
+  (n) lectura anónima por URL pública y por `download()` → permitido,
+  (o) admin sube 5 MB + 1 byte → rechazado por el límite del bucket, (p) admin
+  sube SVG y HTML → rechazados por `allowed_mime_types`. **16/16**, limpieza
+  sin restos (la raíz de `noticias` queda barrida por prefijo `rlstest-`).
+- Falta: deploy (`vercel --prod`) y la prueba en navegador.
 - Verificado: `tsc --noEmit` limpio, `npm run verificar:sanitizacion` 25/25.
-- Nuevo `scripts/reset-password.mjs`: cambia la contraseña de un usuario de Auth
-  con la service role (`node --env-file=.env.local scripts/reset-password.mjs <email>`).
+- `scripts/reset-password.mjs` (**solo local, en `.gitignore`; no está en el
+  repo**): cambia la contraseña de un usuario de Auth con la service role
+  (`node --env-file=.env.local scripts/reset-password.mjs <email>`). No tiene
+  claves en el código: lee URL y service role de `.env.local`. Había entrado
+  por error en el commit de la tanda; se reescribió antes del push.
   Pide la contraseña oculta por TTY, nunca por argumento ni env; en Git Bash
   anteponer `winpty`. Correrlo en una terminal propia, no en un chat.
 
