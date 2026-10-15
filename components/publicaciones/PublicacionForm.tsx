@@ -1,16 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { useDropzone } from "react-dropzone";
+import { useDropzone, type FileRejection } from "react-dropzone";
 import { toast } from "sonner";
-import { Upload, X } from "lucide-react";
+import { ImagePlus, Loader2, Upload, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { comprimirImagen } from "@/lib/imagen";
+import {
+  ACCEPT_IMAGEN_NOTICIA,
+  MAX_BYTES_IMAGEN_NOTICIA,
+  destinoImagenPublicacion,
+  subirImagenNoticia,
+} from "@/lib/subir-imagen-noticia";
 import { sanitizarHtml } from "@/lib/sanitizar";
 import EditorContenido from "@/components/contenido/EditorContenido";
 import {
@@ -90,6 +95,7 @@ export default function PublicacionForm({ artistaId, publicacion, modo = "artist
 
   const editando = !!publicacion;
   const editorial = modo === "editorial";
+  const destinoImagen = destinoImagenPublicacion(modo, artistaId);
   const titularMax = editorial ? TITULAR_MAX_EDITORIAL : TITULAR_MAX;
   const yaPublicada = publicacion?.estado === "publicada";
   const [schema] = useState(() => crearSchema(modo));
@@ -98,6 +104,20 @@ export default function PublicacionForm({ artistaId, publicacion, modo = "artist
 
   const [archivo, setArchivo] = useState<File | null>(null);
   const [enviando, setEnviando] = useState<EstadoDestino | null>(null);
+
+  /**
+   * Modo editorial: la imagen es una URL. Se pega a mano o la llena el botón
+   * "Subir imagen", que sube al instante al bucket `noticias`. El modo artista
+   * sigue con el dropzone (sube al guardar, al bucket `productos`): el bucket
+   * `noticias` es solo-admin.
+   */
+  const [imagenUrl, setImagenUrl] = useState(publicacion?.imagen_url ?? "");
+  const [subiendoImagen, setSubiendoImagen] = useState(false);
+  const [errorImagen, setErrorImagen] = useState<string | null>(null);
+  const [previewRota, setPreviewRota] = useState(false);
+  /** Imágenes del cuerpo subiéndose: guardar ahora las dejaría fuera. */
+  const [subiendoEnEditor, setSubiendoEnEditor] = useState(false);
+  const inputArchivoRef = useRef<HTMLInputElement>(null);
 
   /**
    * El cuerpo que se le pasa al editor al montar. Se fija una sola vez: si
@@ -130,10 +150,22 @@ export default function PublicacionForm({ artistaId, publicacion, modo = "artist
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: { "image/jpeg": [], "image/png": [], "image/webp": [] },
+    // Mismo límite que subirImagenNoticia, pero avisado al soltar y no recién
+    // al guardar.
+    maxSize: MAX_BYTES_IMAGEN_NOTICIA,
     maxFiles: 1,
     multiple: false,
     onDrop: useCallback((accepted: File[]) => {
       if (accepted[0]) setArchivo(accepted[0]);
+    }, []),
+    onDropRejected: useCallback((rechazos: FileRejection[]) => {
+      const { file, errors } = rechazos[0] ?? {};
+      if (!file) return;
+      toast.error(
+        errors.some((e) => e.code === "file-too-large")
+          ? `La imagen pesa ${(file.size / 1024 / 1024).toFixed(1)} MB. El máximo es 5 MB.`
+          : "Formato no permitido. Usa JPG, PNG o WEBP."
+      );
     }, []),
   });
 
@@ -146,31 +178,59 @@ export default function PublicacionForm({ artistaId, publicacion, modo = "artist
   }, [previewNuevo]);
 
   // Al editar se muestra la imagen ya guardada mientras no se suba otra.
-  const preview = previewNuevo ?? publicacion?.imagen_url ?? null;
+  const preview = editorial
+    ? (imagenUrl.trim() || null)
+    : (previewNuevo ?? publicacion?.imagen_url ?? null);
 
-  const subirImagen = async (): Promise<string> => {
-    if (!archivo) throw new Error("No hay imagen que subir");
-    // 1200px: las noticias se muestran a ancho completo, no en grilla como los productos.
-    const archivoFinal = await comprimirImagen(archivo, 1200, 0.85);
-    // Mismo bucket que productos, subcarpeta propia.
-    const path = `${artistaId}/publicaciones/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-    const { error } = await supabase.storage
-      .from("productos")
-      .upload(path, archivoFinal, { cacheControl: "3600", upsert: false });
-    if (error) throw new Error(`Error subiendo la imagen: ${error.message}`);
-    const { data: { publicUrl } } = supabase.storage.from("productos").getPublicUrl(path);
-    return publicUrl;
+  // Una URL nueva merece otro intento de cargar la vista previa.
+  useEffect(() => { setPreviewRota(false); }, [preview]);
+
+  /** Botón "Subir imagen" (modo editorial): valida, comprime, sube y llena la URL. */
+  const alElegirArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const elegido = e.target.files?.[0];
+    // Se limpia para que elegir el mismo archivo otra vez vuelva a disparar onChange.
+    e.target.value = "";
+    if (!elegido) return;
+
+    setErrorImagen(null);
+    setSubiendoImagen(true);
+    try {
+      setImagenUrl(await subirImagenNoticia(supabase, elegido, destinoImagen));
+      toast.success("Imagen subida");
+    } catch (err) {
+      setErrorImagen(err instanceof Error ? err.message : `No se pudo subir la imagen: ${String(err)}`);
+    } finally {
+      setSubiendoImagen(false);
+    }
   };
 
   const guardar = async (data: FormData, estado: EstadoDestino) => {
-    if (!editando && !archivo) {
+    const urlManual = imagenUrl.trim();
+    if (subiendoImagen || subiendoEnEditor) {
+      toast.error("Espera a que termine de subir la imagen");
+      return;
+    }
+    if (editorial) {
+      if (!urlManual && !editando) {
+        toast.error("La imagen es obligatoria");
+        return;
+      }
+      if (urlManual && !/^https?:\/\/\S+$/i.test(urlManual)) {
+        toast.error("La URL de la imagen debe empezar con http:// o https://");
+        return;
+      }
+    } else if (!editando && !archivo) {
       toast.error("La imagen es obligatoria");
       return;
     }
 
     setEnviando(estado);
     try {
-      const imagen_url = archivo ? await subirImagen() : publicacion!.imagen_url;
+      const imagen_url = editorial
+        ? urlManual || null
+        // Portada del artista: sube al guardar, con la misma función que el
+        // editor (5 MB, compresión, su carpeta en `productos`).
+        : archivo ? await subirImagenNoticia(supabase, archivo, destinoImagen) : publicacion!.imagen_url;
 
       /**
        * Se sanitiza ANTES de guardar, no solo al mostrar.
@@ -350,6 +410,9 @@ export default function PublicacionForm({ artistaId, publicacion, modo = "artist
               onChange={(html) =>
                 setValue("cuerpo", html, { shouldValidate: true, shouldDirty: true })
               }
+              // Admin → bucket `noticias`; artista → su carpeta en `productos`.
+              subirImagen={(a) => subirImagenNoticia(supabase, a, destinoImagen)}
+              onSubiendoChange={setSubiendoEnEditor}
             />
             {errorEl(errors.cuerpo?.message)}
           </div>
@@ -387,31 +450,83 @@ export default function PublicacionForm({ artistaId, publicacion, modo = "artist
               Imagen {!editando && <span style={{ color: "#e8003d" }}>*</span>}
             </label>
 
-            <div
-              {...getRootProps()}
-              className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors"
-              style={{
-                borderColor: isDragActive ? "#e8003d" : "#e8e8e8",
-                backgroundColor: isDragActive ? "#fff5f5" : "#f8f7f5",
-              }}
-            >
-              <input {...getInputProps()} />
-              <Upload size={24} className="mx-auto mb-2 text-[#cccccc]" />
-              <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>
-                {isDragActive
-                  ? "Suelta la imagen aquí"
-                  : preview
-                    ? "Arrastra otra imagen para reemplazarla"
-                    : "Arrastra tu imagen aquí o haz click"}
-              </p>
-            </div>
+            {editorial ? (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    inputMode="url"
+                    value={imagenUrl}
+                    onChange={(e) => { setImagenUrl(e.target.value); setErrorImagen(null); }}
+                    disabled={subiendoImagen}
+                    className={`${inputClass} min-w-0 flex-1`}
+                    style={fieldStyle}
+                    placeholder="https://… o usa Subir imagen"
+                    aria-label="URL de la imagen"
+                  />
+                  <input
+                    ref={inputArchivoRef}
+                    type="file"
+                    accept={ACCEPT_IMAGEN_NOTICIA}
+                    onChange={alElegirArchivo}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => inputArchivoRef.current?.click()}
+                    disabled={subiendoImagen || enviando !== null}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-4 rounded-md border text-sm font-semibold transition-colors"
+                    style={{
+                      fontFamily: "var(--font-body)",
+                      borderColor: "#111111",
+                      color: "#111111",
+                      backgroundColor: "#ffffff",
+                      cursor: subiendoImagen ? "wait" : "pointer",
+                      opacity: subiendoImagen ? 0.6 : 1,
+                    }}
+                  >
+                    {subiendoImagen
+                      ? <><Loader2 size={14} className="animate-spin" /> Subiendo...</>
+                      : <><ImagePlus size={14} /> Subir imagen</>}
+                  </button>
+                </div>
+                {errorImagen && (
+                  <p
+                    role="alert"
+                    className="mt-2 rounded-md border px-3 py-2 text-sm"
+                    style={{ fontFamily: "var(--font-body)", color: "#9f1239", backgroundColor: "#fff1f2", borderColor: "#fecdd3" }}
+                  >
+                    {errorImagen}
+                  </p>
+                )}
+              </>
+            ) : (
+              <div
+                {...getRootProps()}
+                className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors"
+                style={{
+                  borderColor: isDragActive ? "#e8003d" : "#e8e8e8",
+                  backgroundColor: isDragActive ? "#fff5f5" : "#f8f7f5",
+                }}
+              >
+                <input {...getInputProps()} />
+                <Upload size={24} className="mx-auto mb-2 text-[#cccccc]" />
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>
+                  {isDragActive
+                    ? "Suelta la imagen aquí"
+                    : preview
+                      ? "Arrastra otra imagen para reemplazarla"
+                      : "Arrastra tu imagen aquí o haz click"}
+                </p>
+              </div>
+            )}
 
             <div
               style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#999999", marginTop: "6px", lineHeight: 1.5 }}
             >
               📐 Formato recomendado: 1080×1350 px (vertical, como un post de Instagram)<br />
               ✂️ Se recorta al centro en proporción 4:5; mira la vista previa<br />
-              📁 Formatos: JPG, PNG, WEBP<br />
+              📁 Formatos: JPG, PNG, WEBP · máx. 5 MB<br />
               🖼️ Una imagen, la portada de la noticia
             </div>
 
@@ -422,11 +537,25 @@ export default function PublicacionForm({ artistaId, publicacion, modo = "artist
                 className="relative mt-3 rounded-lg overflow-hidden border border-[#e8e8e8] mx-auto"
                 style={{ aspectRatio: "4 / 5", maxWidth: "240px" }}
               >
-                <img src={preview} alt="Portada" className="w-full h-full object-cover object-center" />
-                {archivo && (
+                {previewRota ? (
+                  <div
+                    className="w-full h-full flex items-center justify-center p-4 text-center"
+                    style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#999999", backgroundColor: "#f8f7f5" }}
+                  >
+                    No se pudo cargar la imagen de esa URL
+                  </div>
+                ) : (
+                  <img
+                    src={preview}
+                    alt="Portada"
+                    onError={() => setPreviewRota(true)}
+                    className="w-full h-full object-cover object-center"
+                  />
+                )}
+                {(editorial ? !subiendoImagen : archivo) && (
                   <button
                     type="button"
-                    onClick={() => setArchivo(null)}
+                    onClick={() => (editorial ? setImagenUrl("") : setArchivo(null))}
                     className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-white"
                     style={{ backgroundColor: "rgba(17,17,17,0.7)" }}
                     aria-label="Quitar imagen"

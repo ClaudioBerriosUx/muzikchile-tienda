@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-10-13
+> Actualizado: 2026-10-15
 > Branch: `main` (lanzamiento mergeado y en producción en www.muzikchile.cl)
 
 ---
@@ -972,6 +972,91 @@ lanzamiento completados el 11-oct-2026; el sitio es indexable.
   del navegador" esté activo.
 - Legal: con visitas de la UE, el RGPD probablemente exige un aviso de cookies con
   consentimiento previo, que hoy no existe.
+
+---
+
+## 🖼️ Subir imagen en noticias editoriales — 2026-10-14
+
+- `PublicacionForm` en modo **editorial** (admin): el dropzone se cambió por un
+  campo de URL (manual) + botón "Subir imagen". Acepta JPG/PNG/WEBP de hasta 5 MB,
+  comprime con `comprimirImagen` (1200px), sube al instante al bucket `noticias`
+  (`<timestamp>-<nombre-limpio>.jpg`), llena la URL y muestra la vista previa 4:5.
+  Los errores se muestran inline bajo el campo.
+- El modo **artista** (panel) no cambió: dropzone, sube al guardar, bucket `productos`.
+- Migración `20261014212954_bucket_noticias.sql`: bucket público (5 MB, mimes de
+  imagen), lectura pública, escritura/edición/borrado solo admin (`has_role`).
+- `lib/storage.ts`: `rutaDesdeUrlPublica` ahora devuelve `{ bucket, ruta }` y
+  reconoce `productos` y `noticias`, para que borrar una nota borre su imagen.
+- `lib/imagenes-remotas.ts`: la lista de `remotePatterns` vive ahí (la importa
+  `next.config.ts`). `ImagenNoticia` usa `unoptimized` para URLs de otros hosts:
+  sin eso, una URL externa pegada a mano tumbaba la portada (next/image lanza).
+
+### Pendiente
+- `npx supabase db push` + regenerar tipos (no se aplicó todavía).
+- Probar en el admin: subir, error por >5 MB, URL manual externa en la portada.
+- Una imagen subida y luego reemplazada/quitada antes de guardar queda huérfana
+  en el bucket.
+- `scripts/verificar-rls-storage.mjs` no cubre el bucket `noticias`.
+
+### Imágenes dentro del cuerpo (editor TipTap) — 2026-10-14
+- `lib/subir-imagen-noticia.ts`: la subida al bucket `noticias` (validación,
+  `comprimirImagen`, nombre único, `getPublicUrl`) vive acá; la usan el campo de
+  portada y el editor.
+- `EditorContenido` recibe `subirImagen` (solo lo pasa el modo editorial): el
+  botón de imagen abre el selector de archivos y se aceptan imágenes pegadas o
+  arrastradas; inserta con `setImage({ src, alt })` (alt sale del nombre del
+  archivo). `onSubiendoChange` bloquea el guardado mientras sube.
+  Sin la prop (panel del artista) sigue el `window.prompt` de URL.
+- `lib/sanitizar.ts`: `<img>` solo con `src` https de los hosts de
+  `lib/imagenes-remotas.ts` + `alt`, `width`, `height` (numéricos). Una `<img>`
+  con otro `src` se borra entera (antes pasaban http, data: y cualquier host).
+  `href` quedó solo en `<a>`. Casos 12–18 y dos legítimos nuevos en
+  `npm run verificar:sanitizacion` (23/23).
+- `tsconfig.json`: `allowImportingTsExtensions`, para que `sanitizar.ts` importe
+  `./imagenes-remotas.ts` y el script de Node lo pueda cargar.
+- Al 2026-10-14 ninguna de las 12 publicaciones tenía `<img>` en el cuerpo: el
+  cambio no borra nada publicado.
+
+- Artistas (misma tanda): el editor también sube, a
+  `productos/{artistas.id}/publicaciones/` (`destinoImagenPublicacion`), con las
+  mismas reglas. Sin cambios en la base: lo permite `productos_insert_own`.
+- Alt editable: clic en una imagen del editor la selecciona y abre un panel con
+  su texto alternativo (arranca con el nombre del archivo).
+- `lib/imagenes-remotas.ts`: el Supabase de la tienda también quedó limitado a
+  `/storage/v1/object/public/**` (afecta sanitizador, next/image e
+  `ImagenNoticia`); además se rechaza un puerto explícito. Revisado: ninguna URL
+  guardada de ese host cae fuera. Script: 25/25.
+
+- Portada del artista: ahora usa `subirImagenNoticia` (5 MB, compresión, su
+  carpeta en `productos`). Sigue subiendo al guardar; el dropzone rechaza >5 MB
+  al soltar.
+- Revisado (2026-10-14): nada en el código genera URLs de Supabase fuera de
+  `/storage/v1/object/public/` (sin createSignedUrl, render/image ni transform
+  en getPublicUrl). next/image solo se usa en `Logo` (local) e `ImagenNoticia`
+  (con fallback `unoptimized`). Los thumbnails de VideosDestacados son `<img>`.
+
+### Pendiente
+- Aplicar la migración del bucket `noticias` (`npx supabase db push`) y
+  regenerar tipos. Sin eso, la subida del admin falla.
+- Probar en el navegador: subida admin y artista (botón, pegar, arrastrar),
+  editar alt, rechazo >5 MB.
+- Las imágenes del cuerpo no se borran del Storage al borrar la publicación
+  (`borrarImagenDePublicacion` solo borra la portada).
+
+### Estado al 2026-10-15
+- **Tanda commiteada** (código + migración), sin deploy.
+- **La migración del bucket `noticias` sigue SIN aplicar**: Storage responde
+  `Bucket not found` para `noticias`. `npx supabase migration list` da 403
+  (`DbConfigLoginRoleStatusError`: la cuenta del CLI no tiene privilegios), así
+  que puede que `db push` falle igual; revisar el acceso del CLI o aplicar el SQL
+  desde el dashboard y registrarla como aplicada. Después, regenerar
+  `types.ts` (probablemente sin cambios: Storage no está tipado) y desplegar.
+  **No desplegar antes de aplicarla**: la subida del admin fallaría.
+- Verificado: `tsc --noEmit` limpio, `npm run verificar:sanitizacion` 25/25.
+- Nuevo `scripts/reset-password.mjs`: cambia la contraseña de un usuario de Auth
+  con la service role (`node --env-file=.env.local scripts/reset-password.mjs <email>`).
+  Pide la contraseña oculta por TTY, nunca por argumento ni env; en Git Bash
+  anteponer `winpty`. Correrlo en una terminal propia, no en un chat.
 
 ---
 

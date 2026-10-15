@@ -1,20 +1,11 @@
 import type { NextConfig } from "next";
+import { REMOTE_PATTERNS } from "./lib/imagenes-remotas";
 
 const nextConfig: NextConfig = {
   images: {
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "rgskspvuvzwmvmsccoez.supabase.co",
-      },
-      {
-        // Supabase del Channel: las noticias migradas siguen sirviendo sus
-        // imágenes desde su bucket `blog-images`. Solo lo público de Storage.
-        protocol: "https",
-        hostname: "yxqhtljhoceopnbcwdiy.supabase.co",
-        pathname: "/storage/v1/object/public/**",
-      },
-    ],
+    // La lista vive en lib/imagenes-remotas.ts: ImagenNoticia la usa para no
+    // pasar por el optimizador una URL de otro host.
+    remotePatterns: REMOTE_PATTERNS.map((p) => ({ ...p })),
   },
 
   /**

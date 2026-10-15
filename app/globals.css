@@ -482,6 +482,13 @@
 .editor-contenido a { color: #CC0000; text-decoration: underline; }
 .editor-contenido img { max-width: 100%; height: auto; border-radius: 6px; }
 
+/* Solo dentro del editor (.ProseMirror): clic en una imagen = editar su alt */
+.editor-contenido.ProseMirror img { cursor: pointer; }
+.editor-contenido.ProseMirror img.ProseMirror-selectednode {
+  outline: 3px solid #e8003d;
+  outline-offset: 2px;
+}
+
 /* Placeholder de TipTap */
 .editor-contenido p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);

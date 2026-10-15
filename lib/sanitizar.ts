@@ -1,4 +1,7 @@
 import sanitizeHtml from "sanitize-html";
+// Con extensión: `scripts/verificar-sanitizacion.mjs` importa este archivo
+// directo con Node, que no resuelve rutas sin extensión.
+import { esOptimizable as esHostDeImagenPermitido } from "./imagenes-remotas.ts";
 
 /**
  * Sanitización del HTML de las noticias.
@@ -40,7 +43,8 @@ const TAGS_PERMITIDOS = [
 ];
 
 /**
- * Atributos permitidos, en cualquier etiqueta permitida.
+ * Atributos permitidos, en cualquier etiqueta permitida salvo <img> (que se
+ * recorta a ATRIBUTOS_IMG en `filtrarImg`).
  *
  * Ojo con lo que NO está: `style` (permite exfiltración vía url()), `srcset`,
  * `on*`, `id` (rompe las anclas de la página).
@@ -50,8 +54,23 @@ const TAGS_PERMITIDOS = [
  * nunca necesita conservarlos.
  */
 const ATRIBUTOS_PERMITIDOS = [
-  "href", "src", "alt", "title", "class",
+  "title", "class",
 ];
+
+/**
+ * <img> acepta solo esto. `src` además tiene que ser https y de un host de
+ * `lib/imagenes-remotas.ts` (nuestro Storage y el del Channel); si no, la
+ * imagen entera se descarta.
+ *
+ * Por qué una allowlist de hosts: una imagen externa en el cuerpo es un pixel
+ * de rastreo (el dueño del servidor ve IP y navegador de cada lector) y puede
+ * cambiar de contenido después de moderada. Las del admin se suben al bucket
+ * `noticias`, así que pasan.
+ */
+const ATRIBUTOS_IMG = ["src", "alt", "width", "height"];
+
+/** width/height: solo un número de píxeles razonable ("640"), nada de "100%;x". */
+const DIMENSION = /^\d{1,4}$/;
 
 /**
  * Valores permitidos en `href` y `src`: http(s), mailto, rutas absolutas y
@@ -90,30 +109,52 @@ function filtrarUris(
     if (valor === undefined) continue;
 
     const limpio = valor.replace(ESPACIOS_URI, "");
-    // DOMPurify deja pasar data: en <img src> (no ejecuta nada dentro de una
-    // imagen); se conserva para no cambiar el comportamiento.
-    const dataEnImg = etiqueta === "img" && nombre === "src" && /^data:/i.test(limpio);
-
-    if (!URI_PERMITIDA.test(limpio) && !dataEnImg) delete atributos[nombre];
+    if (!URI_PERMITIDA.test(limpio)) delete atributos[nombre];
   }
   return atributos;
+}
+
+/**
+ * Deja en <img> solo ATRIBUTOS_IMG, y `src` solo si es https de un host
+ * permitido. Sin `src` válido, `exclusiveFilter` descarta la etiqueta.
+ */
+function filtrarImg(atributos: sanitizeHtml.Attributes): sanitizeHtml.Attributes {
+  const limpios: sanitizeHtml.Attributes = {};
+  for (const nombre of ATRIBUTOS_IMG) {
+    const valor = atributos[nombre];
+    if (valor !== undefined) limpios[nombre] = valor;
+  }
+
+  const src = limpios.src?.replace(ESPACIOS_URI, "");
+  if (src && esHostDeImagenPermitido(src)) limpios.src = src;
+  else delete limpios.src;
+
+  for (const dim of ["width", "height"] as const) {
+    if (limpios[dim] !== undefined && !DIMENSION.test(limpios[dim])) delete limpios[dim];
+  }
+  return limpios;
 }
 
 const OPCIONES: sanitizeHtml.IOptions = {
   allowedTags: TAGS_PERMITIDOS,
   allowedAttributes: {
     "*": ATRIBUTOS_PERMITIDOS,
-    // Solo para que sobrevivan los valores que fija el transform de <a>; los
-    // que traiga el HTML original se pisan siempre.
-    a: ["target", "rel"],
+    // target/rel: solo para que sobrevivan los valores que fija el transform de
+    // <a>; los que traiga el HTML original se pisan siempre.
+    a: ["href", "target", "rel"],
+    // `filtrarImg` quita después lo que "*" le agrega (title, class).
+    img: ATRIBUTOS_IMG,
   },
+  // Una <img> que se quedó sin src (host no permitido, data:, http:) no aporta
+  // nada: se borra entera.
+  exclusiveFilter: (frame) => frame.tag === "img" && !frame.attribs.src,
   // Las etiquetas no permitidas se quitan pero su texto se conserva (como el
   // KEEP_CONTENT por defecto de DOMPurify), salvo las de SIN_CONTENIDO.
   disallowedTagsMode: "discard",
   nonTextTags: SIN_CONTENIDO,
   // Segunda capa, además de `filtrarUris`.
   allowedSchemes: ["http", "https", "mailto"],
-  allowedSchemesByTag: { img: ["http", "https", "data"] },
+  allowedSchemesByTag: { img: ["https"] },
   allowedSchemesAppliedToAttributes: ["href", "src"],
   allowProtocolRelative: true,
   // `style` no está permitido; que ni se intente parsear.
@@ -122,6 +163,10 @@ const OPCIONES: sanitizeHtml.IOptions = {
     "*": (tagName, attribs) => ({
       tagName,
       attribs: filtrarUris(tagName, attribs),
+    }),
+    img: (tagName, attribs) => ({
+      tagName,
+      attribs: filtrarImg(attribs),
     }),
     /**
      * Fuerza `target="_blank"` + `rel="noopener noreferrer"` en todos los

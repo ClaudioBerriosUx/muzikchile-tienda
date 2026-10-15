@@ -16,6 +16,11 @@
  */
 
 import { sanitizarHtml } from "../lib/sanitizar.ts";
+import { REMOTE_PATTERNS } from "../lib/imagenes-remotas.ts";
+
+/** Hosts permitidos para <img>, leídos de la misma lista que usa el sanitizador. */
+const STORAGE = REMOTE_PATTERNS[0].hostname; // Supabase de la tienda (solo /storage/v1/object/public/)
+const CHANNEL = REMOTE_PATTERNS[1].hostname; // Supabase del Channel (solo /storage/v1/object/public/)
 
 const ATAQUES = [
   {
@@ -83,6 +88,59 @@ const ATAQUES = [
       `<base href="https://evil.example/"><meta http-equiv="refresh" content="0;url=https://evil.example">`,
     prohibido: [/<object/i, /<embed/i, /<base/i, /<meta/i, /evil\.example/],
   },
+  // ── <img>: solo https de los hosts de lib/imagenes-remotas.ts ──
+  {
+    nombre: "12. <img> de un host externo (pixel de rastreo)",
+    html: `<p>a</p><img src="https://evil.example/pixel.gif" alt="x"><p>b</p>`,
+    prohibido: [/<img/i, /evil\.example/],
+    exigido: [/<p>a<\/p>/, /<p>b<\/p>/],
+  },
+  {
+    nombre: "13. <img> http (no https) de nuestro Storage",
+    html: `<img src="http://${STORAGE}/storage/v1/object/public/noticias/a.jpg">`,
+    prohibido: [/<img/i],
+  },
+  {
+    nombre: "14. <img> con data: URI",
+    html: `<img src="data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=" alt="x">`,
+    prohibido: [/<img/i, /data:/i],
+  },
+  {
+    nombre: "15. <img> protocol-relative y ruta local",
+    html: `<img src="//${STORAGE}/storage/v1/object/public/noticias/a.jpg"><img src="/logo.png">`,
+    prohibido: [/<img/i],
+  },
+  {
+    nombre: "16. <img> con host disfrazado (userinfo, subdominio, ruta)",
+    html:
+      `<img src="https://${STORAGE}@evil.example/a.jpg">` +
+      `<img src="https://${STORAGE}.evil.example/a.jpg">` +
+      `<img src="https://evil.example/${STORAGE}/a.jpg">`,
+    prohibido: [/<img/i, /evil\.example/],
+  },
+  {
+    nombre: "17. <img> del Channel fuera de /storage/v1/object/public/",
+    html: `<img src="https://${CHANNEL}/auth/v1/authorize?x=1">`,
+    prohibido: [/<img/i],
+  },
+  {
+    nombre: "18. <img> permitida pierde todo atributo fuera de src/alt/width/height",
+    html:
+      `<img src="https://${STORAGE}/storage/v1/object/public/noticias/a.jpg" alt="ok" ` +
+      `title="t" class="c" style="x:url(https://evil.example)" srcset="https://evil.example/b.jpg 2x" ` +
+      `onerror="alert(1)" width="100%;x" height="javascript:1">`,
+    prohibido: [/title=/, /class=/, /style=/, /srcset/, /onerror/, /width=/, /height=/, /evil\.example/, /alert/],
+    exigido: [/<img/, /alt="ok"/],
+  },
+  {
+    nombre: "19. <img> de la tienda fuera de /storage/v1/object/public/",
+    html:
+      `<img src="https://${STORAGE}/rest/v1/artistas?select=*">` +
+      `<img src="https://${STORAGE}/storage/v1/object/sign/productos/a.jpg?token=x">` +
+      `<img src="https://${STORAGE}/storage/v1/object/publicx/a.jpg">` +
+      `<img src="https://${STORAGE}:8443/storage/v1/object/public/productos/a.jpg">`,
+    prohibido: [/<img/i],
+  },
 ];
 
 const LEGITIMOS = [
@@ -101,9 +159,29 @@ const LEGITIMOS = [
     exigido: [/href="https:\/\/muzikchile\.cl"/, /href="mailto:hola@muzikchile\.cl"/, /href="\/noticias"/, /href="#arriba"/, /title="t"/],
   },
   {
-    nombre: "Imagen con alt y figura",
-    html: `<figure><img src="https://x.supabase.co/storage/v1/object/public/a.jpg" alt="foto" class="w-full"><figcaption>pie</figcaption></figure>`,
-    exigido: [/<img[^>]+src="https:\/\/x\.supabase\.co[^"]+"/, /alt="foto"/, /class="w-full"/, /<figcaption>pie<\/figcaption>/],
+    nombre: "Imagen del bucket noticias con alt, width, height y figura",
+    html:
+      `<figure><img src="https://${STORAGE}/storage/v1/object/public/noticias/1760470000000-afiche.jpg" ` +
+      `alt="foto" width="640" height="800"><figcaption>pie</figcaption></figure>`,
+    exigido: [
+      new RegExp(`<img[^>]+src="https://${STORAGE.replaceAll(".", "\\.")}/storage/v1/object/public/noticias/[^"]+"`),
+      /alt="foto"/, /width="640"/, /height="800"/, /<figcaption>pie<\/figcaption>/,
+    ],
+  },
+  {
+    nombre: "Imagen del bucket productos (cuerpo de una publicación de artista)",
+    html:
+      `<img src="https://${STORAGE}/storage/v1/object/public/productos/` +
+      `0b6c1f0e-7a3d-4c55-9a51-2f1e8d7c9b10/publicaciones/1760470000000-portada.jpg" alt="portada">`,
+    exigido: [
+      new RegExp(`<img[^>]+src="https://${STORAGE.replaceAll(".", "\\.")}/storage/v1/object/public/productos/[^"]+/publicaciones/[^"]+"`),
+      /alt="portada"/,
+    ],
+  },
+  {
+    nombre: "Imagen migrada del Channel (blog-images)",
+    html: `<img src="https://${CHANNEL}/storage/v1/object/public/blog-images/nota.jpg" alt="nota">`,
+    exigido: [/<img[^>]+src="https:\/\/yxqhtljhoceopnbcwdiy\.supabase\.co\/storage\/v1\/object\/public\/blog-images\/nota\.jpg"/],
   },
   {
     nombre: "Texto de etiquetas no permitidas se conserva",

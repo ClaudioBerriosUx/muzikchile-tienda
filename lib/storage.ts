@@ -1,30 +1,42 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/** Bucket donde viven las imágenes de productos y publicaciones. */
-const BUCKET = "productos";
+/**
+ * Buckets donde pueden vivir las imágenes de publicaciones:
+ * - `productos`: las de artistas, en `{artistas.id}/publicaciones/...`
+ * - `noticias`: las que sube el admin desde el formulario editorial
+ */
+const BUCKETS = ["productos", "noticias"] as const;
+type Bucket = (typeof BUCKETS)[number];
 
 /**
- * Extrae la ruta dentro del bucket a partir de una URL pública de Storage.
+ * Extrae bucket y ruta a partir de una URL pública de Storage.
  *
  * Las URLs tienen la forma:
- *   https://<proj>.supabase.co/storage/v1/object/public/productos/<ruta>
+ *   https://<proj>.supabase.co/storage/v1/object/public/<bucket>/<ruta>
  *
- * Devuelve null si la URL no es de este bucket — así una imagen externa
- * (pegada a mano en el editor) nunca se intenta borrar.
+ * Devuelve null si la URL no es de uno de estos buckets — así una imagen
+ * externa (pegada a mano en el formulario) nunca se intenta borrar.
  */
-export function rutaDesdeUrlPublica(url: string | null): string | null {
+export function rutaDesdeUrlPublica(
+  url: string | null
+): { bucket: Bucket; ruta: string } | null {
   if (!url) return null;
-  const marca = `/storage/v1/object/public/${BUCKET}/`;
-  const i = url.indexOf(marca);
-  if (i === -1) return null;
-  const ruta = url.slice(i + marca.length).split("?")[0];
-  return ruta || null;
+  for (const bucket of BUCKETS) {
+    const marca = `/storage/v1/object/public/${bucket}/`;
+    const i = url.indexOf(marca);
+    if (i === -1) continue;
+    const ruta = url.slice(i + marca.length).split("?")[0];
+    return ruta ? { bucket, ruta } : null;
+  }
+  return null;
 }
 
 /**
  * Borra la imagen de una publicación del Storage.
  *
- * Las rutas son `{artista_id}/publicaciones/...`. El artista puede borrar solo
+ * Las rutas son `productos/{artista_id}/publicaciones/...` o, en las notas
+ * editoriales subidas desde el admin, `noticias/<archivo>` (solo admin; ver
+ * `20261014212954_bucket_noticias`). El artista puede borrar solo
  * en carpetas de sus propios `artistas.id` (`productos_delete_own`) y el admin
  * en cualquiera (`productos_admin_delete`). Ver la migración
  * `20260925191923_storage_politicas_por_dueno` y `npm run verificar:rls-storage`
@@ -48,11 +60,12 @@ export async function borrarImagenDePublicacion(
   supabase: SupabaseClient,
   imagenUrl: string | null
 ): Promise<boolean> {
-  const ruta = rutaDesdeUrlPublica(imagenUrl);
-  if (!ruta) return false;
+  const destino = rutaDesdeUrlPublica(imagenUrl);
+  if (!destino) return false;
+  const { bucket, ruta } = destino;
 
   try {
-    const { error } = await supabase.storage.from(BUCKET).remove([ruta]);
+    const { error } = await supabase.storage.from(bucket).remove([ruta]);
     if (error) {
       // No se le muestra al usuario: la publicación ya se borró bien.
       console.warn("[storage] no se pudo borrar la imagen:", ruta, error.message);

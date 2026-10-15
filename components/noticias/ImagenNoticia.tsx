@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Newspaper } from "lucide-react";
+import { esOptimizable } from "@/lib/imagenes-remotas";
 
 /**
  * Imagen de noticia en formato Instagram 4:5 (1080×1350), compartida por la
@@ -50,6 +51,8 @@ export default function ImagenNoticia({
   sizes: string;
 }) {
   const [modo, setModo] = useState<Modo>("cargando");
+  // Una URL de un host fuera de remotePatterns haría lanzar a next/image.
+  const unoptimized = src ? !esOptimizable(src) : false;
 
   const alCargar = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
@@ -68,6 +71,7 @@ export default function ImagenNoticia({
               aria-hidden
               fill
               sizes={sizes}
+              unoptimized={unoptimized}
               className="object-cover object-center"
               // scale tapa el borde translúcido que deja el blur en los cantos.
               style={{ filter: "blur(24px) brightness(0.5)", transform: "scale(1.15)" }}
@@ -78,6 +82,7 @@ export default function ImagenNoticia({
             alt={alt}
             fill
             sizes={sizes}
+            unoptimized={unoptimized}
             onLoad={alCargar}
             className={`object-center transition-opacity duration-300 ${
               modo === "contain" ? "object-contain" : "object-cover"
