@@ -8,11 +8,13 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { X, Minus, Plus, Tag } from "lucide-react";
+import { Check, ChevronDown, Lock } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useCarrito } from "@/lib/stores/carrito";
-import { formatCLP } from "@/lib/constants";
+import { formatCLP, REGIONES_CHILE } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import { BotonQuitar, FOCO, MiniaturaItem, Monto, Stepper } from "@/components/tienda/carrito-ui";
 
 interface Cupon {
   id: string;
@@ -34,6 +36,44 @@ const schema = z.object({
 });
 
 type FormData = z.infer<typeof schema>;
+
+// ── Piezas de UI ─────────────────────────────────────────────────────────────
+
+const TITULO = { fontFamily: "var(--font-titulo)" } as const;
+const CAMPO =
+  "h-12 w-full rounded-[10px] border border-tema-borde-campo bg-tema-fondo px-3.5 text-[15px] text-tema-texto outline-none transition-[border-color,box-shadow] placeholder:text-tema-texto-3 focus:border-tema-azul-texto focus:shadow-[0_0_0_3px_rgba(44,86,127,0.6)] aria-[invalid=true]:border-tema-rojo-texto";
+
+function Paso({ n, titulo, children }: { n: number; titulo: string; children: React.ReactNode }) {
+  return (
+    <section aria-labelledby={`paso-${n}`} className="flex flex-col gap-[18px] rounded-xl border border-tema-borde bg-tema-campo p-[18px] md:p-6">
+      <div className="flex items-center gap-3">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-tema-borde-campo bg-tema-hover text-[13px] font-bold" aria-hidden="true">{n}</span>
+        <h2 id={`paso-${n}`} className="m-0 text-[26px] uppercase leading-none text-tema-texto" style={TITULO}>{titulo}</h2>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Campo({
+  id, etiqueta, error, className, children,
+}: { id: string; etiqueta: string; error?: string; className?: string; children: React.ReactNode }) {
+  return (
+    <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
+      <label htmlFor={id} className="text-sm font-medium text-tema-texto">{etiqueta}</label>
+      {children}
+      {error && <p id={`${id}-error`} className="m-0 text-[13px] text-tema-rojo-texto">{error}</p>}
+    </div>
+  );
+}
+
+function Cargando({ texto }: { texto: string }) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-tema-fondo">
+      <p className="text-tema-texto-2">{texto}</p>
+    </main>
+  );
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -69,19 +109,11 @@ export default function CheckoutPage() {
   }, [hidratado, items.length, router]);
 
   if (!hidratado) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Cargando...</p>
-      </div>
-    );
+    return <Cargando texto="Cargando..." />;
   }
 
   if (items.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Redirigiendo...</p>
-      </div>
-    );
+    return <Cargando texto="Redirigiendo..." />;
   }
 
   const subtotal = totalFn();
@@ -141,210 +173,219 @@ export default function CheckoutPage() {
     }
   };
 
-  const inputClass = "w-full rounded-md px-3 py-2.5 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none transition-colors";
-  const labelStyle = { fontFamily: "var(--font-body)", fontSize: "14px" as const, color: "#444444" };
-  const errStyle   = { fontFamily: "var(--font-body)", fontSize: "12px" as const, color: "#e8003d" };
+  /** Props de accesibilidad de un campo del formulario. */
+  const a11y = (campo: keyof FormData) => ({
+    id: `chk-${campo}`,
+    "aria-invalid": errors[campo] ? true : undefined,
+    "aria-describedby": errors[campo] ? `chk-${campo}-error` : undefined,
+  });
+
+  const textoCupon = (c: Cupon) =>
+    c.tipo_descuento === "porcentaje" ? `${c.valor}% de descuento` : `${formatCLP(c.valor)} de descuento`;
+
+  const botonPagar = cn(
+    "flex h-[52px] items-center justify-center gap-2.5 rounded-[10px] border-0 px-6 text-base font-bold text-tema-texto",
+    pagando ? "cursor-not-allowed bg-tema-rojo-oscuro" : "cursor-pointer bg-tema-rojo hover:brightness-110",
+    FOCO
+  );
 
   return (
-    <>
-      <main className="min-h-screen bg-white">
-        <div className="max-w-5xl mx-auto px-6 py-10">
-          <h1 className="mb-8" style={{ fontFamily: "var(--font-titulo)", fontSize: "32px", color: "#111111" }}>
-            Checkout
-          </h1>
+    <main className="min-h-screen bg-tema-fondo text-tema-texto">
+      <div className="mx-auto max-w-[1280px] px-5 md:px-10">
+        <nav aria-label="Migas de pan" className="flex flex-wrap items-center gap-[9px] pb-1 pt-4 text-[13px] text-tema-texto-3 md:pt-5">
+          <Link href="/tienda" className="text-tema-texto-3 hover:text-tema-texto-claro">Tienda</Link>
+          <span aria-hidden="true">/</span>
+          <Link href="/carrito" className="text-tema-texto-3 hover:text-tema-texto-claro">Carrito</Link>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page" className="text-tema-texto-claro">Checkout</span>
+        </nav>
 
-          <form onSubmit={handleSubmit(onSubmit)} noValidate>
-            <div className="grid grid-cols-3 gap-8">
+        <header className="flex flex-col gap-1.5 pb-[22px] pt-3">
+          <h1 className="m-0 text-[40px] uppercase leading-none text-tema-texto md:text-[64px]" style={TITULO}>Casi listo</h1>
+          <p className="m-0 text-[15px] text-tema-texto-2">Revisa tu pedido y déjanos tus datos para cerrar la compra.</p>
+        </header>
 
-              {/* ── Columna izquierda (col-span-2) ── */}
-              <div className="col-span-2 flex flex-col gap-8">
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
+          <div className="grid grid-cols-1 items-start gap-3 pb-8 md:gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:pb-20">
 
-                {/* Tu pedido */}
-                <section>
-                  <h2 className="mb-4" style={{ fontFamily: "var(--font-titulo)", fontSize: "18px", color: "#111111" }}>
-                    Tu pedido
-                  </h2>
-                  <div className="rounded-xl border border-[#e8e8e8] overflow-hidden">
-                    {items.map((item) => (
-                      <div key={item.id} className="flex items-center gap-3 p-3 border-b border-[#e8e8e8] last:border-b-0">
-                        {item.imagen ? (
-                          <img src={item.imagen} alt={item.nombre} className="w-14 h-14 rounded object-cover shrink-0 border border-[#e8e8e8]" />
-                        ) : (
-                          <div className="w-14 h-14 rounded bg-[#f8f7f5] shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>{item.nombre}</p>
-                          {item.artista && <p className="text-xs" style={{ fontFamily: "var(--font-body)", color: "#999" }}>{item.artista}</p>}
-                          <p className="text-sm font-bold mt-0.5" style={{ fontFamily: "var(--font-body)", color: "#e8003d" }}>{formatCLP(item.precio)}</p>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button type="button" onClick={() => actualizarCantidad(item.id, item.cantidad - 1)} className="w-7 h-7 rounded border border-[#e8e8e8] flex items-center justify-center">
-                            <Minus size={11} />
-                          </button>
-                          <span className="w-6 text-center text-sm" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>{item.cantidad}</span>
-                          <button type="button" onClick={() => actualizarCantidad(item.id, item.cantidad + 1)} className="w-7 h-7 rounded border border-[#e8e8e8] flex items-center justify-center">
-                            <Plus size={11} />
-                          </button>
-                        </div>
-                        <p className="text-sm font-semibold w-20 text-right shrink-0" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
-                          {formatCLP(item.precio * item.cantidad)}
+            {/* ── Columna izquierda ── */}
+            <div className="flex min-w-0 flex-col gap-3 md:gap-6">
+
+              <Paso n={1} titulo="Tu pedido">
+                <ul className="m-0 flex list-none flex-col p-0">
+                  {items.map((item) => (
+                    <li key={item.id} className="grid grid-cols-[56px_minmax(0,1fr)] gap-3.5 border-b border-tema-borde py-3 sm:grid-cols-[56px_minmax(0,1fr)_auto] sm:items-center">
+                      <MiniaturaItem imagen={item.imagen} size={56} />
+                      <div className="min-w-0">
+                        <p className="m-0 text-[15px] font-bold leading-[1.35] text-tema-texto">{item.nombre}</p>
+                        <p className="m-0 text-[13px] text-tema-texto-3">
+                          {item.artista ? `${item.artista} · ` : ""}{formatCLP(item.precio)} c/u
                         </p>
-                        <button type="button" onClick={() => remover(item.id)} className="text-[#ccc] hover:text-[#e8003d] transition-colors shrink-0">
-                          <X size={16} />
-                        </button>
                       </div>
-                    ))}
-                    <div className="flex justify-between p-3" style={{ backgroundColor: "#f8f7f5" }}>
-                      <span style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Subtotal</span>
-                      <span style={{ fontFamily: "var(--font-body)", fontWeight: 700, color: "#111111" }}>{formatCLP(subtotal)}</span>
-                    </div>
-                  </div>
-                </section>
+                      <div className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1 sm:justify-end">
+                        <Stepper
+                          nombre={item.nombre}
+                          cantidad={item.cantidad}
+                          onMenos={() => actualizarCantidad(item.id, item.cantidad - 1)}
+                          onMas={() => actualizarCantidad(item.id, item.cantidad + 1)}
+                        />
+                        <Monto className="min-w-[84px] text-right text-xl text-tema-precio">{formatCLP(item.precio * item.cantidad)}</Monto>
+                        <BotonQuitar nombre={item.nombre} onClick={() => remover(item.id)} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
 
-                {/* Cupón */}
-                <section>
-                  <h2 className="mb-3" style={{ fontFamily: "var(--font-titulo)", fontSize: "18px", color: "#111111" }}>
-                    ¿Tienes un cupón?
-                  </h2>
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="chk-cupon" className="text-[10px] font-bold uppercase tracking-[0.16em] text-tema-texto-3">¿Tienes un cupón?</label>
                   {cuponAplicado ? (
-                    <div className="flex items-center justify-between p-3 rounded-lg border" style={{ backgroundColor: "#dcfce7", borderColor: "#86efac" }}>
-                      <div className="flex items-center gap-2">
-                        <Tag size={15} style={{ color: "#166534" }} />
-                        <span style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#166534", fontWeight: 600 }}>
-                          {cuponAplicado.codigo} — {cuponAplicado.tipo_descuento === "porcentaje" ? `${cuponAplicado.valor}% de descuento` : `${formatCLP(cuponAplicado.valor)} de descuento`}
-                        </span>
-                      </div>
-                      <button type="button" onClick={() => { setCuponAplicado(null); setCuponCodigo(""); }} className="text-xs underline" style={{ fontFamily: "var(--font-body)", color: "#166534" }}>
+                    <div className="flex items-center justify-between gap-3 rounded-[10px] border border-tema-ok bg-tema-ok/15 px-3.5 py-3">
+                      <span className="flex items-center gap-2 text-sm text-tema-texto">
+                        <Check size={16} strokeWidth={3} className="shrink-0 text-tema-ok-texto" aria-hidden="true" />
+                        <span><strong className="font-bold">{cuponAplicado.codigo}</strong> aplicado: {textoCupon(cuponAplicado)}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => { setCuponAplicado(null); setCuponCodigo(""); }}
+                        className={cn("shrink-0 cursor-pointer border-0 bg-transparent p-0 text-[13px] font-bold text-tema-azul-texto hover:text-tema-azul-texto-hover", FOCO)}
+                      >
                         Quitar
                       </button>
                     </div>
                   ) : (
-                    <div className="flex gap-2">
+                    <div className="flex gap-2.5">
                       <input
+                        id="chk-cupon"
                         type="text"
                         value={cuponCodigo}
                         onChange={(e) => setCuponCodigo(e.target.value.toUpperCase())}
                         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); validarCupon(); } }}
-                        placeholder="CÓDIGO"
-                        className={`${inputClass} uppercase tracking-widest`}
-                        style={{ fontFamily: "var(--font-body)", color: "#111111" }}
+                        placeholder="Escribe tu código"
+                        autoComplete="off"
+                        className={cn(CAMPO, "min-w-0 flex-1 uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal")}
                       />
-                      <button type="button" onClick={validarCupon} disabled={buscandoCupon} className="px-5 py-2 rounded-md text-white text-sm font-semibold shrink-0" style={{ fontFamily: "var(--font-body)", backgroundColor: "#111111" }}>
+                      <button
+                        type="button"
+                        onClick={validarCupon}
+                        disabled={buscandoCupon}
+                        className={cn("h-12 shrink-0 cursor-pointer rounded-[10px] border-0 bg-tema-azul px-5 text-sm font-bold text-tema-texto hover:brightness-110 disabled:cursor-wait disabled:opacity-70", FOCO)}
+                      >
                         {buscandoCupon ? "..." : "Aplicar"}
                       </button>
                     </div>
                   )}
-                </section>
-
-                {/* Datos comprador */}
-                <section>
-                  <h2 className="mb-4" style={{ fontFamily: "var(--font-titulo)", fontSize: "18px", color: "#111111" }}>
-                    Datos del comprador
-                  </h2>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <label style={labelStyle} className="block mb-1.5">Nombre completo</label>
-                      <input {...register("nombre")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} />
-                      {errors.nombre && <p className="mt-1" style={errStyle}>{errors.nombre.message}</p>}
-                    </div>
-                    <div>
-                      <label style={labelStyle} className="block mb-1.5">Email</label>
-                      <input type="email" {...register("email")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} />
-                      {errors.email && <p className="mt-1" style={errStyle}>{errors.email.message}</p>}
-                    </div>
-                    <div>
-                      <label style={labelStyle} className="block mb-1.5">Teléfono (opcional)</label>
-                      <input type="tel" {...register("telefono")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} />
-                    </div>
-                    <div className="col-span-2">
-                      <label style={labelStyle} className="block mb-1.5">Dirección de envío</label>
-                      <input {...register("direccion")} placeholder="Av. Ejemplo 1234, depto 5A" className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} />
-                      {errors.direccion && <p className="mt-1" style={errStyle}>{errors.direccion.message}</p>}
-                    </div>
-                    <div>
-                      <label style={labelStyle} className="block mb-1.5">Ciudad</label>
-                      <input {...register("ciudad")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} />
-                      {errors.ciudad && <p className="mt-1" style={errStyle}>{errors.ciudad.message}</p>}
-                    </div>
-                    <div>
-                      <label style={labelStyle} className="block mb-1.5">Región</label>
-                      <input {...register("region")} className={inputClass} style={{ fontFamily: "var(--font-body)", color: "#111111" }} />
-                      {errors.region && <p className="mt-1" style={errStyle}>{errors.region.message}</p>}
-                    </div>
-                  </div>
-                </section>
-              </div>
-
-              {/* ── Columna derecha — Resumen ── */}
-              <div>
-                <div className="sticky top-20 rounded-xl border border-[#e8e8e8] p-6" style={{ backgroundColor: "#f8f7f5" }}>
-                  <h2 className="mb-4" style={{ fontFamily: "var(--font-titulo)", fontSize: "18px", color: "#111111" }}>Resumen</h2>
-
-                  <div className="flex flex-col gap-2 mb-4">
-                    {items.map((item) => (
-                      <div key={item.id} className="flex justify-between text-sm gap-2">
-                        <span className="truncate" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
-                          {item.nombre}{item.cantidad > 1 ? ` ×${item.cantidad}` : ""}
-                        </span>
-                        <span className="shrink-0" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
-                          {formatCLP(item.precio * item.cantidad)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="border-t border-[#e8e8e8] pt-4 flex flex-col gap-2">
-                    {cuponAplicado && (
-                      <div className="flex justify-between text-sm">
-                        <span style={{ fontFamily: "var(--font-body)", color: "#166534" }}>Descuento</span>
-                        <span style={{ fontFamily: "var(--font-body)", color: "#166534" }}>-{formatCLP(descuento)}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between mt-1">
-                      <span style={{ fontFamily: "var(--font-body)", fontWeight: 600, color: "#111111" }}>Total</span>
-                      <span style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: "22px", color: "#e8003d" }}>{formatCLP(total)}</span>
-                    </div>
-                  </div>
-
-                  {/* Métodos de pago */}
-                  <div className="mt-5 flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setMetodoPago("mercadopago")}
-                      className="w-full flex items-center gap-3 p-3 rounded-lg border-2 text-left"
-                      style={{ borderColor: metodoPago === "mercadopago" ? "#e8003d" : "#e8e8e8", backgroundColor: "#ffffff" }}
-                    >
-                      <span className="text-xl">🔴</span>
-                      <div>
-                        <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", fontWeight: 600, color: "#111111" }}>MercadoPago</p>
-                        <p style={{ fontFamily: "var(--font-body)", fontSize: "11px", color: "#666666" }}>Tarjetas de crédito y débito</p>
-                      </div>
-                    </button>
-                    <div className="w-full flex items-center gap-3 p-3 rounded-lg border border-[#e8e8e8] opacity-50 cursor-not-allowed select-none">
-                      <span className="text-xl">🟢</span>
-                      <div>
-                        <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", fontWeight: 600, color: "#111111" }}>WebPay</p>
-                        <p style={{ fontFamily: "var(--font-body)", fontSize: "11px", color: "#666666" }}>Próximamente</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={pagando}
-                    className="w-full h-12 rounded-md text-white font-semibold mt-5"
-                    style={{ fontFamily: "var(--font-body)", fontSize: "15px", backgroundColor: pagando ? "#f0a0b0" : "#e8003d", cursor: pagando ? "not-allowed" : "pointer" }}
-                    onMouseEnter={(e) => { if (!pagando) e.currentTarget.style.backgroundColor = "#c5002e"; }}
-                    onMouseLeave={(e) => { if (!pagando) e.currentTarget.style.backgroundColor = "#e8003d"; }}
-                  >
-                    {pagando ? "Procesando..." : "Ir a pagar →"}
-                  </button>
                 </div>
-              </div>
+              </Paso>
+
+              <Paso n={2} titulo="Tus datos">
+                <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                  <Campo id="chk-nombre" etiqueta="Nombre completo" error={errors.nombre?.message} className="md:col-span-2">
+                    <input {...register("nombre")} {...a11y("nombre")} autoComplete="name" className={CAMPO} />
+                  </Campo>
+                  <Campo id="chk-email" etiqueta="Correo" error={errors.email?.message}>
+                    <input type="email" {...register("email")} {...a11y("email")} autoComplete="email" placeholder="tu@correo.cl" className={CAMPO} />
+                  </Campo>
+                  <Campo id="chk-telefono" etiqueta="Teléfono (opcional)">
+                    <input type="tel" {...register("telefono")} id="chk-telefono" autoComplete="tel" placeholder="+56 9 1234 5678" className={CAMPO} />
+                  </Campo>
+                </div>
+              </Paso>
+
+              <Paso n={3} titulo="Dirección de envío">
+                <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
+                  <Campo id="chk-direccion" etiqueta="Dirección" error={errors.direccion?.message} className="md:col-span-2">
+                    <input {...register("direccion")} {...a11y("direccion")} autoComplete="street-address" placeholder="Av. Ejemplo 1234, depto 5A" className={CAMPO} />
+                  </Campo>
+                  <Campo id="chk-ciudad" etiqueta="Ciudad" error={errors.ciudad?.message}>
+                    <input {...register("ciudad")} {...a11y("ciudad")} autoComplete="address-level2" className={CAMPO} />
+                  </Campo>
+                  <Campo id="chk-region" etiqueta="Región" error={errors.region?.message}>
+                    <span className="relative block">
+                      <select {...register("region")} {...a11y("region")} defaultValue="" autoComplete="address-level1" className={cn(CAMPO, "cursor-pointer appearance-none pr-9")}>
+                        <option value="" disabled>Selecciona tu región</option>
+                        {REGIONES_CHILE.map((r) => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                      <ChevronDown size={14} strokeWidth={3} aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-tema-texto-2" />
+                    </span>
+                  </Campo>
+                </div>
+              </Paso>
             </div>
-          </form>
-        </div>
-      </main>
-    </>
+
+            {/* ── Columna derecha — Resumen ── */}
+            <aside aria-label="Resumen del pedido" className="min-w-0 lg:sticky lg:top-6">
+              <div className="flex flex-col gap-4 rounded-xl border border-tema-borde bg-tema-campo p-[18px] md:p-6">
+                <h2 className="m-0 text-[26px] uppercase leading-none text-tema-texto" style={TITULO}>Resumen</h2>
+
+                <dl className="m-0 flex flex-col gap-2.5 text-[15px] text-tema-texto-claro">
+                  <div className="flex justify-between gap-3">
+                    <dt>Subtotal ({items.reduce((a, i) => a + i.cantidad, 0)} productos)</dt>
+                    <dd className="m-0 tabular-nums">{formatCLP(subtotal)}</dd>
+                  </div>
+                  {cuponAplicado && (
+                    <div className="flex justify-between gap-3 text-tema-ok-texto">
+                      <dt>Cupón {cuponAplicado.codigo}</dt>
+                      <dd className="m-0 tabular-nums">−{formatCLP(descuento)}</dd>
+                    </div>
+                  )}
+                </dl>
+
+                <div className="flex items-baseline justify-between border-t border-tema-borde-campo pt-4">
+                  <span className="text-[15px] font-bold">Total</span>
+                  <Monto className="text-[44px] text-tema-texto">{formatCLP(total)}</Monto>
+                </div>
+
+                <fieldset className="m-0 flex flex-col gap-2.5 border-0 p-0">
+                  <legend className="mb-2.5 p-0 text-[10px] font-bold uppercase tracking-[0.16em] text-tema-texto-3">Método de pago</legend>
+                  <button
+                    type="button"
+                    onClick={() => setMetodoPago("mercadopago")}
+                    aria-pressed={metodoPago === "mercadopago"}
+                    className={cn(
+                      "flex w-full cursor-pointer items-center gap-3 rounded-[10px] border p-3.5 text-left",
+                      metodoPago === "mercadopago" ? "border-tema-azul bg-tema-azul-fondo" : "border-tema-borde bg-transparent",
+                      FOCO
+                    )}
+                  >
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-tema-azul-texto" aria-hidden="true">
+                      {metodoPago === "mercadopago" && <span className="h-2.5 w-2.5 rounded-full bg-tema-azul-texto" />}
+                    </span>
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-[15px] font-bold text-tema-texto">MercadoPago</span>
+                      <span className="text-[13px] text-tema-azul-texto-suave">Tarjetas de crédito y débito</span>
+                    </span>
+                  </button>
+                  <div className="flex select-none items-center gap-3 rounded-[10px] border border-tema-borde p-3.5 opacity-55" aria-disabled="true">
+                    <span className="h-5 w-5 shrink-0 rounded-full border-2 border-[#5A5A5A]" aria-hidden="true" />
+                    <span className="flex-1 text-[15px] font-bold text-tema-texto">WebPay</span>
+                    <span className="rounded-md border border-tema-borde-campo px-2 py-[3px] text-[10px] font-bold uppercase tracking-[0.12em] text-tema-texto-claro">Próximamente</span>
+                  </div>
+                </fieldset>
+
+                <button type="submit" disabled={pagando} className={cn(botonPagar, "hidden lg:flex")}>
+                  {pagando ? "Procesando..." : `Ir a pagar ${formatCLP(total)}`}
+                </button>
+
+                <p className="m-0 flex items-start gap-[9px] text-[13px] leading-[1.55] text-tema-texto-3">
+                  <Lock size={14} strokeWidth={2} className="mt-0.5 shrink-0" aria-hidden="true" />
+                  Pagas en MercadoPago. MuzikChile no guarda los datos de tu tarjeta.
+                </p>
+              </div>
+            </aside>
+          </div>
+
+          {/* Barra fija en móvil y tablet: total + pagar */}
+          <div className="sticky bottom-0 z-20 -mx-5 flex items-center gap-3.5 border-t border-tema-borde-campo bg-tema-superficie/95 px-5 py-3 backdrop-blur md:-mx-10 md:px-10 lg:hidden">
+            <div className="flex flex-col gap-px">
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-tema-texto-3">Total</span>
+              <Monto className="text-[28px] text-tema-texto">{formatCLP(total)}</Monto>
+            </div>
+            <button type="submit" disabled={pagando} className={cn(botonPagar, "h-[50px] flex-1")}>
+              {pagando ? "Procesando..." : "Ir a pagar"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </main>
   );
 }

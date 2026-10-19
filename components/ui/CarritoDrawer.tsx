@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ShoppingCart, Minus, Plus, X } from "lucide-react";
+import { ArrowRight, ShoppingCart, ShoppingBag, X } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/sheet";
 import { useCarrito } from "@/lib/stores/carrito";
 import { formatCLP } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import { BotonQuitar, FOCO, MiniaturaItem, Monto, Stepper } from "@/components/tienda/carrito-ui";
 
 export default function CarritoDrawer() {
   const [open, setOpen] = useState(false);
@@ -30,7 +32,7 @@ export default function CarritoDrawer() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      {/* Trigger: ícono carrito + badge */}
+      {/* Trigger: ícono carrito + badge (vive en el Header; sin cambios) */}
       <SheetTrigger
         className="relative text-white bg-transparent border-0 p-0 cursor-pointer"
         aria-label="Abrir carrito"
@@ -49,41 +51,47 @@ export default function CarritoDrawer() {
       {/* Drawer */}
       <SheetContent
         side="right"
-        className="w-[400px] sm:w-[450px] flex flex-col p-0"
+        showCloseButton={false}
+        overlayClassName="bg-[rgba(14,14,14,0.74)]"
+        className="gap-0 border-tema-borde bg-tema-superficie p-0 text-tema-texto data-[side=right]:w-full data-[side=right]:sm:max-w-[440px]"
+        style={{ fontFamily: "var(--font-body)" }}
       >
-        {/* Header del drawer */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-[#e8e8e8] shrink-0">
-          <SheetTitle
-            style={{ fontFamily: "var(--font-titulo)", fontSize: "20px", color: "#111111" }}
+        {/* Cabecera */}
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-tema-borde px-[22px] py-5">
+          <div className="flex items-baseline gap-2.5">
+            <SheetTitle className="m-0 text-[30px] font-normal uppercase leading-none text-tema-texto" style={{ fontFamily: "var(--font-titulo)" }}>
+              Tu carrito
+            </SheetTitle>
+            {cantidad > 0 && (
+              <span className="text-sm text-tema-texto-3">
+                {cantidad} {cantidad === 1 ? "producto" : "productos"}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={cerrar}
+            aria-label="Cerrar carrito"
+            className={cn("flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-[10px] border border-tema-borde-campo bg-transparent text-tema-texto hover:border-tema-azul-texto", FOCO)}
           >
-            Tu carrito
-          </SheetTitle>
-          {cantidad > 0 && (
-            <span
-              className="text-white text-xs font-bold rounded-full px-2 py-0.5"
-              style={{ backgroundColor: "#e8003d", fontFamily: "var(--font-body)" }}
-            >
-              {cantidad}
-            </span>
-          )}
+            <X size={18} strokeWidth={2} aria-hidden="true" />
+          </button>
         </div>
 
-        {/* Contenido */}
         {!montado || items.length === 0 ? (
           /* Estado vacío */
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6 text-center">
-            <ShoppingCart size={48} className="text-[#cccccc]" />
-            <p style={{ fontFamily: "var(--font-body)", fontSize: "20px", fontWeight: "700", color: "#111111" }}>
+          <div className="flex flex-1 flex-col items-center justify-center gap-3.5 px-6 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-tema-borde-campo text-tema-texto-2">
+              <ShoppingBag size={28} strokeWidth={1.6} aria-hidden="true" />
+            </div>
+            <p className="m-0 text-[28px] uppercase leading-[1.05] text-tema-texto" style={{ fontFamily: "var(--font-titulo)" }}>
               Tu carrito está vacío
             </p>
-            <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>
-              Agrega productos de tus artistas favoritos
-            </p>
+            <p className="m-0 text-[15px] text-tema-texto-2">Agrega productos de tus artistas favoritos.</p>
             <Link
               href="/tienda"
               onClick={cerrar}
-              className="mt-2 px-6 py-2.5 rounded-md text-white text-sm font-semibold"
-              style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
+              className={cn("mt-1 flex h-12 items-center rounded-[10px] bg-tema-rojo px-[22px] text-[15px] font-bold text-tema-texto no-underline hover:brightness-110", FOCO)}
             >
               Ver tienda
             </Link>
@@ -91,105 +99,52 @@ export default function CarritoDrawer() {
         ) : (
           <>
             {/* Lista de items */}
-            <div className="flex-1 overflow-y-auto px-6">
+            <ul className="m-0 min-h-0 flex-1 list-none overflow-y-auto px-[22px] py-1.5">
               {items.map((item) => (
-                <div key={item.id} className="flex gap-3 py-3 border-b border-[#e8e8e8]">
-                  {/* Imagen */}
-                  {item.imagen ? (
-                    <img
-                      src={item.imagen}
-                      alt={item.nombre}
-                      className="w-16 h-16 rounded-lg object-cover shrink-0 border border-[#e8e8e8]"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 rounded-lg shrink-0 bg-[#f8f7f5]" />
-                  )}
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className="font-medium line-clamp-1"
-                      style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#111111" }}
-                    >
-                      {item.nombre}
-                    </p>
-                    {item.artista && (
-                      <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#666666" }}>
-                        {item.artista}
-                      </p>
-                    )}
-                    <p className="font-bold mt-1" style={{ fontFamily: "var(--font-body)", color: "#e8003d", fontSize: "14px" }}>
-                      {formatCLP(item.precio)}
-                    </p>
-                  </div>
-
-                  {/* Cantidad + quitar */}
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => actualizarCantidad(item.id, item.cantidad - 1)}
-                        className="w-6 h-6 rounded border border-[#e8e8e8] flex items-center justify-center hover:bg-[#f8f7f5] transition-colors"
-                      >
-                        <Minus size={10} />
-                      </button>
-                      <span
-                        className="w-5 text-center"
-                        style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#111111" }}
-                      >
-                        {item.cantidad}
-                      </span>
-                      <button
-                        onClick={() => actualizarCantidad(item.id, item.cantidad + 1)}
-                        className="w-6 h-6 rounded border border-[#e8e8e8] flex items-center justify-center hover:bg-[#f8f7f5] transition-colors"
-                      >
-                        <Plus size={10} />
-                      </button>
+                <li key={item.id} className="grid grid-cols-[72px_minmax(0,1fr)] gap-3.5 border-b border-tema-borde py-4">
+                  <MiniaturaItem imagen={item.imagen} />
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <div className="flex justify-between gap-2.5">
+                      <p className="m-0 text-[15px] font-bold leading-[1.35] text-tema-texto">{item.nombre}</p>
+                      <BotonQuitar nombre={item.nombre} onClick={() => remover(item.id)} className="-mr-1.5 -mt-1" />
                     </div>
-                    <button
-                      onClick={() => remover(item.id)}
-                      className="transition-colors"
-                      style={{ color: "#cccccc" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = "#e8003d")}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = "#cccccc")}
-                      aria-label="Eliminar"
-                    >
-                      <X size={14} />
-                    </button>
+                    {item.artista && <p className="m-0 text-[13px] text-tema-texto-3">{item.artista}</p>}
+                    <div className="flex items-center justify-between gap-2.5 pt-2">
+                      <Stepper
+                        nombre={item.nombre}
+                        cantidad={item.cantidad}
+                        onMenos={() => actualizarCantidad(item.id, item.cantidad - 1)}
+                        onMas={() => actualizarCantidad(item.id, item.cantidad + 1)}
+                      />
+                      <Monto className="text-[22px] text-tema-precio">{formatCLP(item.precio * item.cantidad)}</Monto>
+                    </div>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
 
-            {/* Footer sticky */}
-            <div className="shrink-0 px-6 py-5 border-t border-[#e8e8e8]" style={{ backgroundColor: "#ffffff" }}>
-              <div className="flex items-center justify-between mb-4">
-                <span style={{ fontFamily: "var(--font-body)", color: "#444444" }}>Subtotal</span>
-                <span style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: "18px", color: "#e8003d" }}>
-                  {formatCLP(total)}
-                </span>
+            {/* Pie fijo */}
+            <div className="flex shrink-0 flex-col gap-3.5 border-t border-tema-borde bg-tema-campo px-[22px] pb-[22px] pt-[18px]">
+              <div className="flex items-baseline justify-between">
+                <span className="text-[15px] text-tema-texto-claro">Subtotal</span>
+                <Monto className="text-[32px] text-tema-texto">{formatCLP(total)}</Monto>
               </div>
-
-              <div className="flex flex-col gap-2">
-                <Link
-                  href="/checkout"
-                  onClick={cerrar}
-                  className="flex items-center justify-center w-full h-11 rounded-md text-white font-semibold transition-colors"
-                  style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#c5002e")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#e8003d")}
-                >
-                  Ir al checkout →
-                </Link>
-                <Link
-                  href="/carrito"
-                  onClick={cerrar}
-                  className="flex items-center justify-center w-full h-11 rounded-md border transition-colors"
-                  style={{ fontFamily: "var(--font-body)", borderColor: "#111111", color: "#111111" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8f7f5")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                >
+              <p className="m-0 text-[13px] leading-normal text-tema-texto-3">Los cupones se aplican en el checkout.</p>
+              <Link
+                href="/checkout"
+                onClick={cerrar}
+                className={cn("flex h-[52px] items-center justify-center gap-2.5 rounded-[10px] bg-tema-rojo px-6 text-base font-bold text-tema-texto no-underline hover:brightness-110", FOCO)}
+              >
+                Ir al checkout
+                <ArrowRight size={17} strokeWidth={2.4} aria-hidden="true" />
+              </Link>
+              <div className="flex items-center justify-center gap-5 text-sm font-medium">
+                <Link href="/carrito" onClick={cerrar} className={cn("text-tema-azul-texto hover:text-tema-azul-texto-hover", FOCO)}>
                   Ver carrito completo
                 </Link>
+                <button type="button" onClick={cerrar} className={cn("cursor-pointer border-0 bg-transparent p-0 text-tema-azul-texto hover:text-tema-azul-texto-hover", FOCO)}>
+                  Seguir mirando
+                </button>
               </div>
             </div>
           </>

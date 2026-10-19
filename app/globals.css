@@ -300,6 +300,8 @@
 
   /* ── Estado OK ────────────────────────────────────────────────────────── */
   --tema-ok: #3E7D5A;
+  /** Texto OK sobre oscuro (AA): "cupón aplicado", descuento. */
+  --tema-ok-texto: #7FC9A0;
   /** Aviso / pendiente (ámbar): "últimas unidades", pago pendiente. */
   --tema-aviso: #C7893A;
 }
@@ -328,6 +330,7 @@
   --color-tema-azul-fondo: var(--tema-azul-fondo);
   --color-tema-azul-etiqueta: var(--tema-azul-etiqueta);
   --color-tema-ok: var(--tema-ok);
+  --color-tema-ok-texto: var(--tema-ok-texto);
   --color-tema-aviso: var(--tema-aviso);
 }
 

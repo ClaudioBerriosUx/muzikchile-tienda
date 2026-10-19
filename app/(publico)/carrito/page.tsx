@@ -4,9 +4,13 @@ export const dynamic = 'force-dynamic';
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Minus, Plus, X, ShoppingCart } from "lucide-react";
+import { ArrowRight, ShoppingBag } from "lucide-react";
 import { useCarrito } from "@/lib/stores/carrito";
 import { formatCLP } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import { BotonQuitar, FOCO, MiniaturaItem, Monto, Stepper } from "@/components/tienda/carrito-ui";
+
+const TITULO = { fontFamily: "var(--font-titulo)" } as const;
 
 export default function CarritoPage() {
   const items            = useCarrito((s) => s.items);
@@ -19,165 +23,105 @@ export default function CarritoPage() {
   useEffect(() => setMontado(true), []);
 
   if (!montado) {
-    return (
-      <>
-        <main className="min-h-screen bg-white" />
-      </>
-    );
+    return <main className="min-h-screen bg-tema-fondo" />;
   }
 
   if (items.length === 0) {
     return (
-      <>
-        <main className="min-h-screen bg-white flex flex-col items-center justify-center gap-4 px-6">
-          <ShoppingCart size={48} className="text-[#cccccc]" />
-          <h1 style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111" }}>
-            Tu carrito está vacío
-          </h1>
-          <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
-            Agrega productos desde la tienda para comenzar.
-          </p>
-          <Link
-            href="/tienda"
-            className="mt-2 px-8 py-3 rounded-md text-white font-semibold"
-            style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
-          >
-            Ver tienda
-          </Link>
-        </main>
-      </>
+      <main className="flex min-h-screen flex-col items-center justify-center gap-3.5 bg-tema-fondo px-6 text-center text-tema-texto">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full border border-tema-borde-campo text-tema-texto-2">
+          <ShoppingBag size={28} strokeWidth={1.6} aria-hidden="true" />
+        </div>
+        <h1 className="m-0 text-[34px] uppercase leading-[1.05] md:text-[44px]" style={TITULO}>
+          Tu carrito está vacío
+        </h1>
+        <p className="m-0 text-base text-tema-texto-2">Agrega productos desde la tienda para comenzar.</p>
+        <Link
+          href="/tienda"
+          className={cn("mt-1 flex h-12 items-center rounded-[10px] bg-tema-rojo px-[22px] text-[15px] font-bold text-tema-texto no-underline hover:brightness-110", FOCO)}
+        >
+          Ver tienda
+        </Link>
+      </main>
     );
   }
 
   const subtotal = totalFn();
+  const nProductos = items.reduce((a, i) => a + i.cantidad, 0);
 
   return (
-    <>
-      <main className="min-h-screen bg-white">
-        <div className="max-w-5xl mx-auto px-6 py-10">
-          <h1 className="mb-8" style={{ fontFamily: "var(--font-titulo)", fontSize: "32px", color: "#111111" }}>
-            Carrito
-          </h1>
+    <main className="min-h-screen bg-tema-fondo text-tema-texto">
+      <div className="mx-auto max-w-[1280px] px-5 md:px-10">
+        <nav aria-label="Migas de pan" className="flex flex-wrap items-center gap-[9px] pb-1 pt-4 text-[13px] text-tema-texto-3 md:pt-5">
+          <Link href="/tienda" className="text-tema-texto-3 hover:text-tema-texto-claro">Tienda</Link>
+          <span aria-hidden="true">/</span>
+          <span aria-current="page" className="text-tema-texto-claro">Carrito</span>
+        </nav>
 
-          <div className="grid grid-cols-3 gap-8">
-            {/* Lista de items */}
-            <div className="col-span-2">
-              {items.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 py-4 border-b border-[#e8e8e8]">
-                  {/* Imagen */}
-                  {item.imagen ? (
-                    <img
-                      src={item.imagen}
-                      alt={item.nombre}
-                      className="w-20 h-20 rounded-lg object-cover shrink-0 border border-[#e8e8e8]"
-                    />
-                  ) : (
-                    <div className="w-20 h-20 rounded-lg shrink-0 bg-[#f8f7f5]" />
+        <h1 className="m-0 pb-[22px] pt-3 text-[40px] uppercase leading-none md:text-[64px]" style={TITULO}>
+          Tu carrito
+        </h1>
+
+        <div className="grid grid-cols-1 items-start gap-3 pb-12 md:gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:pb-20">
+          {/* Lista de items */}
+          <section aria-label="Productos en el carrito" className="rounded-xl border border-tema-borde bg-tema-campo px-[18px] md:px-6">
+            <ul className="m-0 list-none p-0">
+              {items.map((item, i) => (
+                <li
+                  key={item.id}
+                  className={cn(
+                    "grid grid-cols-[72px_minmax(0,1fr)] gap-3.5 py-4 sm:grid-cols-[80px_minmax(0,1fr)_auto] sm:items-center",
+                    i < items.length - 1 && "border-b border-tema-borde"
                   )}
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className="font-medium truncate"
-                      style={{ fontFamily: "var(--font-body)", fontSize: "17px", color: "#111111" }}
-                    >
-                      {item.nombre}
-                    </p>
-                    {item.artista && (
-                      <p className="text-sm mt-0.5" style={{ fontFamily: "var(--font-body)", color: "#999999" }}>
-                        {item.artista}
-                      </p>
-                    )}
-                    <p className="font-bold mt-1" style={{ fontFamily: "var(--font-body)", color: "#e8003d", fontSize: "16px" }}>
-                      {formatCLP(item.precio)}
+                >
+                  <MiniaturaItem imagen={item.imagen} size={72} />
+                  <div className="min-w-0">
+                    <p className="m-0 text-base font-bold leading-[1.35] text-tema-texto">{item.nombre}</p>
+                    <p className="m-0 mt-0.5 text-[13px] text-tema-texto-3">
+                      {item.artista ? `${item.artista} · ` : ""}{formatCLP(item.precio)} c/u
                     </p>
                   </div>
-
-                  {/* Selector cantidad */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => actualizarCantidad(item.id, item.cantidad - 1)}
-                      className="w-8 h-8 rounded border border-[#e8e8e8] flex items-center justify-center hover:bg-[#f8f7f5] transition-colors"
-                    >
-                      <Minus size={13} />
-                    </button>
-                    <span
-                      className="w-8 text-center"
-                      style={{ fontFamily: "var(--font-body)", fontSize: "15px", color: "#111111" }}
-                    >
-                      {item.cantidad}
-                    </span>
-                    <button
-                      onClick={() => actualizarCantidad(item.id, item.cantidad + 1)}
-                      className="w-8 h-8 rounded border border-[#e8e8e8] flex items-center justify-center hover:bg-[#f8f7f5] transition-colors"
-                    >
-                      <Plus size={13} />
-                    </button>
+                  <div className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1 sm:justify-end">
+                    <Stepper
+                      nombre={item.nombre}
+                      cantidad={item.cantidad}
+                      onMenos={() => actualizarCantidad(item.id, item.cantidad - 1)}
+                      onMas={() => actualizarCantidad(item.id, item.cantidad + 1)}
+                    />
+                    <Monto className="min-w-[96px] text-right text-[22px] text-tema-precio">{formatCLP(item.precio * item.cantidad)}</Monto>
+                    <BotonQuitar nombre={item.nombre} onClick={() => remover(item.id)} />
                   </div>
-
-                  {/* Subtotal item */}
-                  <p
-                    className="w-24 text-right shrink-0 font-semibold"
-                    style={{ fontFamily: "var(--font-body)", color: "#111111" }}
-                  >
-                    {formatCLP(item.precio * item.cantidad)}
-                  </p>
-
-                  {/* Quitar */}
-                  <button
-                    onClick={() => remover(item.id)}
-                    className="text-[#cccccc] hover:text-[#e8003d] transition-colors shrink-0 ml-1"
-                    aria-label="Eliminar"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
+          </section>
 
-            {/* Resumen lateral */}
-            <div>
-              <div
-                className="sticky top-20 rounded-xl border border-[#e8e8e8] p-6"
-                style={{ backgroundColor: "#f8f7f5" }}
-              >
-                <h2 className="mb-5" style={{ fontFamily: "var(--font-titulo)", fontSize: "18px", color: "#111111" }}>
-                  Resumen
-                </h2>
-
-                <div className="flex justify-between items-center mb-6">
-                  <span style={{ fontFamily: "var(--font-body)", color: "#444444" }}>
-                    Subtotal ({items.reduce((a, i) => a + i.cantidad, 0)} productos)
-                  </span>
-                  <span style={{ fontFamily: "var(--font-body)", fontWeight: 700, fontSize: "18px", color: "#111111" }}>
-                    {formatCLP(subtotal)}
-                  </span>
-                </div>
-
-                <Link
-                  href="/checkout"
-                  className="flex items-center justify-center w-full h-11 rounded-md text-white font-semibold transition-colors"
-                  style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#c5002e")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#e8003d")}
-                >
-                  Ir al checkout →
-                </Link>
-
-                <Link
-                  href="/tienda"
-                  className="flex items-center justify-center w-full h-11 rounded-md border mt-2 transition-colors"
-                  style={{ fontFamily: "var(--font-body)", borderColor: "#111111", color: "#111111" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8f7f5")}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                >
-                  Seguir comprando
-                </Link>
+          {/* Resumen lateral */}
+          <aside aria-label="Resumen" className="lg:sticky lg:top-6">
+            <div className="flex flex-col gap-4 rounded-xl border border-tema-borde bg-tema-campo p-[18px] md:p-6">
+              <h2 className="m-0 text-[26px] uppercase leading-none" style={TITULO}>Resumen</h2>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[15px] text-tema-texto-claro">Subtotal ({nProductos} {nProductos === 1 ? "producto" : "productos"})</span>
+                <Monto className="text-[32px] text-tema-texto">{formatCLP(subtotal)}</Monto>
               </div>
+              <p className="m-0 text-[13px] leading-normal text-tema-texto-3">Los cupones se aplican en el checkout.</p>
+              <Link
+                href="/checkout"
+                className={cn("flex h-[52px] items-center justify-center gap-2.5 rounded-[10px] bg-tema-rojo px-6 text-base font-bold text-tema-texto no-underline hover:brightness-110", FOCO)}
+              >
+                Ir al checkout
+                <ArrowRight size={17} strokeWidth={2.4} aria-hidden="true" />
+              </Link>
+              <Link
+                href="/tienda"
+                className={cn("flex h-12 items-center justify-center rounded-[10px] border border-tema-borde-campo text-sm font-medium text-tema-texto no-underline hover:border-tema-azul-texto", FOCO)}
+              >
+                Seguir comprando
+              </Link>
             </div>
-          </div>
+          </aside>
         </div>
-      </main>
-    </>
+      </div>
+    </main>
   );
 }

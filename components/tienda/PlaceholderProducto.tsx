@@ -56,11 +56,14 @@ export function IconoTipo({ tipo, size = 28 }: { tipo: TipoVisual; size?: number
  */
 export default function PlaceholderProducto({
   tipo,
+  icono,
   rotulo,
   chico = false,
   className,
 }: {
-  tipo: TipoVisual;
+  tipo?: TipoVisual;
+  /** Reemplaza el ícono por tipo (el carrito no guarda `tipo`). */
+  icono?: React.ReactNode;
   rotulo?: string;
   chico?: boolean;
   className?: string;
@@ -80,7 +83,7 @@ export default function PlaceholderProducto({
         )}
         style={{ backgroundColor: "rgba(22,22,22,0.5)" }}
       >
-        <IconoTipo tipo={tipo} size={chico ? 16 : 28} />
+        {icono ?? <IconoTipo tipo={tipo ?? "merch"} size={chico ? 16 : 28} />}
       </div>
       {rotulo && (
         <span className="absolute bottom-[11px] left-3 text-[10px] font-bold uppercase tracking-[0.14em] text-tema-texto-3">
