@@ -3,10 +3,14 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
+import { ArrowRight, Download, MapPin, Minus, Plus, ShoppingBag, Truck } from "lucide-react";
+import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import ProductCard from "@/components/ui/ProductCard";
+import TarjetaProducto, { BadgeCategoria, BadgeDigital } from "@/components/tienda/TarjetaProducto";
+import PlaceholderProducto, { tipoVisual } from "@/components/tienda/PlaceholderProducto";
 import { useCarrito } from "@/lib/stores/carrito";
 import { formatCLP } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
 interface Artista {
   id: string;
@@ -45,19 +49,42 @@ interface ProductoRelacionado {
   categorias?: { nombre: string } | { nombre: string }[] | null;
 }
 
-function StockIndicator({ stock }: { stock: number }) {
-  if (stock === 0) {
-    return <span style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#e8003d" }}>● Sin stock</span>;
-  }
-  if (stock <= 5) {
-    return <span style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#f59e0b" }}>● Últimas {stock} unidades</span>;
-  }
-  return <span style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#22c55e" }}>● {stock} disponibles</span>;
+const FOCO = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tema-azul-texto";
+const TITULO = { fontFamily: "var(--font-titulo)" } as const;
+
+/**
+ * Etiqueta visible de una zona de despacho. El panel guarda la etiqueta ("Latinoamérica");
+ * los productos de seed tienen slugs ("latam"). Lo desconocido se muestra tal cual.
+ */
+const ETIQUETA_ZONA: Record<string, string> = {
+  chile: "Chile", latam: "Latinoamérica", eeuu: "EE.UU.", europa: "Europa", mundial: "Mundial",
+};
+
+/**
+ * Stock visible. Los digitales usan 999 como sentinel de "ilimitado" (ver
+ * PROGRESS, 2026-07-25), así que para ellos no se muestra un número.
+ */
+function Stock({ stock, digital }: { stock: number; digital: boolean }) {
+  const [texto, color] =
+    stock === 0
+      ? ["Agotado", "bg-tema-rojo"]
+      : digital
+        ? ["Disponible al instante", "bg-tema-ok"]
+        : stock <= 5
+          ? [stock === 1 ? "Última unidad" : `Últimas ${stock} unidades`, "bg-tema-aviso"]
+          : [`${stock} disponibles`, "bg-tema-ok"];
+  return (
+    <span className="flex items-center gap-[9px] text-sm font-medium text-tema-texto">
+      <span className={cn("h-[9px] w-[9px] rounded-full", color)} aria-hidden="true" />
+      {texto}
+    </span>
+  );
 }
 
 export default function ProductoClient({ id }: { id: string }) {
   const supabase = createClient();
   const agregar  = useCarrito((s) => s.agregar);
+  const actualizarCantidad = useCarrito((s) => s.actualizarCantidad);
 
   const [imagenIdx, setImagenIdx] = useState(0);
   const [cantidad,  setCantidad]  = useState(1);
@@ -94,39 +121,42 @@ export default function ProductoClient({ id }: { id: string }) {
 
   if (isLoading) {
     return (
-      <>
-        <div className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-2 gap-12">
-          <div className="aspect-square rounded-lg animate-pulse" style={{ backgroundColor: "#f0f0f0" }} />
+      <main className="min-h-screen bg-tema-fondo">
+        <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-6 px-5 py-10 md:grid-cols-2 md:gap-14 md:px-10">
+          <div className="aspect-square animate-pulse rounded-xl bg-tema-superficie" />
           <div className="flex flex-col gap-4">
-            {[80, 48, 120, 32, 200, 48].map((h, i) => (
-              <div key={i} className="rounded animate-pulse" style={{ height: h, backgroundColor: "#f0f0f0" }} />
+            {[80, 48, 72, 120, 52, 80].map((h, i) => (
+              <div key={i} className="animate-pulse rounded bg-tema-superficie" style={{ height: h }} />
             ))}
           </div>
         </div>
-      </>
+      </main>
     );
   }
 
   if (!producto) {
     return (
-      <>
-        <div className="min-h-screen flex items-center justify-center">
-          <p style={{ fontFamily: "var(--font-body)", fontSize: "24px", color: "#111111" }}>
-            Producto no encontrado
-          </p>
-        </div>
-      </>
+      <main className="flex min-h-screen items-center justify-center bg-tema-fondo">
+        <p className="text-2xl text-tema-texto">Producto no encontrado</p>
+      </main>
     );
   }
 
   const artista    = producto.artistas;
   const categoria  = producto.categorias;
-  const acento     = artista?.color_acento ?? "#e8003d";
   const imagenes   = producto.imagenes ?? [];
   const imagenActiva = imagenes[imagenIdx] ?? null;
   const sinStock   = producto.stock === 0;
+  const digital    = producto.tipo === "digital";
+  const zonas      = producto.zonas_envio ?? [];
 
+  /**
+   * `agregar()` del store siempre suma 1. Para respetar la cantidad elegida se
+   * agrega y luego se fija el total con `actualizarCantidad()`, sin tocar el
+   * store. Si ya estaba en el carrito, se suma a lo que había, con tope en el stock.
+   */
   const handleAgregar = () => {
+    const previa = useCarrito.getState().items.find((i) => i.id === producto.id)?.cantidad ?? 0;
     agregar({
       id: producto.id,
       nombre: producto.nombre,
@@ -134,35 +164,63 @@ export default function ProductoClient({ id }: { id: string }) {
       imagen: imagenActiva ?? undefined,
       artista: artista?.nombre,
     });
+    if (cantidad > 1) {
+      actualizarCantidad(producto.id, Math.min(previa + cantidad, producto.stock));
+    }
+    toast.success(cantidad > 1 ? `${cantidad} agregados al carrito` : "Agregado al carrito");
   };
 
   return (
-    <>
+    <main className="min-h-screen bg-tema-fondo text-tema-texto">
+      <div className="mx-auto max-w-[1280px] px-5 md:px-10">
+        {/* Migas */}
+        <nav aria-label="Migas de pan" className="flex flex-wrap items-center gap-[9px] pb-1 pt-4 text-[13px] text-tema-texto-3 md:pt-5">
+          <Link href="/tienda" className="text-tema-texto-3 hover:text-tema-texto-claro">Tienda</Link>
+          {categoria && (
+            <>
+              <span aria-hidden="true">/</span>
+              <Link href={`/tienda?categoria=${categoria.slug}`} className="text-tema-texto-3 hover:text-tema-texto-claro">
+                {categoria.nombre}
+              </Link>
+            </>
+          )}
+          <span aria-hidden="true">/</span>
+          <span aria-current="page" className="min-w-0 truncate text-tema-texto-claro">{producto.nombre}</span>
+        </nav>
 
-      <div className="max-w-6xl mx-auto px-6 py-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          {/* Imágenes */}
-          <div>
-            <div className="aspect-square overflow-hidden rounded-lg border border-[#e8e8e8]">
+        <div className="grid grid-cols-1 items-start gap-6 pb-12 pt-3 md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] md:gap-14 md:pb-20 md:pt-4">
+          {/* Galería */}
+          <div className="flex min-w-0 flex-col gap-3">
+            <div className="relative aspect-square overflow-hidden rounded-xl border border-tema-borde bg-tema-superficie">
               {imagenActiva ? (
-                <img src={imagenActiva} alt={producto.nombre} className="w-full h-full object-cover" />
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imagenActiva} alt={producto.nombre} className="absolute inset-0 h-full w-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-                  <span style={{ fontFamily: "var(--font-body)", color: "#cccccc" }}>Sin imagen</span>
-                </div>
+                <PlaceholderProducto tipo={tipoVisual(producto.tipo, categoria?.slug)} rotulo={categoria?.nombre ?? "Producto"} />
               )}
+              <div className="pointer-events-none absolute left-3.5 top-3.5 flex gap-2">
+                {categoria && <BadgeCategoria>{categoria.nombre}</BadgeCategoria>}
+                {digital && <BadgeDigital />}
+              </div>
             </div>
 
             {imagenes.length > 1 && (
-              <div className="flex gap-2 mt-3 overflow-x-auto">
+              <div className="grid grid-cols-4 gap-3">
                 {imagenes.map((img, i) => (
                   <button
                     key={i}
+                    type="button"
                     onClick={() => setImagenIdx(i)}
-                    className="shrink-0 w-16 h-16 rounded overflow-hidden border-2 transition-colors"
-                    style={{ borderColor: i === imagenIdx ? acento : "#e8e8e8" }}
+                    aria-label={`Ver imagen ${i + 1}`}
+                    aria-pressed={i === imagenIdx}
+                    className={cn(
+                      "relative aspect-square cursor-pointer overflow-hidden rounded-[10px] bg-tema-superficie p-0",
+                      i === imagenIdx ? "border-2 border-tema-azul-texto" : "border border-tema-borde hover:border-tema-borde-campo",
+                      FOCO
+                    )}
                   >
-                    <img src={img} alt={`${producto.nombre} ${i + 1}`} className="w-full h-full object-cover" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img} alt="" className="absolute inset-0 h-full w-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -170,174 +228,153 @@ export default function ProductoClient({ id }: { id: string }) {
           </div>
 
           {/* Info */}
-          <div>
-            <div className="flex items-center gap-1 text-sm" style={{ fontFamily: "var(--font-body)", color: "#999999" }}>
-              <Link href="/tienda" className="hover:text-[#e8003d] transition-colors">Tienda</Link>
-              {categoria && (
-                <>
-                  <span>/</span>
-                  <Link href={`/tienda?categoria=${categoria.slug}`} className="hover:text-[#e8003d] transition-colors">
-                    {categoria.nombre}
-                  </Link>
-                </>
-              )}
-              <span>/</span>
-              <span className="text-[#111111]">{producto.nombre}</span>
-            </div>
-
-            {categoria && (
-              <span
-                className="inline-block mt-3 text-white text-xs px-2 py-0.5 rounded"
-                style={{ backgroundColor: "#111111", fontFamily: "var(--font-body)" }}
-              >
-                {categoria.nombre}
-              </span>
-            )}
-
-            <h1 className="mt-2" style={{ fontFamily: "var(--font-titulo)", fontSize: "28px", color: "#111111", lineHeight: 1.2 }}>
+          <div className="flex min-w-0 flex-col gap-5">
+            <h1
+              className="m-0 text-[38px] uppercase leading-[0.98] text-tema-texto md:text-[56px]"
+              style={{ ...TITULO, textWrap: "balance" }}
+            >
               {producto.nombre}
             </h1>
 
             {artista && (
-              <Link href={`/artista/${artista.slug}`} className="flex items-center gap-2 mt-3 group w-fit">
-                {artista.foto_url ? (
-                  <img src={artista.foto_url} alt={artista.nombre} className="w-8 h-8 rounded-full object-cover" />
-                ) : (
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                    style={{ backgroundColor: acento, fontFamily: "var(--font-body)" }}
-                  >
-                    {artista.nombre?.[0]?.toUpperCase()}
-                  </div>
-                )}
-                <span
-                  className="text-sm transition-colors group-hover:text-[#e8003d]"
-                  style={{ fontFamily: "var(--font-body)", color: "#666666" }}
-                >
-                  por {artista.nombre}{artista.ciudad ? ` · ${artista.ciudad}` : ""}
+              <Link href={`/artista/${artista.slug}`} className="group flex items-center gap-3 self-start text-inherit no-underline">
+                <span className="block h-12 w-12 shrink-0 overflow-hidden rounded-full border border-tema-borde-campo bg-tema-superficie">
+                  {artista.foto_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={artista.foto_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span
+                      className="flex h-full w-full items-center justify-center text-base font-bold text-tema-texto"
+                      style={{ backgroundColor: artista.color_acento ?? "var(--tema-rojo)" }}
+                    >
+                      {artista.nombre?.[0]?.toUpperCase()}
+                    </span>
+                  )}
+                </span>
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-base font-bold text-tema-texto group-hover:text-tema-azul-texto-hover">{artista.nombre}</span>
+                  {artista.ciudad && (
+                    <span className="flex items-center gap-[5px] text-[13px] text-tema-texto-3">
+                      <MapPin size={12} strokeWidth={2} aria-hidden="true" />
+                      {artista.ciudad}
+                    </span>
+                  )}
                 </span>
               </Link>
             )}
 
-            <p className="mt-4" style={{ fontFamily: "var(--font-body)", fontWeight: "700", fontSize: "30px", color: "#e8003d" }}>
-              {formatCLP(producto.precio)}
-            </p>
-
-            <div className="border-t border-[#e8e8e8] my-4" />
+            <div className="flex flex-wrap items-end justify-between gap-4 border-y border-tema-borde py-[18px]">
+              <span className="text-[44px] leading-none text-tema-precio md:text-[56px]" style={TITULO}>
+                {formatCLP(producto.precio)}
+              </span>
+              <Stock stock={producto.stock} digital={digital} />
+            </div>
 
             {producto.descripcion && (
-              <p style={{ fontFamily: "var(--font-body)", fontSize: "15px", color: "#666666", lineHeight: 1.7 }}>
+              <p className="m-0 whitespace-pre-line text-base leading-[1.7] text-tema-texto-2" style={{ textWrap: "pretty" }}>
                 {producto.descripcion}
               </p>
             )}
 
-            <div className="mt-4">
-              <StockIndicator stock={producto.stock} />
+            <div className="flex flex-wrap items-stretch gap-3">
+              {!digital && !sinStock && (
+                <div role="group" aria-label="Cantidad" className="flex h-[52px] items-center rounded-[10px] border border-tema-borde-campo bg-tema-campo">
+                  <button
+                    type="button"
+                    onClick={() => setCantidad((c) => Math.max(1, c - 1))}
+                    disabled={cantidad <= 1}
+                    aria-label="Menos"
+                    className={cn("flex h-full w-[46px] cursor-pointer items-center justify-center border-0 bg-transparent text-tema-texto disabled:cursor-not-allowed disabled:opacity-40", FOCO)}
+                  >
+                    <Minus size={16} strokeWidth={2.4} aria-hidden="true" />
+                  </button>
+                  <span className="min-w-[34px] text-center text-base font-bold tabular-nums" aria-live="polite">{cantidad}</span>
+                  <button
+                    type="button"
+                    onClick={() => setCantidad((c) => Math.min(producto.stock, c + 1))}
+                    disabled={cantidad >= producto.stock}
+                    aria-label="Más"
+                    className={cn("flex h-full w-[46px] cursor-pointer items-center justify-center border-0 bg-transparent text-tema-texto disabled:cursor-not-allowed disabled:opacity-40", FOCO)}
+                  >
+                    <Plus size={16} strokeWidth={2.4} aria-hidden="true" />
+                  </button>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handleAgregar}
+                disabled={sinStock}
+                className={cn(
+                  "flex h-[52px] flex-[1_1_220px] items-center justify-center gap-2.5 rounded-[10px] border-0 text-base font-bold",
+                  sinStock
+                    ? "cursor-not-allowed bg-tema-borde text-tema-texto-3"
+                    : "cursor-pointer bg-tema-rojo text-tema-texto hover:brightness-110",
+                  FOCO
+                )}
+              >
+                <ShoppingBag size={18} strokeWidth={2.1} aria-hidden="true" />
+                {sinStock ? "Agotado" : "Agregar al carrito"}
+              </button>
             </div>
 
-            {producto.tipo === "digital" && (
-              <span
-                className="inline-block mt-3 text-sm px-3 py-1 rounded"
-                style={{ backgroundColor: "#dcfce7", color: "#166534", fontFamily: "var(--font-body)" }}
-              >
-                Descarga digital
-              </span>
-            )}
-
-            {producto.tipo === "fisico" && producto.zonas_envio && producto.zonas_envio.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {producto.zonas_envio.map((zona) => (
-                  <span
-                    key={zona}
-                    className="text-xs border rounded px-2 py-0.5"
-                    style={{ fontFamily: "var(--font-body)", backgroundColor: "#f8f7f5", borderColor: "#e8e8e8", color: "#666666" }}
-                  >
-                    {zona}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {producto.tipo === "fisico" && !sinStock && (
-              <div className="flex items-center gap-3 mt-5">
-                <span style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>Cantidad:</span>
-                <div className="flex items-center border border-[#e8e8e8] rounded overflow-hidden">
-                  <button
-                    onClick={() => setCantidad((c) => Math.max(1, c - 1))}
-                    className="px-3 py-1.5 text-[#111111] hover:bg-[#f8f7f5] transition-colors"
-                    style={{ fontFamily: "var(--font-body)" }}
-                  >
-                    −
-                  </button>
-                  <span className="px-4 py-1.5 border-x border-[#e8e8e8] min-w-[40px] text-center" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
-                    {cantidad}
-                  </span>
-                  <button
-                    onClick={() => setCantidad((c) => Math.min(producto.stock, c + 1))}
-                    className="px-3 py-1.5 text-[#111111] hover:bg-[#f8f7f5] transition-colors"
-                    style={{ fontFamily: "var(--font-body)" }}
-                  >
-                    +
-                  </button>
+            {(digital || zonas.length > 0) && (
+              <div className="flex items-start gap-3.5 rounded-xl border border-tema-borde bg-tema-campo px-[18px] py-4">
+                <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] border border-tema-azul bg-tema-azul-fondo text-tema-azul-etiqueta">
+                  {digital
+                    ? <Download size={18} strokeWidth={1.9} aria-hidden="true" />
+                    : <Truck size={18} strokeWidth={1.9} aria-hidden="true" />}
+                </div>
+                <div className="flex min-w-0 flex-col gap-[3px]">
+                  <p className="m-0 text-[15px] font-bold text-tema-texto">
+                    {digital ? "Entrega digital" : "Zonas de despacho"}
+                  </p>
+                  <p className="m-0 text-sm leading-[1.6] text-tema-texto-2">
+                    {digital ? "Producto digital: no requiere despacho." : zonas.map((z) => ETIQUETA_ZONA[z.toLowerCase()] ?? z).join(" · ")}
+                  </p>
                 </div>
               </div>
             )}
 
-            <button
-              onClick={handleAgregar}
-              disabled={sinStock}
-              className="w-full h-12 rounded-md mt-6 font-semibold transition-colors"
-              style={{
-                fontFamily: "var(--font-body)",
-                backgroundColor: sinStock ? "#d1d5db" : "#e8003d",
-                color: sinStock ? "#9ca3af" : "#ffffff",
-                cursor: sinStock ? "not-allowed" : "pointer",
-              }}
-              onMouseEnter={(e) => { if (!sinStock) e.currentTarget.style.backgroundColor = "#c5002e"; }}
-              onMouseLeave={(e) => { if (!sinStock) e.currentTarget.style.backgroundColor = "#e8003d"; }}
-            >
-              {sinStock ? "Sin stock" : "Agregar al carrito"}
-            </button>
-
             {artista && (
               <Link
                 href={`/artista/${artista.slug}`}
-                className="flex items-center justify-center w-full h-12 rounded-md mt-3 border border-[#111111] transition-colors"
-                style={{ fontFamily: "var(--font-body)", color: "#111111", backgroundColor: "#ffffff" }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f8f7f5")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#ffffff")}
+                className={cn(
+                  "flex h-12 items-center justify-center gap-2.5 self-start rounded-[10px] border border-tema-borde-campo px-5 text-sm font-medium text-tema-texto no-underline hover:border-tema-azul-texto",
+                  FOCO
+                )}
               >
                 Ver tienda de {artista.nombre}
+                <ArrowRight size={15} strokeWidth={2.4} aria-hidden="true" />
               </Link>
             )}
           </div>
         </div>
 
         {relacionados.length > 0 && artista && (
-          <section className="mt-12">
-            <h2 style={{ fontFamily: "var(--font-titulo)", fontSize: "22px", color: "#111111", marginBottom: "24px" }}>
-              Más de {artista.nombre}
-            </h2>
-            <div className="flex gap-4 overflow-x-auto pb-2">
+          <section className="pb-12 md:pb-20">
+            <div className="mb-5 flex items-center gap-3.5">
+              <span className="h-[30px] w-1 rounded-sm bg-tema-rojo" aria-hidden="true" />
+              <h2 className="m-0 text-[28px] uppercase leading-none tracking-[0.01em] text-tema-texto md:text-[34px]" style={TITULO}>
+                Más de este artista
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-6 lg:grid-cols-4">
               {relacionados.map((r) => (
-                <div key={r.id} className="shrink-0 w-52">
-                  <ProductCard
-                    id={r.id}
-                    nombre={r.nombre}
-                    precio={r.precio}
-                    imagenes={r.imagenes ?? []}
-                    categoria={Array.isArray(r.categorias) ? r.categorias[0]?.nombre : r.categorias?.nombre}
-                    artista={artista.nombre}
-                    ciudad={artista.ciudad}
-                    slug_artista={artista.slug}
-                    colorAccento={acento}
-                  />
-                </div>
+                <TarjetaProducto
+                  key={r.id}
+                  id={r.id}
+                  nombre={r.nombre}
+                  precio={r.precio}
+                  imagen={r.imagenes?.[0]}
+                  categoria={Array.isArray(r.categorias) ? r.categorias[0]?.nombre : r.categorias?.nombre}
+                  artista={artista.nombre}
+                  ciudad={artista.ciudad}
+                />
               ))}
             </div>
           </section>
         )}
       </div>
-    </>
+    </main>
   );
 }
