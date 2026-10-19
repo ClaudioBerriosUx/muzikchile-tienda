@@ -43,5 +43,3 @@ next-env.d.ts
 .vercel
 .env*
 
-# script local con service role (no se versiona)
-scripts/reset-password.mjs
