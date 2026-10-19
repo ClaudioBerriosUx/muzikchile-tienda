@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import TarjetaProducto, { BadgeCategoria, BadgeDigital } from "@/components/tienda/TarjetaProducto";
 import PlaceholderProducto, { tipoVisual } from "@/components/tienda/PlaceholderProducto";
+import SelloVerificado from "@/components/tienda/SelloVerificado";
 import { useCarrito } from "@/lib/stores/carrito";
 import { formatCLP } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,8 @@ interface Artista {
   ciudad?: string;
   foto_url?: string;
   color_acento?: string;
+  verificado?: boolean | null;
+  generos?: string[] | null;
 }
 
 interface Categoria {
@@ -46,6 +49,7 @@ interface ProductoRelacionado {
   nombre: string;
   precio: number;
   imagenes: string[];
+  tipo: string;
   categorias?: { nombre: string } | { nombre: string }[] | null;
 }
 
@@ -94,7 +98,7 @@ export default function ProductoClient({ id }: { id: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("productos")
-        .select("*, artistas(id, nombre, slug, ciudad, foto_url, color_acento), categorias(id, nombre, slug)")
+        .select("*, artistas(id, nombre, slug, ciudad, foto_url, color_acento, verificado, generos), categorias(id, nombre, slug)")
         .eq("id", id)
         .single();
       if (error) throw error;
@@ -108,7 +112,7 @@ export default function ProductoClient({ id }: { id: string }) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("productos")
-        .select("id, nombre, precio, imagenes, categorias(nombre)")
+        .select("id, nombre, precio, imagenes, tipo, categorias(nombre)")
         .eq("artista_id", producto!.artista_id)
         .eq("estado", "aprobado")
         .neq("id", id)
@@ -238,7 +242,8 @@ export default function ProductoClient({ id }: { id: string }) {
 
             {artista && (
               <Link href={`/artista/${artista.slug}`} className="group flex items-center gap-3 self-start text-inherit no-underline">
-                <span className="block h-12 w-12 shrink-0 overflow-hidden rounded-full border border-tema-borde-campo bg-tema-superficie">
+                <span className="relative h-12 w-12 shrink-0">
+                <span className="block h-12 w-12 overflow-hidden rounded-full border border-tema-borde-campo bg-tema-superficie">
                   {artista.foto_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={artista.foto_url} alt="" className="h-full w-full object-cover" />
@@ -251,12 +256,14 @@ export default function ProductoClient({ id }: { id: string }) {
                     </span>
                   )}
                 </span>
+                {artista.verificado && <SelloVerificado size={18} className="-bottom-[3px] -right-[3px]" />}
+                </span>
                 <span className="flex flex-col gap-0.5">
                   <span className="text-base font-bold text-tema-texto group-hover:text-tema-azul-texto-hover">{artista.nombre}</span>
-                  {artista.ciudad && (
+                  {(artista.ciudad || artista.generos?.[0]) && (
                     <span className="flex items-center gap-[5px] text-[13px] text-tema-texto-3">
-                      <MapPin size={12} strokeWidth={2} aria-hidden="true" />
-                      {artista.ciudad}
+                      {artista.ciudad && <MapPin size={12} strokeWidth={2} aria-hidden="true" />}
+                      {[artista.ciudad, artista.generos?.[0]].filter(Boolean).join(" · ")}
                     </span>
                   )}
                 </span>
@@ -366,6 +373,7 @@ export default function ProductoClient({ id }: { id: string }) {
                   nombre={r.nombre}
                   precio={r.precio}
                   imagen={r.imagenes?.[0]}
+                  tipo={r.tipo}
                   categoria={Array.isArray(r.categorias) ? r.categorias[0]?.nombre : r.categorias?.nombre}
                   artista={artista.nombre}
                   ciudad={artista.ciudad}
