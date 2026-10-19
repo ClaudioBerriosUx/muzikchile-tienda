@@ -1093,8 +1093,35 @@ stock, RLS y consultas quedan intactos. Un commit por fase.
   Hoy ningún artista real tiene noticias (las 12 son de la cuenta editorial),
   ni `verificado = true`: esos estados se probaron con datos inyectados solo
   en el navegador de prueba.
-- ⏳ Fase 4 — Drawer, `/carrito` y `/checkout`.
-- ⏳ Fase 5 — `/checkout/exito` y `/checkout/pendiente`.
+- ✅ Fase 4 — Drawer, `/carrito` y `/checkout` (`df6289c`). Esquema Zod,
+  `validarCupon`, `calcularDescuento` y `onSubmit` idénticos línea a línea. El
+  payload a `crear-preferencia` se comparó **byte a byte** antes/después en
+  dos casos (cupón `FANS20`; sin cupón ni teléfono), interceptado en el
+  navegador sin enviarse. Región pasa a `<select>` con `REGIONES_CHILE` (sigue
+  siendo string). `components/tienda/carrito-ui.tsx`; `sheet.tsx` gana el prop
+  opcional `overlayClassName`.
+- ✅ Fase 5 — `/checkout/exito` y `/checkout/pendiente` con
+  `components/tienda/ResultadoPago`. Éxito conserva `limpiar()` solo con
+  `status=approved`, el N° de pedido (primer bloque del `external_reference`)
+  y el Payment ID. Pendiente ahora lee `external_reference` (solo para mostrar
+  el N° de pedido) y no vacía el carrito. Sin resumen del pedido: exigiría
+  leer `ordenes` desde el cliente. `/checkout/error` sigue con el diseño viejo
+  (fuera de alcance).
+- Tokens agregados en total: `--tema-texto-claro`, `--tema-precio`,
+  `--tema-azul-etiqueta`, `--tema-aviso`, `--tema-aviso-texto`, `--tema-ok-texto`.
+- Textos del diseño que **no** se usaron por no tener respaldo en la lógica:
+  despacho fijo $3.990, "Starken/Chilexpress 3 a 6 días", "reservamos tus
+  productos 48 h", "te enviamos el comprobante", "los artistas ya fueron
+  avisados", foto de portada del artista.
+
+### Pendiente
+- **Probar en producción hasta la pantalla de MercadoPago** (sin pagar):
+  /tienda → agregar → drawer → checkout con cupón → "Ir a pagar" debe abrir
+  MercadoPago con el total descontado.
+- `/checkout/error` sin rediseñar.
+- `npm run lint`: 11 errores, todos previos al rediseño (setState en effects
+  en carrito/checkout/drawer/admin, `window.location.href` en checkout,
+  componentes creados en render en `admin/configuracion`).
 
 `TIENDA_VISIBLE` sigue en `false` (`components/layout/nav-links.ts`): la tienda
 no aparece en Header ni Footer. El rediseño no cambia eso.
@@ -1112,7 +1139,9 @@ no aparece en Header ni Footer. El rediseño no cambia eso.
   padre incluye a sus hijas; un slug de subcategoría (`?categoria=poleras`)
   sigue filtrando solo esa.
 
-- **Email de confirmación de compra**: la página `/checkout/exito` dice "Recibirás un email" pero no hay código de envío de email en ningún Route Handler
+- **Email de confirmación de compra**: no hay código de envío de email en
+  ningún Route Handler. Desde el rediseño (2026-10-19) `/checkout/exito` ya no
+  promete un correo propio: dice que el comprobante lo envía MercadoPago.
 
 ---
 

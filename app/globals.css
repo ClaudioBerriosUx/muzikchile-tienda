@@ -304,6 +304,8 @@
   --tema-ok-texto: #7FC9A0;
   /** Aviso / pendiente (ámbar): "últimas unidades", pago pendiente. */
   --tema-aviso: #C7893A;
+  /** Texto/ícono ámbar sobre oscuro (AA). */
+  --tema-aviso-texto: #E3B26A;
 }
 
 @theme {
@@ -332,6 +334,7 @@
   --color-tema-ok: var(--tema-ok);
   --color-tema-ok-texto: var(--tema-ok-texto);
   --color-tema-aviso: var(--tema-aviso);
+  --color-tema-aviso-texto: var(--tema-aviso-texto);
 }
 
 @layer base {

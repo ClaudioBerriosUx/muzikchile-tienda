@@ -4,9 +4,8 @@ export const dynamic = 'force-dynamic';
 
 import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { CheckCircle } from "lucide-react";
 import { useCarrito } from "@/lib/stores/carrito";
+import ResultadoPago, { AccionResultado } from "@/components/tienda/ResultadoPago";
 
 function ExitoContent() {
   const searchParams = useSearchParams();
@@ -27,60 +26,26 @@ function ExitoContent() {
     : null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-      <div className="text-center max-w-md px-6 py-12">
-        <div
-          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
-          style={{ backgroundColor: "#dcfce7" }}
-        >
-          <CheckCircle size={40} style={{ color: "#22c55e" }} />
-        </div>
-
-        <h1
-          className="mb-3"
-          style={{ fontFamily: "var(--font-titulo)", fontSize: "36px", color: "#111111" }}
-        >
-          ¡Compra exitosa!
-        </h1>
-
-        <p style={{ fontFamily: "var(--font-body)", fontSize: "16px", color: "#666666" }}>
-          Tu pedido ha sido confirmado.
-        </p>
-
-        {numeroOrden && (
-          <p className="mt-2" style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#999999" }}>
-            Número de orden: <strong>{numeroOrden}</strong>
-          </p>
-        )}
-
-        {payment_id && (
-          <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#cccccc", marginTop: "4px" }}>
-            Payment ID: {payment_id}
-          </p>
-        )}
-
-        <p className="mt-4 mb-8" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>
-          Recibirás un email con los detalles de tu compra.
-        </p>
-
-        <Link
-          href="/tienda"
-          className="inline-block px-8 py-3 rounded-md text-white font-semibold"
-          style={{ fontFamily: "var(--font-body)", backgroundColor: "#e8003d" }}
-        >
-          Seguir comprando
-        </Link>
-      </div>
-    </div>
+    <ResultadoPago
+      estado="exito"
+      pedido={numeroOrden}
+      titulo="¡Gracias por apoyar a la escena!"
+      texto="Tu pedido quedó confirmado. Cada compra va directo para los artistas."
+      nota="MercadoPago te envía el comprobante del pago a tu correo. Guarda el número de pedido por si necesitas escribirnos."
+      detalle={payment_id ? `Payment ID: ${payment_id}` : null}
+    >
+      <AccionResultado href="/tienda" principal>Seguir en la tienda</AccionResultado>
+      <AccionResultado href="/noticias">Leer las noticias de la escena</AccionResultado>
+    </ResultadoPago>
   );
 }
 
 export default function ExitoPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Confirmando pago...</p>
-      </div>
+      <main className="flex min-h-screen items-center justify-center bg-tema-fondo">
+        <p className="text-tema-texto-2">Confirmando pago...</p>
+      </main>
     }>
       <ExitoContent />
     </Suspense>

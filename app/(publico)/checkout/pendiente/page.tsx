@@ -1,38 +1,42 @@
-import Link from "next/link";
+"use client";
+
+export const dynamic = 'force-dynamic';
+
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import ResultadoPago, { AccionResultado } from "@/components/tienda/ResultadoPago";
+
+/**
+ * MercadoPago vuelve acá con el pago en estado pendiente (efectivo,
+ * transferencia). El webhook pasa la orden a `pagado` cuando se acredita.
+ * El carrito NO se vacía: el pago todavía puede no concretarse.
+ */
+function PendienteContent() {
+  const searchParams = useSearchParams();
+  // Solo lectura, para mostrar el mismo N° de pedido que /checkout/exito.
+  const external_reference = searchParams.get("external_reference");
+  const numeroOrden = external_reference
+    ? external_reference.split("-")[0].toUpperCase()
+    : null;
+
+  return (
+    <ResultadoPago
+      estado="pendiente"
+      pedido={numeroOrden}
+      titulo="Tu pago está pendiente"
+      texto="MercadoPago todavía no confirma tu pago. Si pagaste en efectivo o por transferencia, la acreditación puede tardar."
+      nota="No necesitas hacer nada más: cuando MercadoPago acredite el pago, tu pedido queda confirmado. El estado del pago lo puedes revisar en tu cuenta de MercadoPago."
+    >
+      <AccionResultado href="/tienda" principal>Volver a la tienda</AccionResultado>
+      <AccionResultado href="/noticias">Leer las noticias de la escena</AccionResultado>
+    </ResultadoPago>
+  );
+}
 
 export default function PendientePage() {
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#f8f7f5" }}>
-      <div className="text-center max-w-md px-6 py-12">
-        <div
-          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl"
-          style={{ backgroundColor: "#fef9c3" }}
-        >
-          ⏳
-        </div>
-
-        <h1
-          className="mb-3"
-          style={{ fontFamily: "var(--font-titulo)", fontSize: "36px", color: "#111111" }}
-        >
-          Pago en revisión
-        </h1>
-
-        <p style={{ fontFamily: "var(--font-body)", fontSize: "16px", color: "#666666" }}>
-          Recibirás un email cuando se confirme tu pago.
-        </p>
-        <p className="mt-1 mb-8" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#999999" }}>
-          Este proceso puede tardar algunos minutos.
-        </p>
-
-        <Link
-          href="/tienda"
-          className="inline-block px-8 py-3 rounded-md border font-semibold"
-          style={{ fontFamily: "var(--font-body)", borderColor: "#111111", color: "#111111" }}
-        >
-          Ir al inicio
-        </Link>
-      </div>
-    </div>
+    <Suspense fallback={<main className="min-h-screen bg-tema-fondo" />}>
+      <PendienteContent />
+    </Suspense>
   );
 }
