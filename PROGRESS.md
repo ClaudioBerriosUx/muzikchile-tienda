@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-10-15
+> Actualizado: 2026-10-19
 > Branch: `main` (lanzamiento mergeado y en producción en www.muzikchile.cl)
 
 ---
@@ -1059,8 +1059,8 @@ lanzamiento completados el 11-oct-2026; el sitio es indexable.
   sin restos (la raíz de `noticias` queda barrida por prefijo `rlstest-`).
 - Falta: deploy (`vercel --prod`) y la prueba en navegador.
 - Verificado: `tsc --noEmit` limpio, `npm run verificar:sanitizacion` 25/25.
-- `scripts/reset-password.mjs` (**solo local, en `.gitignore`; no está en el
-  repo**): cambia la contraseña de un usuario de Auth con la service role
+- `scripts/reset-password.mjs` (**versionado desde 2026-10-19**, `3ecc2ed`;
+  antes estaba en `.gitignore`): cambia la contraseña de un usuario de Auth con la service role
   (`node --env-file=.env.local scripts/reset-password.mjs <email>`). No tiene
   claves en el código: lee URL y service role de `.env.local`. Había entrado
   por error en el commit de la tanda; se reescribió antes del push.
@@ -1069,7 +1069,36 @@ lanzamiento completados el 11-oct-2026; el sitio es indexable.
 
 ---
 
+## 🛍️ Rediseño de la tienda (Claude Design · "Tienda Pantalla") — 2026-10-19
+
+Variación de tarjeta elegida: **A**. Solo UI: carrito, cupones, MercadoPago,
+stock, RLS y consultas quedan intactos. Un commit por fase.
+
+- ✅ Fase 0 — `scripts/reset-password.mjs` versionado (`3ecc2ed`).
+- ✅ Fase 1 — Catálogo `/tienda` (`8abc5b9`): `components/tienda/TarjetaProducto`
+  y `PlaceholderProducto`, barra de filtros plegable en móvil. Tokens nuevos
+  `--tema-texto-claro`, `--tema-precio`, `--tema-azul-etiqueta`. Solo
+  `?categoria=` va en la URL (región, tipo, orden y búsqueda son estado local,
+  como antes).
+- ⏳ Fase 2 — `/producto/[id]` (incluye que el selector de cantidad se respete:
+  `agregar()` + `actualizarCantidad()`, sin tocar el store).
+- ⏳ Fase 3 — `/artista/[slug]` con pestañas Productos / Noticias / Sobre.
+- ⏳ Fase 4 — Drawer, `/carrito` y `/checkout`.
+- ⏳ Fase 5 — `/checkout/exito` y `/checkout/pendiente`.
+
+`TIENDA_VISIBLE` sigue en `false` (`components/layout/nav-links.ts`): la tienda
+no aparece en Header ni Footer. El rediseño no cambia eso.
+
+---
+
 ## 🚧 En progreso / bugs conocidos
+
+- **Los chips de categoría de `/tienda` no filtran nada** (bug previo, no del
+  rediseño): los chips son las categorías padre (Merch, Música física,
+  Colección, Digital), pero cada producto apunta a una subcategoría (Poleras,
+  Cassettes, EPs…), y el filtro compara `p.categorias.slug === categoriaActiva`.
+  Resultado: cualquier chip distinto de "Todas" deja 0 productos, también por
+  `?categoria=merch`. Arreglarlo exige traer `padre_id` en la consulta.
 
 - **Email de confirmación de compra**: la página `/checkout/exito` dice "Recibirás un email" pero no hay código de envío de email en ningún Route Handler
 
@@ -1113,6 +1142,12 @@ lanzamiento completados el 11-oct-2026; el sitio es indexable.
 ---
 
 ## ⚠️ Pendientes / bugs conocidos (no críticos)
+
+- **Pendiente de negocio — el checkout no cobra envío**: no existe lógica de
+  despacho. `crear-preferencia` solo guarda `direccion_envio`, `ciudad_envio` y
+  `region_envio` en `ordenes`; el total que va a MercadoPago es subtotal −
+  cupón, sin costo de envío para productos físicos. Hay que decidir tarifa
+  (fija, por región, por artista) antes de implementarla.
 
 - **`force-dynamic` extensivo**: múltiples layouts y pages lo usan para evitar errores de SSG en Vercel. Desactiva caching a nivel de página.
 - **Guards de auth client-side**: flash de "Verificando acceso..." antes de redirigir. Considerar middleware si se optimiza UX.
