@@ -239,7 +239,7 @@
    TEMA — paleta del rediseño (Claude Design · "Acceso Artistas", 2026-10)
 
    Paleta oscura neutra con el rojo y el azul de la marca. Hoy la usan /login,
-   /recuperar y /registro; el rediseño de la tienda la va a reutilizar. NO
+   /recuperar, /registro y la tienda (Claude Design · "Tienda Pantalla"). NO
    reemplaza todavía a los tokens de marca de arriba (`--brand-*`, `--bg-*`):
    el resto del sitio sigue con sus colores hasta que se migre.
 
@@ -270,6 +270,10 @@
   --tema-texto-2: #A8A8A8;
   /** Notas, labels en mayúscula, ayudas. */
   --tema-texto-3: #9A9A9A;
+  /** Texto secundario destacado: chips en reposo, migas activas, bio. */
+  --tema-texto-claro: #C9C9C9;
+  /** Precios en Anton sobre oscuro (rojo claro, AA a tamaño de titular). */
+  --tema-precio: #E8707C;
 
   /* ── Rojo: acción y error ─────────────────────────────────────────────── */
   --tema-rojo: #B02F3C;
@@ -291,6 +295,8 @@
   --tema-azul-texto-suave: #C9D9EC;
   /** Fondo de aviso informativo e íconos en caja. */
   --tema-azul-fondo: #131F2C;
+  /** Texto de etiquetas sobre `--tema-azul-fondo` (badge de categoría). */
+  --tema-azul-etiqueta: #9CBDE3;
 
   /* ── Estado OK ────────────────────────────────────────────────────────── */
   --tema-ok: #3E7D5A;
@@ -306,6 +312,8 @@
   --color-tema-texto: var(--tema-texto);
   --color-tema-texto-2: var(--tema-texto-2);
   --color-tema-texto-3: var(--tema-texto-3);
+  --color-tema-texto-claro: var(--tema-texto-claro);
+  --color-tema-precio: var(--tema-precio);
   --color-tema-rojo: var(--tema-rojo);
   --color-tema-rojo-oscuro: var(--tema-rojo-oscuro);
   --color-tema-rojo-texto: var(--tema-rojo-texto);
@@ -316,6 +324,7 @@
   --color-tema-azul-texto-hover: var(--tema-azul-texto-hover);
   --color-tema-azul-texto-suave: var(--tema-azul-texto-suave);
   --color-tema-azul-fondo: var(--tema-azul-fondo);
+  --color-tema-azul-etiqueta: var(--tema-azul-etiqueta);
   --color-tema-ok: var(--tema-ok);
 }
 
