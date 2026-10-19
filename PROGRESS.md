@@ -1093,12 +1093,14 @@ no aparece en Header ni Footer. El rediseño no cambia eso.
 
 ## 🚧 En progreso / bugs conocidos
 
-- **Los chips de categoría de `/tienda` no filtran nada** (bug previo, no del
-  rediseño): los chips son las categorías padre (Merch, Música física,
-  Colección, Digital), pero cada producto apunta a una subcategoría (Poleras,
-  Cassettes, EPs…), y el filtro compara `p.categorias.slug === categoriaActiva`.
-  Resultado: cualquier chip distinto de "Todas" deja 0 productos, también por
-  `?categoria=merch`. Arreglarlo exige traer `padre_id` en la consulta.
+- ✅ **Resuelto 2026-10-19 — los chips de categoría de `/tienda` no filtraban
+  nada** (bug previo al rediseño): los chips son las categorías padre (Merch,
+  Música física, Colección, Digital), pero cada producto apunta a una
+  subcategoría (Poleras, Cassettes, EPs…), y el filtro comparaba solo
+  `p.categorias.slug === categoriaActiva` → 0 productos en cualquier chip y en
+  `?categoria=merch`. Ahora la consulta trae `categorias.padre_id` y un chip
+  padre incluye a sus hijas; un slug de subcategoría (`?categoria=poleras`)
+  sigue filtrando solo esa.
 
 - **Email de confirmación de compra**: la página `/checkout/exito` dice "Recibirás un email" pero no hay código de envío de email en ningún Route Handler
 

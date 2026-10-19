@@ -25,6 +25,8 @@ interface Categoria {
   id: string;
   nombre: string;
   slug: string;
+  /** Solo viene en la categoría embebida del producto (una subcategoría). */
+  padre_id?: string | null;
 }
 
 interface Producto {
@@ -126,7 +128,7 @@ function HomePageContent() {
           id, nombre, precio, imagenes, tipo, stock,
           artista_id, categoria_id,
           artistas (id, nombre, slug, ciudad, region, color_acento, verificado),
-          categorias (id, nombre, slug)
+          categorias (id, nombre, slug, padre_id)
         `)
         .eq("estado", "aprobado")
         .order("created_at", { ascending: false });
@@ -175,7 +177,16 @@ function HomePageContent() {
   const productosFiltrados = useMemo(() => {
     let lista = [...productos];
     if (categoriaActiva !== "todas") {
-      lista = lista.filter((p) => p.categorias?.slug === categoriaActiva);
+      // Los chips son categorías padre (Merch, Música física…), pero cada
+      // producto cuelga de una subcategoría (Poleras, Cassettes…). Un chip
+      // padre incluye todas sus hijas; un slug de subcategoría en
+      // ?categoria= sigue filtrando solo esa.
+      const padreId = categorias.find((c) => c.slug === categoriaActiva)?.id;
+      lista = lista.filter(
+        (p) =>
+          p.categorias?.slug === categoriaActiva ||
+          (padreId !== undefined && p.categorias?.padre_id === padreId)
+      );
     }
     if (tipoActivo !== "todos") {
       lista = lista.filter((p) => p.tipo === tipoActivo);
@@ -194,7 +205,7 @@ function HomePageContent() {
     if (ordenActivo === "precio_asc") lista.sort((a, b) => a.precio - b.precio);
     if (ordenActivo === "precio_desc") lista.sort((a, b) => b.precio - a.precio);
     return lista;
-  }, [productos, categoriaActiva, tipoActivo, regionActiva, busqueda, ordenActivo]);
+  }, [productos, categorias, categoriaActiva, tipoActivo, regionActiva, busqueda, ordenActivo]);
 
   // Contador del botón "Filtros" (móvil) y visibilidad de "Limpiar filtros".
   const nFiltros =
