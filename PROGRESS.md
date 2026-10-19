@@ -1080,9 +1080,19 @@ stock, RLS y consultas quedan intactos. Un commit por fase.
   `--tema-texto-claro`, `--tema-precio`, `--tema-azul-etiqueta`. Solo
   `?categoria=` va en la URL (región, tipo, orden y búsqueda son estado local,
   como antes).
-- ⏳ Fase 2 — `/producto/[id]` (incluye que el selector de cantidad se respete:
-  `agregar()` + `actualizarCantidad()`, sin tocar el store).
-- ⏳ Fase 3 — `/artista/[slug]` con pestañas Productos / Noticias / Sobre.
+- ✅ Fase 2 — `/producto/[id]` (`fa26014`, `8ffcc81`). El selector de cantidad
+  ahora se respeta (`agregar()` + `actualizarCantidad()`, sin tocar el store,
+  con tope en el stock); antes siempre agregaba 1. Lectura extra:
+  `artistas.verificado`/`generos` y `tipo` en relacionados (sello, género,
+  badge Digital). `components/tienda/SelloVerificado`.
+- ✅ Fase 3 — `/artista/[slug]` con pestañas Productos / Noticias / Sobre.
+  Noticias: `traerNoticiasDeArtista(artistaId)` en `lib/noticias.ts` (mismo
+  cliente anon y filtros que `traerNoticias`; lanza ante error), llamada desde
+  `page.tsx` en el servidor. Portada con degradado del `color_acento` (no hay
+  columna de foto de portada). Se elimina `components/ui/ProductCard`.
+  Hoy ningún artista real tiene noticias (las 12 son de la cuenta editorial),
+  ni `verificado = true`: esos estados se probaron con datos inyectados solo
+  en el navegador de prueba.
 - ⏳ Fase 4 — Drawer, `/carrito` y `/checkout`.
 - ⏳ Fase 5 — `/checkout/exito` y `/checkout/pendiente`.
 

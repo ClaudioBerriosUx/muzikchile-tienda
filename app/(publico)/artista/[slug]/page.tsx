@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { traerArtistaPorSlug } from "@/lib/artistas";
+import { traerNoticiasDeArtista } from "@/lib/noticias";
 import ArtistaClient from "./ArtistaClient";
 import { BASE_URL } from "@/lib/site";
 
@@ -65,5 +66,8 @@ export default async function ArtistaPage({ params }: Props) {
   const artista = await traerArtistaPorSlug(slug);
   if (!artista || artista.es_editorial) notFound();
 
-  return <ArtistaClient slug={slug} />;
+  // Pestaña "Noticias": publicaciones del artista, leídas en el servidor.
+  const noticias = await traerNoticiasDeArtista(artista.id);
+
+  return <ArtistaClient slug={slug} noticias={noticias} />;
 }

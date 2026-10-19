@@ -111,6 +111,32 @@ export async function traerNoticias(limite?: number): Promise<NoticiaLista[]> {
 }
 
 /**
+ * Noticias publicadas de un artista (`publicaciones.artista_id`), más recientes
+ * primero. Para la pestaña "Noticias" de /artista/[slug]. Lanza igual que
+ * `traerNoticias`: un error no es "este artista no tiene noticias".
+ */
+export async function traerNoticiasDeArtista(artistaId: string): Promise<NoticiaLista[]> {
+  const supabase = cliente();
+
+  const { data, error } = await supabase
+    .from("publicaciones")
+    .select(CAMPOS_LISTA)
+    .eq("artista_id", artistaId)
+    .eq("estado", "publicada")
+    .eq("tipo", "noticia")
+    .order("fecha_publicacion", { ascending: false });
+
+  if (error) {
+    console.error("[noticias] error cargando las noticias del artista:", error.message);
+    throw new Error(`[noticias] error cargando las noticias del artista: ${error.message}`);
+  }
+  return (data ?? []).map(({ cuerpo, ...n }) => ({
+    ...n,
+    resumen: resumenNoticia(n.bajada, cuerpo),
+  }));
+}
+
+/**
  * Una noticia por slug. Devuelve null si no existe o no está publicada —
  * el llamador decide si eso es un 404.
  */
