@@ -1,16 +1,24 @@
 import Link from "next/link";
 import { C, F } from "@/lib/portada";
 import { etiquetaCategoria } from "@/lib/publicaciones";
-import { traerNoticias, fechaCorta } from "@/lib/noticias";
+import { traerNoticias, fechaCorta, origenNoticia } from "@/lib/noticias";
 import ImagenNoticia from "@/components/noticias/ImagenNoticia";
+import FirmaNoticia, { ENLACE_ESTIRADO } from "@/components/noticias/FirmaNoticia";
+import BadgeComunidad from "@/components/noticias/BadgeComunidad";
 
 /**
  * Server Component: las noticias se leen en el servidor con `traerNoticias`
  * (lib/noticias.ts), la misma consulta del feed /noticias.
  *
  * Composición, imágenes en formato Instagram 4:5:
- *   1. Destacada (la más reciente) a todo el ancho: imagen a 1/3, texto al lado.
- *   2. Fila de 3 tarjetas (noticias 2–4): imagen arriba, badge + fecha y titular.
+ *   1. Destacada a todo el ancho: SIEMPRE la editorial más reciente, aunque haya
+ *      una nota de la comunidad más nueva. Imagen a 1/3, texto al lado.
+ *   2. Fila de 3 tarjetas: las más recientes de cualquier origen, sin repetir la
+ *      destacada. Imagen arriba, badges + fecha, titular y firma.
+ *
+ * Las tarjetas son <article> con enlace estirado (ver ENLACE_ESTIRADO) y no un
+ * <Link> entero: la firma de un artista enlaza a su ficha, y no se puede meter
+ * un <a> dentro de otro.
  */
 
 /**
@@ -27,28 +35,6 @@ const TARJETA: React.CSSProperties = {
   borderColor: C.borde,
   backgroundColor: C.negro,
 };
-
-/**
- * Autor de la nota. Hoy es siempre "MuzikChile" —las 8 noticias migradas del
- * Channel cuelgan de ese registro de `artistas`—, pero sale del dato y no
- * hardcodeado: cuando un artista publique lo suyo, aparecerá su nombre.
- */
-function Autor({ nombre }: { nombre: string | null | undefined }) {
-  if (!nombre) return null;
-  return (
-    <span
-      style={{
-        fontFamily: F.body,
-        textTransform: "uppercase",
-        letterSpacing: "0.1em",
-        fontSize: "12px",
-        color: C.rojoClaro,
-      }}
-    >
-      {nombre}
-    </span>
-  );
-}
 
 function Fecha({ iso }: { iso: string }) {
   return (
@@ -93,12 +79,20 @@ function Badge({ categoria }: { categoria: string | null }) {
 }
 
 export default async function UltimasNoticias() {
-  const noticias = await traerNoticias(4);
+  // En paralelo. Se traen 4 recientes para que, si la destacada está entre
+  // ellas, al sacarla queden igual 3.
+  const [[editorial], recientes] = await Promise.all([
+    traerNoticias({ origen: "editorial", limite: 1 }),
+    traerNoticias({ limite: 4 }),
+  ]);
+
+  // Sin editoriales (no debería pasar), la más reciente de cualquier origen.
+  const principal = editorial ?? recientes[0];
 
   // Sin noticias publicadas, la sección no existe.
-  if (noticias.length === 0) return null;
+  if (!principal) return null;
 
-  const [principal, ...fila] = noticias;
+  const fila = recientes.filter((n) => n.id !== principal.id).slice(0, 3);
 
   return (
     <section style={{ backgroundColor: C.negroSuave }} className="py-14">
@@ -139,9 +133,8 @@ export default async function UltimasNoticias() {
             Móvil: imagen arriba a todo el ancho, texto abajo. Desde `sm`, dos
             columnas 1fr/2fr con el texto centrado verticalmente: el alto lo
             pone la imagen 4:5, y el texto se acomoda en el centro. */}
-        <Link
-          href={`/noticias/${principal.slug}`}
-          className="group grid grid-cols-1 sm:grid-cols-[1fr_2fr] rounded-lg overflow-hidden border transition-all duration-200 hover:-translate-y-1"
+        <article
+          className="group relative grid grid-cols-1 sm:grid-cols-[1fr_2fr] rounded-lg overflow-hidden border transition-all duration-200 hover:-translate-y-1"
           style={TARJETA}
         >
           <ImagenNoticia src={principal.imagen_url} alt={principal.titular} sizes={SIZES_DESTACADA} />
@@ -149,7 +142,8 @@ export default async function UltimasNoticias() {
           <div className="p-6 sm:p-8 lg:p-12 flex flex-col justify-center gap-4 min-w-0">
             <div className="flex items-center gap-3 flex-wrap">
               <Badge categoria={principal.categoria} />
-              <Autor nombre={principal.artistas?.nombre} />
+              {origenNoticia(principal) === "comunidad" && <BadgeComunidad />}
+              <FirmaNoticia autor={principal.artistas} variante="tarjeta" />
               <span style={{ color: C.grisTenue, fontSize: "12px" }} aria-hidden>·</span>
               <Fecha iso={principal.fecha_publicacion} />
             </div>
@@ -163,7 +157,9 @@ export default async function UltimasNoticias() {
                 color: C.blanco,
               }}
             >
-              {principal.titular}
+              <Link href={`/noticias/${principal.slug}`} className={ENLACE_ESTIRADO}>
+                {principal.titular}
+              </Link>
             </h3>
 
             {/* Bajada, o extracto del cuerpo si viene vacía (lib/noticias.ts). */}
@@ -177,8 +173,8 @@ export default async function UltimasNoticias() {
             )}
 
             {/*
-              Un <span> y no un <Link>: toda la tarjeta ya es el enlace, y un
-              <a> dentro de otro es HTML inválido.
+              Un <span> y no un <Link>: el enlace estirado del titular ya
+              cubre toda la tarjeta.
 
               El color va por clases y NO inline: un estilo inline le gana en
               especificidad a `group-hover:`, igual que en los iconos del
@@ -198,19 +194,18 @@ export default async function UltimasNoticias() {
               <span className="inline-block transition-transform duration-200 group-hover:translate-x-1">→</span>
             </span>
           </div>
-        </Link>
+        </article>
 
-        {/* ── FILA: noticias 2, 3 y 4 ───────────────────────────────────────
+        {/* ── FILA: 3 más recientes sin la destacada ───────────────────────────────────────
             1 columna en móvil, 3 en escritorio. En tablet (2 columnas) la
             tercera tarjeta se oculta para que la fila quede 2 + 0 y no con una
             tarjeta huérfana: `sm:hidden lg:flex` la saca solo entre sm y lg. */}
         {fila.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mt-5">
             {fila.map((n, i) => (
-              <Link
+              <article
                 key={n.id}
-                href={`/noticias/${n.slug}`}
-                className={`group rounded-lg overflow-hidden border transition-all duration-200 hover:-translate-y-1 flex flex-col ${
+                className={`group relative rounded-lg overflow-hidden border transition-all duration-200 hover:-translate-y-1 flex flex-col ${
                   i === 2 ? "sm:hidden lg:flex" : ""
                 }`}
                 style={TARJETA}
@@ -220,6 +215,7 @@ export default async function UltimasNoticias() {
                 <div className="p-5 flex flex-col gap-3">
                   <div className="flex items-center gap-3 flex-wrap">
                     <Badge categoria={n.categoria} />
+                    {origenNoticia(n) === "comunidad" && <BadgeComunidad />}
                     <Fecha iso={n.fecha_publicacion} />
                   </div>
 
@@ -233,10 +229,14 @@ export default async function UltimasNoticias() {
                       color: C.blanco,
                     }}
                   >
-                    {n.titular}
+                    <Link href={`/noticias/${n.slug}`} className={ENLACE_ESTIRADO}>
+                      {n.titular}
+                    </Link>
                   </h4>
+
+                  <FirmaNoticia autor={n.artistas} variante="tarjeta" />
                 </div>
-              </Link>
+              </article>
             ))}
           </div>
         )}

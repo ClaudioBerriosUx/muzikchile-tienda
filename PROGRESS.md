@@ -1129,6 +1129,42 @@ no aparece en Header ni Footer. El rediseño no cambia eso.
 
 ---
 
+## 📰 Noticias: editorial vs. comunidad + revalidación bajo demanda — 2026-10-20
+
+**Diagnóstico previo:** las notas de artistas aprobadas *ya* salían en `/` y
+`/noticias` (`traerNoticias` nunca filtró por `es_editorial`). El "no aparece"
+era el ISR de 5 min: aprobar no invalidaba nada.
+
+- **`POST /api/revalidar-noticias`** `{ id }`: comprueba rol admin en el
+  servidor (cookies + `user_roles`), busca slug de la nota y del autor, y
+  revalida `/`, `/noticias`, `/sitemap.xml`, `/noticias/<slug>` y
+  `/artista/<slug>` (si no es editorial). Lo llaman, vía
+  `lib/revalidar-noticias.ts`: aprobar, despublicar y borrar (ANTES del delete)
+  en `/admin/publicaciones`, y publicar/editar en `PublicacionForm` editorial.
+  Nunca bloquea: si falla, toast de aviso y queda el ISR de 5 min de respaldo.
+- **`lib/noticias.ts`**: `traerNoticias({ limite, origen })` (filtro por
+  `artistas!inner(...).es_editorial`), tipos `OrigenNoticia` / `AutorNoticia`,
+  helper `origenNoticia()`, y `.eq("visibilidad", "publica")` explícito.
+- **`components/noticias/`**: `FirmaNoticia` (editorial = logo + "Redacción
+  MuzikChile" sin enlace; artista = foto + nombre + sello + enlace a su ficha),
+  `BadgeComunidad`, `ListadoNoticias` (chips Todas/Editorial/Comunidad por
+  `?origen=`, filtrado en cliente para conservar el ISR).
+- Tarjetas de portada y `/noticias` pasaron de `<Link>` entero a `<article>` con
+  enlace estirado (`ENLACE_ESTIRADO`), para que la firma pueda enlazar sin
+  anidar `<a>`.
+- **Portada**: destacada = editorial más reciente; fila = 4 recientes sin la
+  destacada, recortadas a 3.
+- RLS y esquema sin cambios.
+
+### Pendiente
+- **Probar la vista "Comunidad" con datos reales**: la nota de Valentina Ruz se
+  borró de la base durante esta sesión, así que hoy hay 0 notas de comunidad y
+  el badge, la firma de artista y el chip "Comunidad" no se vieron renderizados
+  con una nota real.
+- Probar en producción que aprobar una nota la muestra al instante en `/`.
+
+---
+
 ## 🚧 En progreso / bugs conocidos
 
 - ✅ **Resuelto 2026-10-19 — los chips de categoría de `/tienda` no filtraban

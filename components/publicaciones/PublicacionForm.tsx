@@ -17,6 +17,7 @@ import {
   subirImagenNoticia,
 } from "@/lib/subir-imagen-noticia";
 import { sanitizarHtml } from "@/lib/sanitizar";
+import { revalidarNoticias, AVISO_SIN_REVALIDAR } from "@/lib/revalidar-noticias";
 import EditorContenido from "@/components/contenido/EditorContenido";
 import {
   CATEGORIAS_NOTICIA,
@@ -257,7 +258,9 @@ export default function PublicacionForm({ artistaId, publicacion, modo = "artist
           ? { fecha_publicacion: new Date(data.fecha_publicacion).toISOString() }
           : {};
 
+      let id: string;
       if (editando) {
+        id = publicacion!.id;
         const { error } = await supabase
           .from("publicaciones")
           .update({
@@ -274,7 +277,7 @@ export default function PublicacionForm({ artistaId, publicacion, modo = "artist
           .eq("id", publicacion!.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("publicaciones").insert({
+        const { data: creada, error } = await supabase.from("publicaciones").insert({
           artista_id:  artistaId,
           tipo:        "noticia",
           categoria:   data.categoria,
@@ -286,18 +289,24 @@ export default function PublicacionForm({ artistaId, publicacion, modo = "artist
           estado,
           visibilidad: "publica",
           ...fecha,
-        });
+        }).select("id").single();
         if (error) throw error;
+        id = creada.id;
       }
 
       toast.success(
         estado === "borrador"
           ? "Borrador guardado"
           : estado === "publicada"
-            ? "Publicada. Aparece en el sitio en unos minutos."
+            ? "Publicada"
             : "Enviada a revisión. Te avisaremos cuando la revisemos."
       );
       if (editorial) {
+        // Publicar, o editar algo que ya estaba publicado (incluso si se pasa a
+        // borrador: también cambia lo que se ve). Ver /api/revalidar-noticias.
+        if ((estado === "publicada" || yaPublicada) && !(await revalidarNoticias(id))) {
+          toast.warning(AVISO_SIN_REVALIDAR);
+        }
         queryClient.invalidateQueries({ queryKey: ["admin-publicaciones"] });
         router.push("/admin/publicaciones");
       } else {

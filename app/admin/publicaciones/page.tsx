@@ -9,6 +9,7 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import { etiquetaCategoria } from "@/lib/publicaciones";
 import ContenidoNoticia from "@/components/contenido/ContenidoNoticia";
 import { borrarImagenDePublicacion } from "@/lib/storage";
+import { revalidarNoticias, AVISO_SIN_REVALIDAR } from "@/lib/revalidar-noticias";
 import {
   Dialog, DialogContent, DialogHeader,
   DialogTitle, DialogDescription, DialogFooter,
@@ -120,6 +121,7 @@ export default function ModerarPublicacionesPage() {
       toast.error(`Error al aprobar: ${error.message}`);
     } else {
       toast.success("Publicación aprobada");
+      if (!(await revalidarNoticias(seleccionada.id))) toast.warning(AVISO_SIN_REVALIDAR);
       invalidar();
       seleccionar(null);
     }
@@ -178,6 +180,7 @@ export default function ModerarPublicacionesPage() {
           ? "Retirada del público y devuelta al artista"
           : "Retirada del público como borrador"
       );
+      if (!(await revalidarNoticias(seleccionada.id))) toast.warning(AVISO_SIN_REVALIDAR);
       invalidar();
       seleccionar(null);
     }
@@ -190,6 +193,10 @@ export default function ModerarPublicacionesPage() {
     setBorrando(true);
     const supabase = createClient();
 
+    // Revalidar ANTES del delete: después ya no hay fila de donde sacar los
+    // slugs de la nota y del artista. Si el delete falla, revalidar no hizo daño.
+    const revalidada = aBorrar.estado === "publicada" ? await revalidarNoticias(aBorrar.id) : true;
+
     const { error } = await supabase
       .from("publicaciones")
       .delete()
@@ -201,6 +208,7 @@ export default function ModerarPublicacionesPage() {
       // Best-effort, después de borrar la fila. Ver lib/storage.ts.
       await borrarImagenDePublicacion(supabase, aBorrar.imagen_url);
       toast.success("Publicación eliminada");
+      if (!revalidada) toast.warning(AVISO_SIN_REVALIDAR);
       invalidar();
       setABorrar(null);
       seleccionar(null);

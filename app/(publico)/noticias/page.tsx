@@ -1,25 +1,24 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Suspense } from "react";
 import { Newspaper } from "lucide-react";
 import { C, F } from "@/lib/portada";
-import { etiquetaCategoria } from "@/lib/publicaciones";
-import { traerNoticias, fechaCorta } from "@/lib/noticias";
-import ImagenNoticia from "@/components/noticias/ImagenNoticia";
-
-/** Grilla de 3/2/1 columnas con gap-6 dentro de `max-w-6xl` (1104px útiles). */
-const SIZES_TARJETA = "(min-width: 1152px) 352px, (min-width: 1024px) 31vw, (min-width: 640px) 48vw, 100vw";
+import { traerNoticias } from "@/lib/noticias";
+import FiltroNoticias, { ListadoNoticias } from "@/components/noticias/ListadoNoticias";
 
 /**
  * ISR cada 5 minutos. Sin esto la página era estática pura: una noticia recién
  * publicada no aparecía hasta el siguiente deploy, y un build hecho con Supabase
  * caído dejaba el feed vacío congelado. Si una regeneración falla
  * (`traerNoticias` lanza), Next sigue sirviendo la última versión buena.
+ *
+ * Es el respaldo: aprobar, publicar, editar, despublicar o borrar una nota desde
+ * el admin revalida la página al instante (`/api/revalidar-noticias`).
  */
 export const revalidate = 300;
 
 const TITULO = "Noticias | MuzikChile";
 const DESCRIPCION =
-  "Lanzamientos, shows y notas de prensa de los artistas de la comunidad MuzikChile.";
+  "Notas de la redacción MuzikChile y de los artistas de la comunidad: lanzamientos, shows y prensa.";
 
 export const metadata: Metadata = {
   title: TITULO,
@@ -27,26 +26,6 @@ export const metadata: Metadata = {
   alternates: { canonical: "/noticias" },
   openGraph: { title: TITULO, description: DESCRIPCION, url: "/noticias", type: "website" },
 };
-
-/** Badge de categoría, con el pill rojo de la portada. */
-function BadgeCategoria({ categoria }: { categoria: string | null }) {
-  if (!categoria) return null;
-  return (
-    <span
-      className="inline-flex items-center px-2 py-0.5 rounded-full border"
-      style={{
-        borderColor: C.rojo,
-        color: C.rojoClaro,
-        fontFamily: F.body,
-        fontSize: "11px",
-        letterSpacing: "0.1em",
-        textTransform: "uppercase",
-      }}
-    >
-      {etiquetaCategoria(categoria)}
-    </span>
-  );
-}
 
 export default async function NoticiasPage() {
   const noticias = await traerNoticias();
@@ -72,7 +51,7 @@ export default async function NoticiasPage() {
           className="pl-4 mb-10"
           style={{ fontFamily: F.body, fontSize: "15px", color: C.gris }}
         >
-          Lo que están contando los artistas de la comunidad.
+          Notas de la redacción y de los artistas de la comunidad.
         </p>
 
         {noticias.length === 0 ? (
@@ -99,71 +78,10 @@ export default async function NoticiasPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {noticias.map((n) => (
-              <Link
-                key={n.id}
-                href={`/noticias/${n.slug}`}
-                className="group rounded-lg overflow-hidden border transition-all duration-200 hover:-translate-y-1 flex flex-col"
-                style={{ borderColor: C.borde, backgroundColor: C.negroSuave }}
-              >
-                <ImagenNoticia src={n.imagen_url} alt={n.titular} sizes={SIZES_TARJETA} />
-
-                {/* Contenido */}
-                <div className="p-5 flex flex-col gap-2 flex-1">
-                  <BadgeCategoria categoria={n.categoria} />
-
-                  <h2
-                    className="line-clamp-3"
-                    style={{
-                      fontFamily: F.titulo,
-                      fontSize: "24px",
-                      lineHeight: 1.15,
-                      letterSpacing: "0.02em",
-                      color: C.blanco,
-                    }}
-                  >
-                    {n.titular}
-                  </h2>
-
-                  {/* Bajada, o extracto del cuerpo si viene vacía. */}
-                  {n.resumen && (
-                    <p
-                      className="line-clamp-3"
-                      style={{
-                        fontFamily: F.body,
-                        fontSize: "14px",
-                        color: C.gris,
-                        lineHeight: 1.6,
-                      }}
-                    >
-                      {n.resumen}
-                    </p>
-                  )}
-
-                  {/* Pie: artista + fecha */}
-                  <div className="flex items-center gap-2 flex-wrap mt-auto pt-3">
-                    <span
-                      style={{
-                        fontFamily: F.body,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.1em",
-                        fontSize: "12px",
-                        color: C.rojoClaro,
-                      }}
-                    >
-                      {n.artistas?.nombre ?? "—"}
-                    </span>
-                    <span
-                      style={{ fontFamily: F.body, fontSize: "12px", color: C.grisTenue }}
-                    >
-                      {fechaCorta(n.fecha_publicacion)}
-                    </span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+          // Fallback = HTML estático con "Todas"; la isla aplica `?origen=` al hidratar.
+          <Suspense fallback={<ListadoNoticias noticias={noticias} origen={null} />}>
+            <FiltroNoticias noticias={noticias} />
+          </Suspense>
         )}
       </div>
     </div>

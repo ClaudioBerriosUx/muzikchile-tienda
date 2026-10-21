@@ -4,102 +4,14 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { C, F } from "@/lib/portada";
 import { etiquetaCategoria } from "@/lib/publicaciones";
-import { traerNoticiaPorSlug, fechaLarga, type NoticiaDetalle } from "@/lib/noticias";
+import { traerNoticiaPorSlug, fechaLarga, origenNoticia } from "@/lib/noticias";
 import { aTextoPlano } from "@/lib/embeds";
 import { BASE_URL } from "@/lib/site";
 import ContenidoNoticia from "@/components/contenido/ContenidoNoticia";
+import FirmaNoticia from "@/components/noticias/FirmaNoticia";
+import BadgeComunidad from "@/components/noticias/BadgeComunidad";
 
 type Props = { params: Promise<{ slug: string }> };
-
-type Autor = NonNullable<NoticiaDetalle["artistas"]>;
-
-/**
- * Atribución del autor.
- *
- * Para un artista es la puerta de entrada a su ficha, así que va enlazada.
- * Para la redacción NO se enlaza: los perfiles editoriales viven en `artistas`
- * por conveniencia del modelo, pero no tienen ficha pública — /artista/[slug]
- * les responde 404, y enlazarlos sería mandar al lector a un 404.
- *
- * El contenido se arma una vez y se envuelve según el caso, para no duplicarlo.
- */
-function AtribucionAutor({ autor }: { autor: Autor }) {
-  const contenido = (
-    <>
-      {autor.foto_url ? (
-        <img
-          src={autor.foto_url}
-          alt={autor.nombre}
-          className="w-11 h-11 rounded-full object-cover shrink-0"
-          style={{ border: `2px solid ${C.rojo}` }}
-        />
-      ) : (
-        <span
-          className="w-11 h-11 rounded-full shrink-0 flex items-center justify-center"
-          style={{
-            backgroundColor: C.rojo,
-            color: C.blanco,
-            fontFamily: F.body,
-            fontSize: "20px",
-          }}
-        >
-          {autor.nombre.charAt(0).toUpperCase()}
-        </span>
-      )}
-
-      <span className="min-w-0">
-        <span
-          className="block"
-          style={{ fontFamily: F.body, fontSize: "12px", color: C.grisTenue }}
-        >
-          {autor.es_editorial ? "Escrito por" : "Publicado por"}
-        </span>
-        <span
-          className="block truncate"
-          style={{
-            fontFamily: F.body,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            fontSize: "17px",
-            color: C.blanco,
-          }}
-        >
-          {autor.nombre}
-        </span>
-      </span>
-
-      {/* Solo los artistas tienen ficha que visitar. */}
-      {!autor.es_editorial && (
-        <span
-          className="ml-auto shrink-0"
-          style={{
-            fontFamily: F.body,
-            textTransform: "uppercase",
-            letterSpacing: "0.1em",
-            fontSize: "12px",
-            color: C.rojoClaro,
-          }}
-        >
-          Ver ficha →
-        </span>
-      )}
-    </>
-  );
-
-  const clases =
-    "group flex items-center gap-3 mt-8 p-4 rounded-lg border transition-colors";
-  const estilo = { borderColor: C.borde, backgroundColor: C.negroSuave };
-
-  if (autor.es_editorial) {
-    return <div className={clases} style={estilo}>{contenido}</div>;
-  }
-
-  return (
-    <Link href={`/artista/${autor.slug}`} className={clases} style={estilo}>
-      {contenido}
-    </Link>
-  );
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -146,8 +58,6 @@ export default async function NoticiaPage({ params }: Props) {
 
   // No existe, o existe pero no está publicada: para el público es lo mismo.
   if (!noticia) notFound();
-
-  const autor = noticia.artistas;
 
   return (
     <div style={{ backgroundColor: C.negro }} className="min-h-screen">
@@ -199,6 +109,7 @@ export default async function NoticiaPage({ params }: Props) {
               {etiquetaCategoria(noticia.categoria)}
             </span>
           )}
+          {origenNoticia(noticia) === "comunidad" && <BadgeComunidad grande />}
           <span style={{ fontFamily: F.body, fontSize: "13px", color: C.grisTenue }}>
             {fechaLarga(noticia.fecha_publicacion)}
           </span>
@@ -233,8 +144,8 @@ export default async function NoticiaPage({ params }: Props) {
           </p>
         )}
 
-        {/* Atribución del autor: enlazada solo si es un artista real. */}
-        {autor && <AtribucionAutor autor={autor} />}
+        {/* Firma: la redacción sin enlace; un artista, enlazado a su ficha. */}
+        <FirmaNoticia autor={noticia.artistas} variante="ficha" />
 
         {/*
           Cuerpo. Antes era `whitespace-pre-wrap` con texto plano; ahora pasa

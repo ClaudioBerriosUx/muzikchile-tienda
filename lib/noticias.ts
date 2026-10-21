@@ -10,7 +10,7 @@ import { aTextoPlano } from "@/lib/embeds";
  * las rutas puedan cachearse en vez de volverse dinámicas por sesión.
  *
  * El RLS `publicaciones_select_publico` ya limita a estado='publicada' +
- * visibilidad='publica'. Los filtros explícitos de acá son defensa en
+ * visibilidad='publica'. Los filtros explícitos de acá (los dos) son defensa en
  * profundidad: si alguien afloja la política, estas queries siguen acotadas.
  *
  * ⚠️ **Un error de Supabase LANZA, nunca se devuelve como lista vacía.** El
@@ -26,6 +26,22 @@ import { aTextoPlano } from "@/lib/embeds";
  * "Cero noticias" queda reservado para cuando de verdad no hay ninguna.
  */
 
+/**
+ * Origen de una nota: `editorial` = redacción MuzikChile (autor con
+ * `es_editorial`); `comunidad` = publicada por un artista y aprobada en
+ * moderación. Es también el valor de `?origen=` en /noticias.
+ */
+export type OrigenNoticia = "editorial" | "comunidad";
+
+/** Autor de una nota, con lo justo para la firma (`components/noticias/FirmaNoticia`). */
+export interface AutorNoticia {
+  nombre: string;
+  slug: string;
+  foto_url: string | null;
+  es_editorial: boolean;
+  verificado: boolean | null;
+}
+
 export interface NoticiaLista {
   id: string;
   titular: string;
@@ -35,7 +51,7 @@ export interface NoticiaLista {
   categoria: string | null;
   /** Fecha visible y de orden. Solo el admin la edita (ver la migración 20261003205430). */
   fecha_publicacion: string;
-  artistas: { nombre: string; slug: string } | null;
+  artistas: AutorNoticia | null;
   /**
    * Texto para la tarjeta: la bajada o, si viene vacía, un extracto del cuerpo.
    * Se calcula acá para que el cuerpo completo no viaje a cada tarjeta.
@@ -43,30 +59,31 @@ export interface NoticiaLista {
   resumen: string | null;
 }
 
+/**
+ * `artistas` es el autor. `es_editorial` distingue a la redacción MuzikChile
+ * de un artista real: los editoriales no tienen ficha pública, así que su
+ * atribución no se enlaza.
+ */
 export interface NoticiaDetalle extends Omit<NoticiaLista, "resumen"> {
   cuerpo: string | null;
-  /**
-   * El autor. `es_editorial` distingue a la redacción MuzikChile de un artista
-   * real: los editoriales no tienen ficha pública, así que su atribución no se
-   * enlaza.
-   */
-  artistas: {
-    nombre: string;
-    slug: string;
-    foto_url: string | null;
-    es_editorial: boolean;
-  } | null;
+}
+
+/** Origen de una nota. Sin autor (no debería pasar: `artista_id` es NOT NULL) cuenta como editorial. */
+export function origenNoticia(n: { artistas: Pick<AutorNoticia, "es_editorial"> | null }): OrigenNoticia {
+  return n.artistas && !n.artistas.es_editorial ? "comunidad" : "editorial";
 }
 
 // `cuerpo` va solo para armar el extracto de respaldo; no sale en NoticiaLista.
+// `!inner` para poder filtrar por `artistas.es_editorial`; no descarta nada,
+// porque `publicaciones.artista_id` es NOT NULL.
 const CAMPOS_LISTA =
-  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, fecha_publicacion, artistas(nombre, slug)";
+  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, fecha_publicacion, artistas!inner(nombre, slug, foto_url, es_editorial, verificado)";
 
 /** Largo del extracto de respaldo, en caracteres. */
 const LARGO_RESUMEN = 160;
 
 const CAMPOS_DETALLE =
-  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, fecha_publicacion, artistas(nombre, slug, foto_url, es_editorial)";
+  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, fecha_publicacion, artistas(nombre, slug, foto_url, es_editorial, verificado)";
 
 /**
  * La bajada, o un extracto del cuerpo en texto plano si la bajada está vacía
@@ -86,17 +103,24 @@ function cliente() {
   return createClient<Database>(url, key);
 }
 
-/** Todas las noticias publicadas, más recientes primero. */
-export async function traerNoticias(limite?: number): Promise<NoticiaLista[]> {
+/**
+ * Noticias publicadas, más recientes primero: editoriales y de la comunidad
+ * mezcladas, salvo que `origen` acote a una de las dos.
+ */
+export async function traerNoticias(
+  { limite, origen }: { limite?: number; origen?: OrigenNoticia } = {}
+): Promise<NoticiaLista[]> {
   const supabase = cliente();
 
   let q = supabase
     .from("publicaciones")
     .select(CAMPOS_LISTA)
     .eq("estado", "publicada")
+    .eq("visibilidad", "publica")
     .eq("tipo", "noticia")
     .order("fecha_publicacion", { ascending: false });
 
+  if (origen) q = q.eq("artistas.es_editorial", origen === "editorial");
   if (limite) q = q.limit(limite);
 
   const { data, error } = await q;
@@ -123,6 +147,7 @@ export async function traerNoticiasDeArtista(artistaId: string): Promise<Noticia
     .select(CAMPOS_LISTA)
     .eq("artista_id", artistaId)
     .eq("estado", "publicada")
+    .eq("visibilidad", "publica")
     .eq("tipo", "noticia")
     .order("fecha_publicacion", { ascending: false });
 
@@ -150,6 +175,7 @@ export async function traerNoticiaPorSlug(
     .select(CAMPOS_DETALLE)
     .eq("slug", slug)
     .eq("estado", "publicada")
+    .eq("visibilidad", "publica")
     .eq("tipo", "noticia")
     // maybeSingle y no single: "no existe" no es un error que haya que loguear.
     .maybeSingle();
