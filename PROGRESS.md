@@ -10,6 +10,7 @@
 ### Catálogo público
 - Home (`/`) con grid de productos, filtros sticky (categoría, región, tipo, orden, búsqueda libre)
 - Ficha de producto (`/producto/[id]`)
+  - 2026-10-20: el enlace "Ver tienda de…" pasó a ser una tarjeta destacada (`components/tienda/ArtistaTiendaCard.tsx`, reutilizable)
 - Tienda de artista (`/artista/[slug]`) con badge de verificado
 
 ### Carrito y checkout

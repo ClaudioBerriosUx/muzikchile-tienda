@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { ArrowRight, Download, MapPin, Minus, Plus, ShoppingBag, Truck } from "lucide-react";
+import { Download, MapPin, Minus, Plus, ShoppingBag, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import TarjetaProducto, { BadgeCategoria, BadgeDigital } from "@/components/tienda/TarjetaProducto";
 import PlaceholderProducto, { tipoVisual } from "@/components/tienda/PlaceholderProducto";
 import SelloVerificado from "@/components/tienda/SelloVerificado";
+import ArtistaTiendaCard from "@/components/tienda/ArtistaTiendaCard";
 import { useCarrito } from "@/lib/stores/carrito";
 import { formatCLP } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -343,16 +344,9 @@ export default function ProductoClient({ id }: { id: string }) {
             )}
 
             {artista && (
-              <Link
-                href={`/artista/${artista.slug}`}
-                className={cn(
-                  "flex h-12 items-center justify-center gap-2.5 self-start rounded-[10px] border border-tema-borde-campo px-5 text-sm font-medium text-tema-texto no-underline hover:border-tema-azul-texto",
-                  FOCO
-                )}
-              >
-                Ver tienda de {artista.nombre}
-                <ArrowRight size={15} strokeWidth={2.4} aria-hidden="true" />
-              </Link>
+              <ArtistaTiendaCard
+                artista={{ nombre: artista.nombre, slug: artista.slug, fotoUrl: artista.foto_url, verificado: artista.verificado }}
+              />
             )}
           </div>
         </div>
