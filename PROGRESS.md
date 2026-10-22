@@ -1165,6 +1165,28 @@ era el ISR de 5 min: aprobar no invalidaba nada.
 
 ---
 
+## 🌌 Portada: fondo con atmósfera en la bienvenida — 2026-10-21
+
+- **`app/(publico)/_portada/BienvenidaFondo.tsx`** (Server Component, estático):
+  degradado #1C1C1C → #161616, grilla de 72px con máscara radial, halo rojo
+  central, halo azul abajo a la derecha, "ESCENA" fantasma en contorno
+  (`clamp(96px, 22vw, 300px)`; el mínimo de 140 del diseño se cortaba a 375)
+  y línea de horizonte al pie. Sin animaciones; el grano sigue siendo el de
+  `GrainOverlay`.
+- La sección "Conecta" de `page.tsx` pasó a banda propia: padding 64/72px en
+  móvil y 88/96px en desktop (antes `pt-24 pb-4`, pegada a Videos destacados).
+  Titular y bajada sin cambios.
+- Verificado a 375/768/1280/1920: sin scroll horizontal, el Hero mide lo mismo.
+  Contraste con píxeles reales: titular ≥13.2:1 y bajada ≥5.29:1 sobre las
+  capas nuevas.
+
+### Pendiente
+- El grano de `GrainOverlay` (opacidad 0.12) deja motas sueltas que, en el
+  peor píxel, bajan la bajada a 4.43:1 en 375. Era así antes de este cambio;
+  evaluar bajar la opacidad.
+
+---
+
 ## 🎨 Portada y noticias: de #000 a la paleta tema — 2026-10-21
 
 - Portada, `/noticias`, `/noticias/[slug]`, `/contacto` y `/privacidad` (y sus

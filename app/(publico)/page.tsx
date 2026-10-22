@@ -4,6 +4,7 @@ import SenalProvider from "./_portada/SenalProvider";
 import Hero from "./_portada/Hero";
 import VideosDestacados from "./_portada/VideosDestacados";
 import UltimasNoticias from "./_portada/UltimasNoticias";
+import BienvenidaFondo from "./_portada/BienvenidaFondo";
 import GrainOverlay from "@/components/ui/GrainOverlay";
 import PopupSuscripcion from "@/components/ui/PopupSuscripcion";
 
@@ -30,14 +31,14 @@ export const metadata: Metadata = {
  *
  * Composición, de arriba abajo:
  *   1. Hero — el reproductor solo, sin texto de bienvenida colgando.
- *   2. respiro negro
- *   3. H1 "Conéctate…" + bajada — encabezado de la zona de contenido.
+ *   2. respiro
+ *   3. Bienvenida: H1 "Conéctate…" + bajada sobre `BienvenidaFondo`.
  *   4. Videos destacados
  *   5. Últimas noticias
  *
- * Los pasos 3 y 4 comparten fondo (`TEMA.fondo`) a propósito: es lo que los agrupa
- * como una sola zona y despega el H1 del reproductor. Ver el comentario largo
- * en la sección "Conecta" antes de tocar esos paddings.
+ * El paso 3 es una banda propia, cerrada por la línea de horizonte de
+ * `BienvenidaFondo`. Ver el comentario de la sección "Conecta" antes de tocar
+ * sus paddings.
  *
  * ⚠️ Todavía no es pública de cara a buscadores: el noindex global de
  * `app/layout.tsx` sigue puesto y el dominio sigue redirigido. Eso se levanta
@@ -60,26 +61,24 @@ export default function PortadaPage() {
         {/*
           ── Conecta: encabezado de la zona de contenido ──
 
-          Va pegado a `VideosDestacados`, no al Hero. El orden en el DOM es el
-          mismo de siempre; lo que cambió es de qué lado cae el corte visual.
+          Historia: primero compartía color con el final del Hero (el H1 se
+          leía como bajada del reproductor); después pasó al fondo de
+          `VideosDestacados` para agruparse con ellos.
 
-          Antes esta sección era `negroSuave`, igual que el final del degradado
-          del Hero: compartían banda, así que el H1 se leía como bajada del
-          reproductor. Ahora es `negro`, el mismo fondo de `VideosDestacados`,
-          y las dos secciones se leen como un solo bloque encabezado por el H1.
-          Cambiar este color es el cambio, no un retoque de paso.
-
-          Padding deliberadamente asimétrico:
-          · `pt-24` (96px) + los `pb-14` del Hero = 152px de respiro negro tras
-            el reproductor, que queda solo arriba como protagonista.
-          · `pb-4` (16px) + los `pt-14` de `VideosDestacados` = 72px hasta
-            "VIDEOS DESTACADOS": aire suficiente para que respire, poco para que
-            se despegue.
-          La proporción ~2:1 entre los dos huecos es lo que hace que el H1 se
-          agrupe hacia abajo y no hacia arriba.
+          2026-10-21: pasó a ser una banda propia con fondo de atmósfera
+          (`BienvenidaFondo`: degradado #1C1C1C → #161616, grilla, halos,
+          "ESCENA" fantasma y línea de horizonte al pie). Con la línea cerrando
+          la banda, el padding ya no es asimétrico: 64/72px en móvil y 88/96px
+          en desktop (diseño de Claude Design). Antes era `pt-24 pb-4`, que
+          pegaba el H1 a "VIDEOS DESTACADOS".
         */}
-        <section style={{ backgroundColor: TEMA.fondo }} className="pt-24 pb-4">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
+        <section
+          style={{ backgroundColor: TEMA.fondo }}
+          className="relative overflow-hidden px-5 pb-[72px] pt-16 md:px-10 md:pb-24 md:pt-[88px]"
+        >
+          <BienvenidaFondo />
+          {/* `relative`: queda por encima de las capas absolutas del fondo. */}
+          <div className="relative mx-auto max-w-3xl text-center">
             <h1
               style={{
                 fontFamily: F.titulo,
