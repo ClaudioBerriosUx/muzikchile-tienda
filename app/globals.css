@@ -673,3 +673,32 @@
     will-change: auto;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Marquesinas de /login (components/acceso/beneficios.tsx)
+
+   La pista lleva el recorrido duplicado y se desplaza -50%: al terminar, la
+   segunda copia ocupa el lugar exacto de la primera y el salto no se ve.
+   Duración y retraso llegan por variables desde el componente (cada franja va
+   a su propio ritmo).
+
+   Va en CSS y no inline por el @media de prefers-reduced-motion. Las franjas
+   son decorativas: quietas no se pierde nada.
+   ────────────────────────────────────────────────────────────────────────── */
+@keyframes marquesina {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.marquesina-pista {
+  animation: marquesina var(--marquesina-duracion, 44s) linear infinite;
+  animation-delay: var(--marquesina-retraso, 0s);
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquesina-pista {
+    animation: none;
+    will-change: auto;
+  }
+}

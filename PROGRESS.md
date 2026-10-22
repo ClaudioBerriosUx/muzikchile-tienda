@@ -1165,6 +1165,27 @@ era el ISR de 5 min: aprobar no invalidaba nada.
 
 ---
 
+## 🔑 /login: opción 3A del diseño (sin fotos, texto + marquesinas) — 2026-10-22
+
+- `components/acceso/beneficios.tsx` reescrito: `PanelBeneficios` (columna
+  derecha en desktop: grilla, halos, marquesina arriba y abajo, 4 beneficios
+  numerados en Anton 34px) y `ListaBeneficios` (móvil/tablet, bajo el
+  formulario). Reemplazan al mosaico y carrusel de la 2A; sale la lógica de
+  fotos opcionales de `public/acceso/` (la carpeta nunca existió).
+- Textos nuevos de los beneficios (Tu perfil, gratis · Tu tienda · Tus
+  noticias · En la señal). Marquesina inferior: "Tu perfil" en vez de "Tu ficha".
+- `/login` a dos columnas iguales y a todo el ancho. Formulario intacto.
+- Marquesinas: `.marquesina-pista` en globals.css, quietas con
+  `prefers-reduced-motion`, `aria-hidden`.
+- Verificado a 375/768/1280/1920: sin scroll horizontal, marquesinas se mueven
+  y se detienen con movimiento reducido, contraste ≥5.95:1 sobre el fondo real.
+
+### Pendiente
+- La bajada del formulario aún dice "Gestiona tu **ficha**…"; los beneficios
+  ahora dicen "perfil".
+
+---
+
 ## 🎬 Portada: bienvenida y videos destacados del diseño — 2026-10-21
 
 - **`_portada/Bienvenida.tsx`** (Server Component): kicker "Vitrina de la
