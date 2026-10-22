@@ -29,7 +29,8 @@ import { aTextoPlano } from "@/lib/embeds";
 /**
  * Origen de una nota: `editorial` = redacción MuzikChile (autor con
  * `es_editorial`); `comunidad` = publicada por un artista y aprobada en
- * moderación. Es también el valor de `?origen=` en /noticias.
+ * moderación. Se muestra como badge "Comunidad" en cada nota; desde el
+ * 2026-10-22 ya no filtra /noticias (el filtro es `?categoria=`).
  */
 export type OrigenNoticia = "editorial" | "comunidad";
 

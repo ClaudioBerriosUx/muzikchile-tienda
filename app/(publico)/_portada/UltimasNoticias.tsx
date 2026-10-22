@@ -49,11 +49,7 @@ function Fecha({ iso }: { iso: string }) {
  *
  * `etiquetaCategoria` devuelve "—" para una categoría desconocida o nula; en
  * ese caso no se pinta nada, porque un badge con un guion es peor que ningún
- * badge.
- *
- * ⚠️ Hoy las 8 noticias migradas son `categoria: 'general'`, así que todas
- * muestran "GENERAL". SHOW / PRENSA / LANZAMIENTO aparecerán cuando alguien
- * las clasifique — el vocabulario ya existe en `lib/publicaciones.ts`.
+ * badge. Vocabulario y etiquetas: `CATEGORIAS_NOTICIA` en `lib/publicaciones.ts`.
  */
 function Badge({ categoria }: { categoria: string | null }) {
   const etiqueta = etiquetaCategoria(categoria);
@@ -67,8 +63,8 @@ function Badge({ categoria }: { categoria: string | null }) {
         letterSpacing: "0.12em",
         fontSize: "10px",
         fontWeight: 600,
-        color: C.blanco,
-        backgroundColor: C.rojo,
+        color: TEMA.texto,
+        backgroundColor: TEMA.rojo,
         padding: "4px 9px",
         borderRadius: "3px",
       }}

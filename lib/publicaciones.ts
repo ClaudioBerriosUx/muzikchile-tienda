@@ -1,9 +1,15 @@
-/** Categorías válidas para publicaciones de tipo 'noticia'. */
+/**
+ * Categorías válidas para publicaciones de tipo 'noticia'. El `value` es lo que
+ * se guarda y va en `?categoria=` de /noticias; el `label` es lo que se ve. Al
+ * renombrar las etiquetas (2026-10-22) los valores se quedaron, por eso no
+ * calzan palabra por palabra. El CHECK `publicaciones_categoria_noticia_check`
+ * (migración 20261022135939) exige estos mismos tres: agregar uno acá sin
+ * migración hace fallar el insert.
+ */
 export const CATEGORIAS_NOTICIA = [
-  { value: "lanzamiento", label: "Lanzamiento" },
-  { value: "show",        label: "Show" },
-  { value: "prensa",      label: "Prensa" },
-  { value: "general",     label: "General" },
+  { value: "lanzamiento", label: "Lanzamientos" },
+  { value: "show",        label: "Tocatas" },
+  { value: "general",     label: "Escena" },
 ] as const;
 
 export type CategoriaNoticia = (typeof CATEGORIAS_NOTICIA)[number]["value"];

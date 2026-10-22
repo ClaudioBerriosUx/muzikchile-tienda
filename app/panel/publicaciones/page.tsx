@@ -156,7 +156,7 @@ export default function MisPublicacionesPage() {
             Aún no tienes publicaciones
           </p>
           <p className="mt-2" style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}>
-            Cuenta un lanzamiento, un show o lo que estés preparando.
+            Cuenta un lanzamiento, una tocata o lo que estés preparando.
           </p>
           <Link
             href="/panel/publicaciones/nueva"

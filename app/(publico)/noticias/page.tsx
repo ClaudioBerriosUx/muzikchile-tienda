@@ -18,7 +18,7 @@ export const revalidate = 300;
 
 const TITULO = "Noticias | MuzikChile";
 const DESCRIPCION =
-  "Notas de la redacción MuzikChile y de los artistas de la comunidad: lanzamientos, shows y prensa.";
+  "Notas de la redacción MuzikChile y de los artistas de la comunidad: lanzamientos, tocatas y escena.";
 
 export const metadata: Metadata = {
   title: TITULO,
@@ -78,8 +78,8 @@ export default async function NoticiasPage() {
             </p>
           </div>
         ) : (
-          // Fallback = HTML estático con "Todas"; la isla aplica `?origen=` al hidratar.
-          <Suspense fallback={<ListadoNoticias noticias={noticias} origen={null} />}>
+          // Fallback = HTML estático con "Todas"; la isla aplica `?categoria=` al hidratar.
+          <Suspense fallback={<ListadoNoticias noticias={noticias} categoria={null} />}>
             <FiltroNoticias noticias={noticias} />
           </Suspense>
         )}

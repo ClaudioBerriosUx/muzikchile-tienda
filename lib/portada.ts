@@ -62,6 +62,8 @@ export const TEMA = {
   /** Notas, fechas, rótulos (AA sobre fondo y superficie). */
   texto3:      "var(--tema-texto-3)",
   textoClaro:  "var(--tema-texto-claro)",
+  /** Rojo de fondo y borde (chips activos, pills). Nunca para texto. */
+  rojo:        "var(--tema-rojo)",
   /** Texto chico rojo sobre oscuro (AA). El rojo de marca no llega. */
   rojoTexto:   "var(--tema-rojo-texto)",
   /** Enlaces e info sobre oscuro (AA). */

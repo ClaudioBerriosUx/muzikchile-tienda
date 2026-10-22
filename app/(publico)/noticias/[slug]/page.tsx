@@ -98,8 +98,8 @@ export default async function NoticiaPage({ params }: Props) {
             <span
               className="inline-flex items-center px-2.5 py-0.5 rounded-full border"
               style={{
-                borderColor: C.rojo,
-                color: C.rojoClaro,
+                borderColor: TEMA.rojo,
+                color: TEMA.rojoTexto,
                 fontFamily: F.body,
                 fontSize: "12px",
                 letterSpacing: "0.1em",

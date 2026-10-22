@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-10-21
+> Actualizado: 2026-10-22
 > Branch: `main` (lanzamiento mergeado y en producción en www.muzikchile.cl)
 
 ---
@@ -1334,6 +1334,40 @@ era el ISR de 5 min: aprobar no invalidaba nada.
   del editor: requiere login; la validación es la misma función ya cubierta
   por el test).
 - TikTok y X siguen como enlace (`EmbedEnlace`).
+
+---
+
+## 🏷️ Noticias: categorías Lanzamientos · Tocatas · Escena — 2026-10-22
+
+**Diagnóstico:** `publicaciones.categoria` era `text` sin CHECK. Había 12
+noticias: 11 `general`, 1 `lanzamiento`, 0 `prensa`, 0 `show`. No hubo datos
+que migrar.
+
+- **Valores guardados intactos, cambian las etiquetas** (`CATEGORIAS_NOTICIA`
+  en `lib/publicaciones.ts`): `lanzamiento` → Lanzamientos, `show` → Tocatas,
+  `general` → Escena. Sale `prensa`. El formulario (artista y editorial) y los
+  badges heredan solos vía `etiquetaCategoria`.
+- **Migración `20261022135939_categoria_noticia_check`**: CHECK
+  `tipo <> 'noticia' OR (categoria IS NOT NULL AND categoria IN
+  ('lanzamiento','show','general'))`. Solo noticias: convocatorias y fechas
+  abiertas quedan libres. El `IS NOT NULL` cierra el hueco de NULL (sin él,
+  `NULL IN (...)` pasa el CHECK). Los types no cambian.
+- **`/noticias`**: el filtro pasó de Editorial/Comunidad (`?origen=`) a
+  Todas · Lanzamientos · Tocatas · Escena (`?categoria=<valor>`), filtrado en
+  el cliente, sin tocar el ISR. `?origen=` se ignora (cae en "Todas"). El badge
+  Comunidad y la firma siguen en cada nota.
+- **Rojo `tema-rojo`** en vez de `C.rojo` (#CC0000): chip activo (texto
+  `tema-texto` #EDEDED sobre #B02F3C = 5.41:1, AA), pills de categoría
+  (borde `tema-rojo`, texto `tema-rojo-texto`) en `/noticias` y la nota, y el
+  badge de la portada. Nuevo `TEMA.rojo` en `lib/portada.ts`.
+- Test RLS: caso **(o)**, un artista inserta una noticia con `'prensa'` →
+  rechazada con 23514 (CHECK, no RLS); caso **(p)**, lo mismo con categoría
+  NULL.
+
+### Pendiente
+- **`npx supabase db push`** y luego `npm run verificar:rls` (los casos (o) y (p) fallan
+  hasta que la migración esté aplicada).
+- Verificar los chips en el navegador (solo tsc + lint en esta sesión).
 
 ---
 

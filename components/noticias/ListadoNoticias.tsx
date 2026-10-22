@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { C, F, TEMA } from "@/lib/portada";
-import { etiquetaCategoria } from "@/lib/publicaciones";
-import { fechaCorta, origenNoticia, type NoticiaLista, type OrigenNoticia } from "@/lib/noticias";
+import { CATEGORIAS_NOTICIA, etiquetaCategoria, type CategoriaNoticia } from "@/lib/publicaciones";
+import { fechaCorta, origenNoticia, type NoticiaLista } from "@/lib/noticias";
 import ImagenNoticia from "@/components/noticias/ImagenNoticia";
 import FirmaNoticia, { ENLACE_ESTIRADO } from "@/components/noticias/FirmaNoticia";
 import BadgeComunidad from "@/components/noticias/BadgeComunidad";
@@ -12,26 +12,29 @@ import BadgeComunidad from "@/components/noticias/BadgeComunidad";
 /** Grilla de 3/2/1 columnas con gap-6 dentro de `max-w-6xl` (1104px útiles). */
 const SIZES_TARJETA = "(min-width: 1152px) 352px, (min-width: 1024px) 31vw, (min-width: 640px) 48vw, 100vw";
 
-const FILTROS: { valor: OrigenNoticia | null; etiqueta: string }[] = [
+const FILTROS: { valor: CategoriaNoticia | null; etiqueta: string }[] = [
   { valor: null, etiqueta: "Todas" },
-  { valor: "editorial", etiqueta: "Editorial" },
-  { valor: "comunidad", etiqueta: "Comunidad" },
+  ...CATEGORIAS_NOTICIA.map((c) => ({ valor: c.value, etiqueta: c.label })),
 ];
 
-/** `?origen=` válido, o null (= Todas) para cualquier otro valor. */
-function leerOrigen(valor: string | null): OrigenNoticia | null {
-  return valor === "editorial" || valor === "comunidad" ? valor : null;
+/**
+ * `?categoria=` válido, o null (= Todas) para cualquier otro valor. El
+ * `?origen=` del filtro anterior (Editorial/Comunidad) ni se lee: esos enlaces
+ * viejos caen en "Todas".
+ */
+function leerCategoria(valor: string | null): CategoriaNoticia | null {
+  return CATEGORIAS_NOTICIA.find((c) => c.value === valor)?.value ?? null;
 }
 
-/** Badge de categoría, con el pill rojo de la portada. */
+/** Badge de categoría: pill con el rojo de marca. */
 function BadgeCategoria({ categoria }: { categoria: string | null }) {
   if (!categoria) return null;
   return (
     <span
       className="inline-flex items-center px-2 py-0.5 rounded-full border"
       style={{
-        borderColor: C.rojo,
-        color: C.rojoClaro,
+        borderColor: TEMA.rojo,
+        color: TEMA.rojoTexto,
         fontFamily: F.body,
         fontSize: "11px",
         letterSpacing: "0.1em",
@@ -100,7 +103,7 @@ function TarjetaNoticia({ n }: { n: NoticiaLista }) {
 }
 
 /**
- * Chips de origen + grilla de /noticias.
+ * Chips de categoría + grilla de /noticias.
  *
  * El filtro corre en el cliente para que /noticias siga siendo ISR: leer
  * `searchParams` en el servidor la volvería dinámica, y perdería el respaldo de
@@ -109,26 +112,29 @@ function TarjetaNoticia({ n }: { n: NoticiaLista }) {
  *
  * `ListadoNoticias` no lee la URL: lo usa el fallback de <Suspense> de la página
  * (HTML estático = "Todas", lo que ven los buscadores y el primer pintado).
- * `FiltroNoticias` le pasa el `?origen=` real una vez hidratado.
+ * `FiltroNoticias` le pasa el `?categoria=` real una vez hidratado.
+ *
+ * Chip activo: texto `tema-texto` (#EDEDED) sobre `tema-rojo` (#B02F3C) =
+ * 5.4:1, pasa AA para texto normal (4.5:1).
  */
 export function ListadoNoticias({
   noticias,
-  origen,
+  categoria,
 }: {
   noticias: NoticiaLista[];
-  origen: OrigenNoticia | null;
+  categoria: CategoriaNoticia | null;
 }) {
-  const visibles = origen ? noticias.filter((n) => origenNoticia(n) === origen) : noticias;
+  const visibles = categoria ? noticias.filter((n) => n.categoria === categoria) : noticias;
 
   return (
     <>
-      <nav aria-label="Filtrar por origen" className="flex flex-wrap gap-2 mb-8">
+      <nav aria-label="Filtrar por categoría" className="flex flex-wrap gap-2 mb-8">
         {FILTROS.map((f) => {
-          const activo = f.valor === origen;
+          const activo = f.valor === categoria;
           return (
             <Link
               key={f.etiqueta}
-              href={f.valor ? `/noticias?origen=${f.valor}` : "/noticias"}
+              href={f.valor ? `/noticias?categoria=${f.valor}` : "/noticias"}
               scroll={false}
               aria-current={activo ? "page" : undefined}
               className="px-4 py-1.5 rounded-full border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tema-azul-texto"
@@ -137,9 +143,9 @@ export function ListadoNoticias({
                 fontSize: "13px",
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
-                borderColor: activo ? C.rojo : TEMA.borde,
-                backgroundColor: activo ? C.rojo : "transparent",
-                color: activo ? C.blanco : TEMA.texto2,
+                borderColor: activo ? TEMA.rojo : TEMA.borde,
+                backgroundColor: activo ? TEMA.rojo : "transparent",
+                color: activo ? TEMA.texto : TEMA.texto2,
               }}
             >
               {f.etiqueta}
@@ -153,9 +159,7 @@ export function ListadoNoticias({
           className="rounded-lg border py-16 px-6 text-center"
           style={{ borderColor: TEMA.borde, backgroundColor: TEMA.superficie, fontFamily: F.body, fontSize: "14px", color: TEMA.texto2 }}
         >
-          {origen === "comunidad"
-            ? "Todavía no hay notas de la comunidad."
-            : "Todavía no hay notas editoriales."}
+          Todavía no hay notas en {etiquetaCategoria(categoria)}.
         </p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -169,6 +173,6 @@ export function ListadoNoticias({
 }
 
 export default function FiltroNoticias({ noticias }: { noticias: NoticiaLista[] }) {
-  const origen = leerOrigen(useSearchParams().get("origen"));
-  return <ListadoNoticias noticias={noticias} origen={origen} />;
+  const categoria = leerCategoria(useSearchParams().get("categoria"));
+  return <ListadoNoticias noticias={noticias} categoria={categoria} />;
 }

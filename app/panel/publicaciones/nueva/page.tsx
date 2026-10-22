@@ -44,7 +44,7 @@ export default function NuevaPublicacionPage() {
         className="mb-8"
         style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#666666" }}
       >
-        Una noticia tuya: un lanzamiento, un show, una nota de prensa.
+        Una noticia tuya: un lanzamiento, una tocata, algo de la escena.
       </p>
 
       {isLoading ? (

@@ -523,6 +523,37 @@ async function main() {
       errN?.code === "22007",
       errN ? (errN.code === "22007" ? null : `Error inesperado: ${errN.message}`) : "NO fue rechazado"
     );
+
+    // (o) Categoría fuera del vocabulario (migración 20261022135939). No es RLS
+    // sino un CHECK, así que el rechazo llega como 23514, no como 42501.
+    const { error: errO } = await A.cliente.from("publicaciones").insert({
+      ...base,
+      artista_id: A.artistaId,
+      categoria: "prensa",
+      titular: "Categoría retirada",
+      slug: `${PREFIJO}-categoria-prensa`,
+      estado: "borrador",
+    });
+    check(
+      "(o) Artista INSERT de noticia con categoria 'prensa' → rechazado (CHECK)",
+      errO?.code === "23514",
+      errO ? (errO.code === "23514" ? null : `Error inesperado: ${errO.message}`) : "NO fue rechazado"
+    );
+
+    // (p) Noticia sin categoría: el CHECK lleva `is not null` justo para esto.
+    const { error: errP } = await A.cliente.from("publicaciones").insert({
+      ...base,
+      artista_id: A.artistaId,
+      categoria: null,
+      titular: "Sin categoría",
+      slug: `${PREFIJO}-categoria-null`,
+      estado: "borrador",
+    });
+    check(
+      "(p) Artista INSERT de noticia con categoria NULL → rechazado (CHECK)",
+      errP?.code === "23514",
+      errP ? (errP.code === "23514" ? null : `Error inesperado: ${errP.message}`) : "NO fue rechazado"
+    );
   } catch (err) {
     console.error("\nError montando o ejecutando la verificación:");
     console.error(`  ${err.message}`);
