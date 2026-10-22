@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { C, F } from "@/lib/portada";
+import { C, F, TEMA } from "@/lib/portada";
 import { etiquetaCategoria } from "@/lib/publicaciones";
 import { traerNoticias, fechaCorta, origenNoticia } from "@/lib/noticias";
 import ImagenNoticia from "@/components/noticias/ImagenNoticia";
@@ -32,13 +32,13 @@ const SIZES_FILA = "(min-width: 1152px) 355px, (min-width: 1024px) 31vw, (min-wi
 
 /** Estilo de tarjeta compartido por la destacada y las de la fila. */
 const TARJETA: React.CSSProperties = {
-  borderColor: C.borde,
-  backgroundColor: C.negro,
+  borderColor: TEMA.borde,
+  backgroundColor: TEMA.fondo,
 };
 
 function Fecha({ iso }: { iso: string }) {
   return (
-    <span style={{ fontFamily: F.body, fontSize: "12px", color: C.grisTenue }}>
+    <span style={{ fontFamily: F.body, fontSize: "12px", color: TEMA.texto3 }}>
       {fechaCorta(iso)}
     </span>
   );
@@ -95,7 +95,7 @@ export default async function UltimasNoticias() {
   const fila = recientes.filter((n) => n.id !== principal.id).slice(0, 3);
 
   return (
-    <section style={{ backgroundColor: C.negroSuave }} className="py-14">
+    <section style={{ backgroundColor: TEMA.superficie }} className="py-14">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Encabezado */}
         <div className="flex items-end justify-between gap-4 mb-8">
@@ -122,7 +122,7 @@ export default async function UltimasNoticias() {
               textTransform: "uppercase",
               letterSpacing: "0.1em",
               fontSize: "14px",
-              color: C.gris,
+              color: TEMA.texto2,
             }}
           >
             Ver todas →
@@ -144,7 +144,7 @@ export default async function UltimasNoticias() {
               <Badge categoria={principal.categoria} />
               {origenNoticia(principal) === "comunidad" && <BadgeComunidad />}
               <FirmaNoticia autor={principal.artistas} variante="tarjeta" />
-              <span style={{ color: C.grisTenue, fontSize: "12px" }} aria-hidden>·</span>
+              <span style={{ color: TEMA.texto3, fontSize: "12px" }} aria-hidden>·</span>
               <Fecha iso={principal.fecha_publicacion} />
             </div>
 
@@ -166,7 +166,7 @@ export default async function UltimasNoticias() {
             {principal.resumen && (
               <p
                 className="line-clamp-4"
-                style={{ fontFamily: F.body, fontSize: "16px", color: C.gris, lineHeight: 1.65 }}
+                style={{ fontFamily: F.body, fontSize: "16px", color: TEMA.texto2, lineHeight: 1.65 }}
               >
                 {principal.resumen}
               </p>
@@ -178,10 +178,11 @@ export default async function UltimasNoticias() {
 
               El color va por clases y NO inline: un estilo inline le gana en
               especificidad a `group-hover:`, igual que en los iconos del
-              Footer. Los hexes son C.rojo y C.rojoAcento.
+              Footer. Rojo en su variante de texto (AA sobre oscuro): el #CC0000
+              de marca no llega a 4.5:1 en 14px.
             */}
             <span
-              className="inline-flex items-center gap-2 self-start text-[#CC0000] transition-colors duration-200 group-hover:text-[#FF2200]"
+              className="inline-flex items-center gap-2 self-start text-tema-rojo-texto transition-colors duration-200 group-hover:text-tema-rojo-texto-suave"
               style={{
                 fontFamily: F.body,
                 fontSize: "14px",

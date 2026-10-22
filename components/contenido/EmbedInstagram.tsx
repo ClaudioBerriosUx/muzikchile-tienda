@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { C, F } from "@/lib/portada";
+import { C, F, TEMA } from "@/lib/portada";
 import { PATHS_MARCA } from "@/components/layout/iconos-marca";
 import { urlInstagram, urlPostInstagram } from "@/lib/embed-instagram";
 
@@ -95,7 +95,7 @@ export default function EmbedInstagram({ valor }: { valor: string }) {
     return (
       <div
         className="my-8 mx-auto w-full max-w-[540px] rounded-lg border p-5 flex flex-col gap-4"
-        style={{ borderColor: C.borde, backgroundColor: C.negroSuave }}
+        style={{ borderColor: TEMA.borde, backgroundColor: TEMA.superficie }}
       >
         <div className="flex items-center gap-3">
           <span
@@ -111,7 +111,7 @@ export default function EmbedInstagram({ valor }: { valor: string }) {
             <p style={{ fontFamily: F.body, fontSize: "15px", fontWeight: 600, color: C.blanco }}>
               {esReel ? "Reel de Instagram" : "Publicación de Instagram"}
             </p>
-            <p style={{ fontFamily: F.body, fontSize: "12px", color: C.gris }}>
+            <p style={{ fontFamily: F.body, fontSize: "12px", color: TEMA.texto2 }}>
               Al cargarla, Instagram puede guardar cookies en tu navegador.
             </p>
           </div>
@@ -148,7 +148,7 @@ export default function EmbedInstagram({ valor }: { valor: string }) {
         />
       )}
       {estado === "fallido" && (
-        <p style={{ fontFamily: F.body, fontSize: "13px", color: C.gris }}>
+        <p style={{ fontFamily: F.body, fontSize: "13px", color: TEMA.texto2 }}>
           No se pudo mostrar la publicación aquí.
         </p>
       )}

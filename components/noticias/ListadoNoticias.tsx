@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { C, F } from "@/lib/portada";
+import { C, F, TEMA } from "@/lib/portada";
 import { etiquetaCategoria } from "@/lib/publicaciones";
 import { fechaCorta, origenNoticia, type NoticiaLista, type OrigenNoticia } from "@/lib/noticias";
 import ImagenNoticia from "@/components/noticias/ImagenNoticia";
@@ -47,7 +47,7 @@ function TarjetaNoticia({ n }: { n: NoticiaLista }) {
   return (
     <article
       className="group relative rounded-lg overflow-hidden border transition-all duration-200 hover:-translate-y-1 flex flex-col"
-      style={{ borderColor: C.borde, backgroundColor: C.negroSuave }}
+      style={{ borderColor: TEMA.borde, backgroundColor: TEMA.superficie }}
     >
       <ImagenNoticia src={n.imagen_url} alt={n.titular} sizes={SIZES_TARJETA} />
 
@@ -79,7 +79,7 @@ function TarjetaNoticia({ n }: { n: NoticiaLista }) {
             style={{
               fontFamily: F.body,
               fontSize: "14px",
-              color: C.gris,
+              color: TEMA.texto2,
               lineHeight: 1.6,
             }}
           >
@@ -90,7 +90,7 @@ function TarjetaNoticia({ n }: { n: NoticiaLista }) {
         {/* Pie: firma + fecha */}
         <div className="flex items-center gap-3 flex-wrap mt-auto pt-3">
           <FirmaNoticia autor={n.artistas} variante="tarjeta" />
-          <span style={{ fontFamily: F.body, fontSize: "12px", color: C.grisTenue }}>
+          <span style={{ fontFamily: F.body, fontSize: "12px", color: TEMA.texto3 }}>
             {fechaCorta(n.fecha_publicacion)}
           </span>
         </div>
@@ -137,9 +137,9 @@ export function ListadoNoticias({
                 fontSize: "13px",
                 letterSpacing: "0.08em",
                 textTransform: "uppercase",
-                borderColor: activo ? C.rojo : C.borde,
+                borderColor: activo ? C.rojo : TEMA.borde,
                 backgroundColor: activo ? C.rojo : "transparent",
-                color: activo ? C.blanco : C.gris,
+                color: activo ? C.blanco : TEMA.texto2,
               }}
             >
               {f.etiqueta}
@@ -151,7 +151,7 @@ export function ListadoNoticias({
       {visibles.length === 0 ? (
         <p
           className="rounded-lg border py-16 px-6 text-center"
-          style={{ borderColor: C.borde, backgroundColor: C.negroSuave, fontFamily: F.body, fontSize: "14px", color: C.gris }}
+          style={{ borderColor: TEMA.borde, backgroundColor: TEMA.superficie, fontFamily: F.body, fontSize: "14px", color: TEMA.texto2 }}
         >
           {origen === "comunidad"
             ? "Todavía no hay notas de la comunidad."

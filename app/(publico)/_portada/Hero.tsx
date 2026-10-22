@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Maximize2, Pause } from "lucide-react";
-import { C, F, MARCA } from "@/lib/portada";
+import { C, F, MARCA, TEMA } from "@/lib/portada";
 import { useSenal } from "./SenalProvider";
 import {
   MODO_INTERRUPCION,
@@ -101,7 +101,7 @@ export default function Hero() {
   return (
     <section
       style={{
-        background: `linear-gradient(180deg, ${C.negro} 0%, ${C.negroSuave} 100%)`,
+        background: `linear-gradient(180deg, ${TEMA.fondo} 0%, ${TEMA.superficie} 100%)`,
       }}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-10 pb-14">
@@ -171,7 +171,7 @@ export default function Hero() {
         <div
           ref={contenedor}
           className="relative w-full rounded-xl overflow-hidden border"
-          style={{ borderColor: C.borde, backgroundColor: C.negro }}
+          style={{ borderColor: TEMA.borde, backgroundColor: TEMA.fondo }}
         >
           <div className="relative w-full" style={{ aspectRatio: "16 / 9" }}>
             <iframe
@@ -196,7 +196,7 @@ export default function Hero() {
               >
                 <span
                   className="w-12 h-12 rounded-full flex items-center justify-center"
-                  style={{ border: `2px solid ${C.borde}`, color: C.gris }}
+                  style={{ border: `2px solid ${TEMA.borde}`, color: TEMA.texto2 }}
                 >
                   <Pause size={20} />
                 </span>
@@ -206,7 +206,7 @@ export default function Hero() {
                     textTransform: "uppercase",
                     letterSpacing: "0.14em",
                     fontSize: "13px",
-                    color: C.gris,
+                    color: TEMA.texto2,
                     textAlign: "center",
                   }}
                 >
@@ -214,7 +214,7 @@ export default function Hero() {
                       se pausa de verdad; en modo "silenciar" seguiría corriendo. */}
                   {MODO_INTERRUPCION === "pausar" ? "Señal en pausa" : "Señal silenciada"}
                   <br />
-                  <span style={{ color: C.grisTenue, letterSpacing: "0.08em" }}>
+                  <span style={{ color: TEMA.texto3, letterSpacing: "0.08em" }}>
                     mientras ves el video
                   </span>
                 </p>
@@ -229,7 +229,7 @@ export default function Hero() {
             className="absolute bottom-3 right-3 w-9 h-9 rounded-md flex items-center justify-center transition-colors"
             style={{
               backgroundColor: "rgba(0,0,0,0.65)",
-              border: `1px solid ${C.borde}`,
+              border: `1px solid ${TEMA.borde}`,
               color: C.blanco,
             }}
             onMouseEnter={(e) => {
@@ -238,7 +238,7 @@ export default function Hero() {
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.backgroundColor = "rgba(0,0,0,0.65)";
-              e.currentTarget.style.borderColor = C.borde;
+              e.currentTarget.style.borderColor = TEMA.borde;
             }}
           >
             <Maximize2 size={16} />

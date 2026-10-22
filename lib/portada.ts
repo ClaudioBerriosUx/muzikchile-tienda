@@ -42,6 +42,31 @@ export const MARCA = {
 } as const;
 
 /**
+ * Paleta `--tema-*` de `globals.css` (la de la tienda, el login y el header),
+ * para el código que estila inline. Mismo puente que `MARCA`: acá no va ningún
+ * hex. En clases de Tailwind se usan `bg-tema-fondo`, `text-tema-texto-2`…
+ *
+ * La usan la portada, /noticias, /contacto y /privacidad desde que dejaron el
+ * fondo #000 de `C` (2026-10-21).
+ */
+export const TEMA = {
+  fondo:       "var(--tema-fondo)",
+  superficie:  "var(--tema-superficie)",
+  campo:       "var(--tema-campo)",
+  borde:       "var(--tema-borde)",
+  texto:       "var(--tema-texto)",
+  /** Bajadas y texto secundario. */
+  texto2:      "var(--tema-texto-2)",
+  /** Notas, fechas, rótulos (AA sobre fondo y superficie). */
+  texto3:      "var(--tema-texto-3)",
+  textoClaro:  "var(--tema-texto-claro)",
+  /** Texto chico rojo sobre oscuro (AA). El rojo de marca no llega. */
+  rojoTexto:   "var(--tema-rojo-texto)",
+  /** Enlaces e info sobre oscuro (AA). */
+  azulTexto:   "var(--tema-azul-texto)",
+} as const;
+
+/**
  * Tokens de la portada, calcados del diseño del Channel.
  *
  * Están hardcodeados a propósito: son los valores exactos del original, no un

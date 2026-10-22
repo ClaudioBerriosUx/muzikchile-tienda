@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Newspaper } from "lucide-react";
-import { C, F } from "@/lib/portada";
+import { C, F, TEMA } from "@/lib/portada";
 import { traerNoticias } from "@/lib/noticias";
 import FiltroNoticias, { ListadoNoticias } from "@/components/noticias/ListadoNoticias";
 
@@ -31,7 +31,7 @@ export default async function NoticiasPage() {
   const noticias = await traerNoticias();
 
   return (
-    <div style={{ backgroundColor: C.negro }} className="min-h-screen">
+    <div style={{ backgroundColor: TEMA.fondo }} className="min-h-screen">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14">
         {/* Encabezado, consistente con las secciones de la portada */}
         <h1
@@ -49,7 +49,7 @@ export default async function NoticiasPage() {
         </h1>
         <p
           className="pl-4 mb-10"
-          style={{ fontFamily: F.body, fontSize: "15px", color: C.gris }}
+          style={{ fontFamily: F.body, fontSize: "15px", color: TEMA.texto2 }}
         >
           Notas de la redacción y de los artistas de la comunidad.
         </p>
@@ -57,9 +57,9 @@ export default async function NoticiasPage() {
         {noticias.length === 0 ? (
           <div
             className="rounded-lg border py-20 px-6 text-center"
-            style={{ borderColor: C.borde, backgroundColor: C.negroSuave }}
+            style={{ borderColor: TEMA.borde, backgroundColor: TEMA.superficie }}
           >
-            <Newspaper size={36} className="mx-auto mb-4" style={{ color: C.grisTenue }} />
+            <Newspaper size={36} className="mx-auto mb-4" style={{ color: TEMA.texto3 }} />
             <p
               style={{
                 fontFamily: F.body,
@@ -72,7 +72,7 @@ export default async function NoticiasPage() {
             </p>
             <p
               className="mt-2"
-              style={{ fontFamily: F.body, fontSize: "14px", color: C.gris }}
+              style={{ fontFamily: F.body, fontSize: "14px", color: TEMA.texto2 }}
             >
               Cuando los artistas publiquen, aparecerán acá.
             </p>

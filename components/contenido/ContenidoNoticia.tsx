@@ -1,4 +1,4 @@
-import { C, F } from "@/lib/portada";
+import { C, F, TEMA } from "@/lib/portada";
 import { sanitizarHtml } from "@/lib/sanitizar";
 import {
   pareceHtml,
@@ -44,7 +44,7 @@ function MarcoResponsivo({
   return (
     <div
       className="relative w-full my-8 rounded-lg overflow-hidden border"
-      style={{ aspectRatio: proporcion, borderColor: C.borde }}
+      style={{ aspectRatio: proporcion, borderColor: TEMA.borde }}
     >
       {children}
     </div>
@@ -71,7 +71,7 @@ function EmbedSpotify({ valor }: { valor: string }) {
   // Los tracks son bajos; los álbumes y playlists necesitan más alto.
   const esCorto = valor.startsWith("track/") || valor.startsWith("episode/");
   return (
-    <div className="my-8 rounded-lg overflow-hidden border" style={{ borderColor: C.borde }}>
+    <div className="my-8 rounded-lg overflow-hidden border" style={{ borderColor: TEMA.borde }}>
       <iframe
         src={urlSpotify(valor)}
         title="Reproductor de Spotify"
@@ -104,7 +104,7 @@ function EmbedEnlace({ tipo, url }: { tipo: string; url: string }) {
       target="_blank"
       rel="noopener noreferrer"
       className="flex items-center gap-3 my-8 p-4 rounded-lg border transition-colors"
-      style={{ borderColor: C.borde, backgroundColor: C.negroSuave }}
+      style={{ borderColor: TEMA.borde, backgroundColor: TEMA.superficie }}
     >
       <span
         className="shrink-0 px-2 py-0.5 rounded-full border"
@@ -121,7 +121,7 @@ function EmbedEnlace({ tipo, url }: { tipo: string; url: string }) {
       </span>
       <span
         className="truncate"
-        style={{ fontFamily: F.body, fontSize: "14px", color: C.grisClaro }}
+        style={{ fontFamily: F.body, fontSize: "14px", color: TEMA.textoClaro }}
       >
         Ver publicación en {ETIQUETA[tipo] ?? tipo}
       </span>

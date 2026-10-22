@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { C } from "@/lib/portada";
+import { C, TEMA } from "@/lib/portada";
 import { CORREO_CONTACTO } from "@/lib/site";
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ const ACTUALIZADO = "13 de octubre de 2026";
 
 export default function PrivacidadPage() {
   return (
-    <main style={{ backgroundColor: C.negro }} className="min-h-screen">
+    <main style={{ backgroundColor: TEMA.fondo }} className="min-h-screen">
       <div className="max-w-2xl mx-auto px-6 py-20">
         <h1
           style={{
@@ -61,7 +61,7 @@ export default function PrivacidadPage() {
 
         <p
           className="mt-3"
-          style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: C.grisTenue }}
+          style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: TEMA.texto3 }}
         >
           Última actualización: {ACTUALIZADO}
         </p>
@@ -69,14 +69,14 @@ export default function PrivacidadPage() {
         {/* Aviso visible: mientras sea plantilla, que se note. */}
         <div
           className="mt-8 rounded-md border px-4 py-3"
-          style={{ borderColor: C.borde, backgroundColor: C.negroSuave }}
+          style={{ borderColor: TEMA.borde, backgroundColor: TEMA.superficie }}
         >
           <p
             style={{
               fontFamily: "var(--font-body)",
               fontSize: "13px",
               lineHeight: 1.6,
-              color: C.gris,
+              color: TEMA.texto2,
             }}
           >
             <strong style={{ color: C.rojoClaro }}>Borrador.</strong> Este texto
@@ -123,7 +123,7 @@ export default function PrivacidadPage() {
               href="https://policies.google.com/privacy"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: "#2C567F", textDecoration: "underline" }}
+              style={{ color: TEMA.azulTexto, textDecoration: "underline" }}
             >
               política de privacidad
             </a>
@@ -133,7 +133,7 @@ export default function PrivacidadPage() {
               href="https://tools.google.com/dlpage/gaoptout"
               target="_blank"
               rel="noopener noreferrer"
-              style={{ color: "#2C567F", textDecoration: "underline" }}
+              style={{ color: TEMA.azulTexto, textDecoration: "underline" }}
             >
               complemento de exclusión de Google Analytics
             </a>
@@ -166,7 +166,7 @@ export default function PrivacidadPage() {
             costo. Escríbenos a{" "}
             <a
               href={`mailto:${CORREO_CONTACTO}`}
-              style={{ color: "#2C567F", textDecoration: "underline" }}
+              style={{ color: TEMA.azulTexto, textDecoration: "underline" }}
             >
               {CORREO_CONTACTO}
             </a>{" "}
@@ -191,7 +191,7 @@ export default function PrivacidadPage() {
             Cualquier duda sobre esta política o sobre tus datos:{" "}
             <a
               href={`mailto:${CORREO_CONTACTO}`}
-              style={{ color: "#2C567F", textDecoration: "underline" }}
+              style={{ color: TEMA.azulTexto, textDecoration: "underline" }}
             >
               {CORREO_CONTACTO}
             </a>
@@ -231,7 +231,7 @@ function P({ children }: { children: React.ReactNode }) {
         fontFamily: "var(--font-body)",
         fontSize: "16px",
         lineHeight: 1.75,
-        color: C.grisClaro,
+        color: TEMA.textoClaro,
       }}
     >
       {children}

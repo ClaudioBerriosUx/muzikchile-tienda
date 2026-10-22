@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Play, X, MapPin } from "lucide-react";
-import { C, F, idYoutube, thumbYoutube, thumbYoutubeFallback } from "@/lib/portada";
+import { C, F, idYoutube, thumbYoutube, thumbYoutubeFallback, TEMA } from "@/lib/portada";
 import { useSenal } from "./SenalProvider";
 
 /**
@@ -82,7 +82,7 @@ function VideoModal({
       >
         <div
           className="relative w-full rounded-lg overflow-hidden border"
-          style={{ aspectRatio: "16 / 9", borderColor: C.borde }}
+          style={{ aspectRatio: "16 / 9", borderColor: TEMA.borde }}
         >
           <iframe
             src={`https://www.youtube.com/embed/${id}?autoplay=1&rel=0`}
@@ -139,7 +139,7 @@ function VideoModal({
           >
             {video.artist}
           </p>
-          <p style={{ fontFamily: F.body, color: C.gris, fontSize: "14px" }}>
+          <p style={{ fontFamily: F.body, color: TEMA.texto2, fontSize: "14px" }}>
             {video.tracktitle}
           </p>
         </div>
@@ -167,13 +167,13 @@ function VideoCard({
       type="button"
       onClick={onSelect}
       className="group text-left rounded-lg overflow-hidden border transition-all duration-200 hover:-translate-y-1"
-      style={{ borderColor: C.borde, backgroundColor: C.negroSuave }}
+      style={{ borderColor: TEMA.borde, backgroundColor: TEMA.superficie }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = C.rojo;
         e.currentTarget.style.boxShadow = "0 10px 30px -10px rgba(204,0,0,0.55)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = C.borde;
+        e.currentTarget.style.borderColor = TEMA.borde;
         e.currentTarget.style.boxShadow = "none";
       }}
     >
@@ -219,7 +219,7 @@ function VideoCard({
         </p>
         <p
           className="truncate mt-0.5"
-          style={{ fontFamily: F.body, fontSize: "13px", color: C.gris }}
+          style={{ fontFamily: F.body, fontSize: "13px", color: TEMA.texto2 }}
         >
           {video.tracktitle ?? ""}
         </p>
@@ -279,7 +279,7 @@ export default function VideosDestacados() {
   const configurado = !!CHANNEL_URL && !!CHANNEL_KEY;
 
   return (
-    <section style={{ backgroundColor: C.negro }} className="py-14">
+    <section style={{ backgroundColor: TEMA.fondo }} className="py-14">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <h2
           className="pl-4 mb-8"
@@ -298,7 +298,7 @@ export default function VideosDestacados() {
         {!configurado ? (
           <p
             className="rounded-lg border p-6"
-            style={{ borderColor: C.borde, fontFamily: F.body, color: C.grisTenue, fontSize: "14px" }}
+            style={{ borderColor: TEMA.borde, fontFamily: F.body, color: TEMA.texto3, fontSize: "14px" }}
           >
             Falta configurar <code>NEXT_PUBLIC_CHANNEL_SUPABASE_URL</code> y{" "}
             <code>NEXT_PUBLIC_CHANNEL_SUPABASE_ANON_KEY</code> para mostrar los videos del Channel.
@@ -309,7 +309,7 @@ export default function VideosDestacados() {
               <div
                 key={i}
                 className="rounded-lg overflow-hidden border animate-pulse"
-                style={{ borderColor: C.borde, backgroundColor: C.negroSuave }}
+                style={{ borderColor: TEMA.borde, backgroundColor: TEMA.superficie }}
               >
                 <div style={{ aspectRatio: "16 / 9", backgroundColor: "#141414" }} />
                 <div className="p-4 flex flex-col gap-2">
@@ -320,11 +320,11 @@ export default function VideosDestacados() {
             ))}
           </div>
         ) : isError ? (
-          <p style={{ fontFamily: F.body, color: C.grisTenue, fontSize: "14px" }}>
+          <p style={{ fontFamily: F.body, color: TEMA.texto3, fontSize: "14px" }}>
             No se pudieron cargar los videos en este momento.
           </p>
         ) : videos.length === 0 ? (
-          <p style={{ fontFamily: F.body, color: C.grisTenue, fontSize: "14px" }}>
+          <p style={{ fontFamily: F.body, color: TEMA.texto3, fontSize: "14px" }}>
             Todavía no hay videos destacados.
           </p>
         ) : (

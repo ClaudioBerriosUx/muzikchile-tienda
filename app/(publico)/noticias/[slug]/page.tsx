@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { C, F } from "@/lib/portada";
+import { C, F, TEMA } from "@/lib/portada";
 import { etiquetaCategoria } from "@/lib/publicaciones";
 import { traerNoticiaPorSlug, fechaLarga, origenNoticia } from "@/lib/noticias";
 import { aTextoPlano } from "@/lib/embeds";
@@ -60,7 +60,7 @@ export default async function NoticiaPage({ params }: Props) {
   if (!noticia) notFound();
 
   return (
-    <div style={{ backgroundColor: C.negro }} className="min-h-screen">
+    <div style={{ backgroundColor: TEMA.fondo }} className="min-h-screen">
       <article className="max-w-[720px] mx-auto px-4 sm:px-6 py-12">
         <Link
           href="/noticias"
@@ -70,7 +70,7 @@ export default async function NoticiaPage({ params }: Props) {
             textTransform: "uppercase",
             letterSpacing: "0.1em",
             fontSize: "13px",
-            color: C.gris,
+            color: TEMA.texto2,
           }}
         >
           <ArrowLeft size={14} />
@@ -81,7 +81,7 @@ export default async function NoticiaPage({ params }: Props) {
         {noticia.imagen_url && (
           <div
             className="rounded-lg overflow-hidden border mb-8"
-            style={{ borderColor: C.borde }}
+            style={{ borderColor: TEMA.borde }}
           >
             <img
               src={noticia.imagen_url}
@@ -110,7 +110,7 @@ export default async function NoticiaPage({ params }: Props) {
             </span>
           )}
           {origenNoticia(noticia) === "comunidad" && <BadgeComunidad grande />}
-          <span style={{ fontFamily: F.body, fontSize: "13px", color: C.grisTenue }}>
+          <span style={{ fontFamily: F.body, fontSize: "13px", color: TEMA.texto3 }}>
             {fechaLarga(noticia.fecha_publicacion)}
           </span>
         </div>
@@ -136,7 +136,7 @@ export default async function NoticiaPage({ params }: Props) {
               fontFamily: F.body,
               fontSize: "19px",
               lineHeight: 1.6,
-              color: C.grisClaro,
+              color: TEMA.textoClaro,
               fontWeight: 500,
             }}
           >
@@ -158,7 +158,7 @@ export default async function NoticiaPage({ params }: Props) {
         {/* Cierre */}
         <div
           className="mt-12 pt-8"
-          style={{ borderTop: `1px solid ${C.borde}` }}
+          style={{ borderTop: `1px solid ${TEMA.borde}` }}
         >
           <Link
             href="/noticias"
@@ -168,7 +168,7 @@ export default async function NoticiaPage({ params }: Props) {
               textTransform: "uppercase",
               letterSpacing: "0.1em",
               fontSize: "14px",
-              color: C.gris,
+              color: TEMA.texto2,
             }}
           >
             <ArrowLeft size={14} />

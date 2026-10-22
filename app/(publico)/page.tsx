@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { C, F } from "@/lib/portada";
+import { C, F, TEMA } from "@/lib/portada";
 import SenalProvider from "./_portada/SenalProvider";
 import Hero from "./_portada/Hero";
 import VideosDestacados from "./_portada/VideosDestacados";
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
  *   4. Videos destacados
  *   5. Últimas noticias
  *
- * Los pasos 3 y 4 comparten fondo (`C.negro`) a propósito: es lo que los agrupa
+ * Los pasos 3 y 4 comparten fondo (`TEMA.fondo`) a propósito: es lo que los agrupa
  * como una sola zona y despega el H1 del reproductor. Ver el comentario largo
  * en la sección "Conecta" antes de tocar esos paddings.
  *
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
  */
 export default function PortadaPage() {
   return (
-    <div style={{ backgroundColor: C.negro }}>
+    <div style={{ backgroundColor: TEMA.fondo }}>
       {/*
         Hero y VideosDestacados comparten estado: al abrir un destacado hay que
         callar la señal en vivo, o suenan las dos a la vez. El provider los
@@ -78,7 +78,7 @@ export default function PortadaPage() {
           La proporción ~2:1 entre los dos huecos es lo que hace que el H1 se
           agrupe hacia abajo y no hacia arriba.
         */}
-        <section style={{ backgroundColor: C.negro }} className="pt-24 pb-4">
+        <section style={{ backgroundColor: TEMA.fondo }} className="pt-24 pb-4">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
             <h1
               style={{
@@ -100,7 +100,7 @@ export default function PortadaPage() {
                 fontFamily: F.body,
                 fontSize: "16px",
                 lineHeight: 1.7,
-                color: C.gris,
+                color: TEMA.texto2,
               }}
             >
               Nos mueve la pasión por los cantantes chilenos. Descubre el talento de

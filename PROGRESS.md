@@ -1165,6 +1165,27 @@ era el ISR de 5 min: aprobar no invalidaba nada.
 
 ---
 
+## 🎨 Portada y noticias: de #000 a la paleta tema — 2026-10-21
+
+- Portada, `/noticias`, `/noticias/[slug]`, `/contacto` y `/privacidad` (y sus
+  componentes: `_portada/*`, `components/noticias/*`, `ContenidoNoticia`,
+  `EmbedInstagram`) dejaron `C.negro`/`C.negroSuave`/`C.borde`/`C.gris*` por
+  `TEMA` (nuevo en `lib/portada.ts`, puente a las `--tema-*`):
+  fondo `#161616`, tarjetas y sección de noticias `#1C1C1C`, bordes `#2A2A2A`,
+  grises `tema-texto-2/-3/-claro`. Los rojos de marca de `C` no se tocaron.
+- Contraste: "Leer nota completa" pasó de `#CC0000` a `tema-rojo-texto`, y los
+  enlaces de `/privacidad` de `#2C567F` a `tema-azul-texto`.
+- Auditoría automática (cada texto visible vs. su fondo efectivo, WCAG AA) en
+  las 5 páginas a 375 y 1280: **25 textos bajo AA antes → 0 después**. Los 25
+  ya fallaban sobre el negro (fechas `#555`, el rojo y el azul de arriba).
+
+### Pendiente
+- El Footer sigue en negro (no estaba en el alcance): con el resto en `#161616`,
+  se lee como bloque aparte. Decidir si pasa a `tema-*`.
+- `ImagenNoticia` mantiene `#141414` de fondo en el recuadro de la imagen.
+
+---
+
 ## 🧭 Header público: cápsula flotante — 2026-10-21
 
 - **`components/layout/Header.tsx`** reescrito (diseño de Claude Design): cápsula
@@ -1194,9 +1215,8 @@ era el ISR de 5 min: aprobar no invalidaba nada.
   cápsula.
 
 ### Pendiente
-- Las páginas que siguen en `#000` (`C.negro`) muestran un corte con el
-  `#161616` del layout bajo el header → se pasan a `bg-tema-fondo` en el commit
-  siguiente.
+- ✅ Resuelto en el commit siguiente: las páginas en `#000` se pasaron a
+  `tema-fondo` (ver abajo).
 - `CarritoDrawer` tiene un error de lint previo (`set-state-in-effect` en
   `setMontado`), y `PanelShell` una variable sin usar; los dos son anteriores a
   este cambio.

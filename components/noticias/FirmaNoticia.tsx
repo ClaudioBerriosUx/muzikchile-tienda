@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { C, F } from "@/lib/portada";
+import { C, F, TEMA } from "@/lib/portada";
 import type { AutorNoticia } from "@/lib/noticias";
 import SelloVerificado from "@/components/tienda/SelloVerificado";
 
@@ -112,7 +112,7 @@ export default function FirmaNoticia({
   }
 
   const clases = "group flex items-center gap-3 mt-8 p-4 rounded-lg border transition-colors";
-  const estilo = { borderColor: C.borde, backgroundColor: C.negroSuave };
+  const estilo = { borderColor: TEMA.borde, backgroundColor: TEMA.superficie };
   const nombre = {
     fontFamily: F.body,
     textTransform: "uppercase",
@@ -120,7 +120,7 @@ export default function FirmaNoticia({
     fontSize: "17px",
     color: C.blanco,
   } as const;
-  const rotulo = { fontFamily: F.body, fontSize: "12px", color: C.grisTenue };
+  const rotulo = { fontFamily: F.body, fontSize: "12px", color: TEMA.texto3 };
 
   if (editorial) {
     return (

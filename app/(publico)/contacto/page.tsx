@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { C } from "@/lib/portada";
+import { C, TEMA } from "@/lib/portada";
 import { CORREO_CONTACTO } from "@/lib/site";
 
 const TITULO = "Contacto — MuzikChile";
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function ContactoPage() {
   return (
-    <main style={{ backgroundColor: C.negro }} className="min-h-screen">
+    <main style={{ backgroundColor: TEMA.fondo }} className="min-h-screen">
       <div className="max-w-2xl mx-auto px-6 py-20">
         <h1
           style={{
@@ -35,7 +35,7 @@ export default function ContactoPage() {
             fontFamily: "var(--font-body)",
             fontSize: "16px",
             lineHeight: 1.75,
-            color: C.grisClaro,
+            color: TEMA.textoClaro,
           }}
         >
           Pedidos, prensa, artistas que quieren sumarse o cualquier otra
@@ -48,9 +48,9 @@ export default function ContactoPage() {
           style={{
             fontFamily: "var(--font-body)",
             fontSize: "18px",
-            borderColor: C.borde,
-            backgroundColor: C.negroSuave,
-            color: C.grisClaro,
+            borderColor: TEMA.borde,
+            backgroundColor: TEMA.superficie,
+            color: TEMA.textoClaro,
           }}
         >
           {CORREO_CONTACTO}
