@@ -1393,10 +1393,35 @@ que migrar.
   rechazada con 23514 (CHECK, no RLS); caso **(p)**, lo mismo con categoría
   NULL.
 
+### Ajuste del vocabulario — 2026-10-22 (antes del `db push`)
+
+Según el contenido real, cinco categorías: `lanzamiento` → Lanzamientos
+(singles, discos), **`video` → Videoclips** (nueva: estreno de un
+videoclip), `show` → **En vivo** (antes "Tocatas": festivales, ciclos,
+tocatas, sesiones), **`perfil` → Perfiles** (nueva: presentar a un artista
+o banda), `general` → Escena (análisis, curaduría, industria).
+
+- **Se editó la migración `20261022135939` en vez de crear otra**: no estaba
+  aplicada. Comprobado con un INSERT a propósito inválido con service role
+  (`categoria 'prensa'` + `artista_id` inexistente): respondió 23503 (FK) y
+  no 23514, o sea, el CHECK no existe en la DB y no se escribió ninguna fila
+  (`supabase migration list` da 403 con esta cuenta). CHECK:
+  `categoria IS NOT NULL AND categoria IN ('lanzamiento','video','show','perfil','general')`.
+- Filtro de `/noticias`: Todas · Lanzamientos · Videoclips · En vivo ·
+  Perfiles · Escena (orden de `CATEGORIAS_NOTICIA`). A 375px no caben (656px
+  en 343): en móvil la fila hace **scroll horizontal** sin salto de línea ni
+  scroll de página, y se desplaza sola hasta el chip activo
+  (`?categoria=perfil`); desde `sm` envuelve como antes. Verificado con
+  Chrome headless a 375 y 1280.
+- Meta description de `/noticias` actualizada con las cinco.
+- Test RLS: **(q)** `'perfil'` y **(r)** `'video'` → permitidos (las filas
+  las barre `limpiar()`). El NULL rechazado ya era el caso (p).
+- En la ficha del artista (`claseCategoria` de `ArtistaClient`) `video` y
+  `perfil` usan el pill neutro, como `general`.
+
 ### Pendiente
 - **`npx supabase db push`** y luego `npm run verificar:rls` (los casos (o) y (p) fallan
-  hasta que la migración esté aplicada).
-- Verificar los chips en el navegador (solo tsc + lint en esta sesión).
+  hasta que la migración esté aplicada; (q) y (r) deben pasar).
 
 ---
 

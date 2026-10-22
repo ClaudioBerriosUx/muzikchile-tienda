@@ -18,7 +18,7 @@ export const revalidate = 300;
 
 const TITULO = "Noticias | MuzikChile";
 const DESCRIPCION =
-  "Notas de la redacción MuzikChile y de los artistas de la comunidad: lanzamientos, tocatas y escena.";
+  "Notas de la redacción MuzikChile y de los artistas de la comunidad: lanzamientos, videoclips, en vivo, perfiles y escena.";
 
 export const metadata: Metadata = {
   title: TITULO,

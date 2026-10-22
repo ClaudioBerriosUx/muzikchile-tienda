@@ -7,9 +7,11 @@
  * migración hace fallar el insert.
  */
 export const CATEGORIAS_NOTICIA = [
-  { value: "lanzamiento", label: "Lanzamientos" },
-  { value: "show",        label: "Tocatas" },
-  { value: "general",     label: "Escena" },
+  { value: "lanzamiento", label: "Lanzamientos" }, // singles, discos
+  { value: "video",       label: "Videoclips" },   // estreno de un videoclip
+  { value: "show",        label: "En vivo" },      // festivales, ciclos, tocatas, sesiones
+  { value: "perfil",      label: "Perfiles" },     // presentar a un artista o banda
+  { value: "general",     label: "Escena" },       // análisis, curaduría, industria
 ] as const;
 
 export type CategoriaNoticia = (typeof CATEGORIAS_NOTICIA)[number]["value"];

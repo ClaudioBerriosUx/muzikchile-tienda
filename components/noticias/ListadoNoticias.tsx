@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { C, F, TEMA } from "@/lib/portada";
@@ -114,6 +115,12 @@ function TarjetaNoticia({ n }: { n: NoticiaLista }) {
  * (HTML estático = "Todas", lo que ven los buscadores y el primer pintado).
  * `FiltroNoticias` le pasa el `?categoria=` real una vez hidratado.
  *
+ * Chips: a 375px los seis no caben en una línea; en móvil hacen scroll
+ * horizontal (sin salto de línea) y desde `sm` vuelven a envolver. El `py-1`
+ * deja sitio al outline de foco, que el overflow si no recortaría. Si el chip
+ * activo queda fuera (p. ej. `?categoria=perfil` a 375px), la fila se desplaza
+ * sola hasta él; con `scrollLeft` y no `scrollIntoView`, que movería la página.
+ *
  * Chip activo: texto `tema-texto` (#EDEDED) sobre `tema-rojo` (#B02F3C) =
  * 5.4:1, pasa AA para texto normal (4.5:1).
  */
@@ -125,10 +132,22 @@ export function ListadoNoticias({
   categoria: CategoriaNoticia | null;
 }) {
   const visibles = categoria ? noticias.filter((n) => n.categoria === categoria) : noticias;
+  const filaRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const fila = filaRef.current;
+    const activo = fila?.querySelector<HTMLElement>("[aria-current]");
+    if (!fila || !activo) return;
+    const a = activo.getBoundingClientRect();
+    const f = fila.getBoundingClientRect();
+    if (a.left < f.left || a.right > f.right) {
+      fila.scrollLeft += a.left - f.left - (f.width - a.width) / 2;
+    }
+  }, [categoria]);
 
   return (
     <>
-      <nav aria-label="Filtrar por categoría" className="flex flex-wrap gap-2 mb-8">
+      <nav ref={filaRef} aria-label="Filtrar por categoría" className="flex gap-2 mb-7 py-1 overflow-x-auto [scrollbar-width:none] sm:flex-wrap sm:overflow-visible">
         {FILTROS.map((f) => {
           const activo = f.valor === categoria;
           return (
@@ -137,7 +156,7 @@ export function ListadoNoticias({
               href={f.valor ? `/noticias?categoria=${f.valor}` : "/noticias"}
               scroll={false}
               aria-current={activo ? "page" : undefined}
-              className="px-4 py-1.5 rounded-full border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tema-azul-texto"
+              className="shrink-0 whitespace-nowrap px-4 py-1.5 rounded-full border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tema-azul-texto"
               style={{
                 fontFamily: F.body,
                 fontSize: "13px",

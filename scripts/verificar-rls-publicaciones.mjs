@@ -554,6 +554,24 @@ async function main() {
       errP?.code === "23514",
       errP ? (errP.code === "23514" ? null : `Error inesperado: ${errP.message}`) : "NO fue rechazado"
     );
+
+    // (q) y (r) Las categorías nuevas del vocabulario sí pasan el CHECK. Las
+    // filas las barre `limpiar()` con el artista de prueba.
+    for (const [caso, categoria] of [["q", "perfil"], ["r", "video"]]) {
+      const { error } = await A.cliente.from("publicaciones").insert({
+        ...base,
+        artista_id: A.artistaId,
+        categoria,
+        titular: `Categoría ${categoria}`,
+        slug: `${PREFIJO}-categoria-${categoria}`,
+        estado: "borrador",
+      });
+      check(
+        `(${caso}) Artista INSERT de noticia con categoria '${categoria}' → permitido`,
+        !error,
+        error ? `Rechazado: ${error.code} ${error.message}` : null
+      );
+    }
   } catch (err) {
     console.error("\nError montando o ejecutando la verificación:");
     console.error(`  ${err.message}`);
