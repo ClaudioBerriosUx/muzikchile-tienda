@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict g7MmyVlMSXfA1wC4ZIWlyCxbdthVfE8osBTMu1YXWFPBhXZuL5g8M6SIxloAi4V
+\restrict Mpuh7Kl6ziy9p580vlkWgzGuqoG3SKG2x7eIYSbi1glO6EPdE23q8AFSbPCexbg
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.6
@@ -103,6 +103,46 @@ CREATE FUNCTION public.incrementar_usos_cupon(cupon_id uuid) RETURNS void
     LANGUAGE sql SECURITY DEFINER
     AS $$
   UPDATE public.cupones SET usos_actuales = usos_actuales + 1 WHERE id = cupon_id;
+$$;
+
+
+--
+-- Name: publicaciones_fecha_publicacion(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.publicaciones_fecha_publicacion() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO 'public'
+    AS $$
+declare
+  es_artista boolean := auth.uid() is not null
+                        and not has_role(auth.uid(), 'admin'::app_role);
+begin
+  if tg_op = 'INSERT' then
+    if es_artista then
+      new.fecha_publicacion := now();
+    end if;
+
+  else -- UPDATE
+    if es_artista and new.fecha_publicacion is distinct from old.fecha_publicacion then
+      raise exception 'Solo el admin puede cambiar fecha_publicacion'
+        using errcode = '42501';
+    end if;
+
+    if new.estado = 'publicada'
+       and old.estado is distinct from 'publicada'
+       and new.fecha_publicacion is not distinct from old.fecha_publicacion then
+      new.fecha_publicacion := now();
+    end if;
+  end if;
+
+  if new.fecha_publicacion > now() + interval '1 minute' then
+    raise exception 'fecha_publicacion no puede ser futura'
+      using errcode = '22007';
+  end if;
+
+  return new;
+end;
 $$;
 
 
@@ -2131,6 +2171,8 @@ CREATE TABLE public.publicaciones (
     genero text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    fecha_publicacion timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT publicaciones_categoria_noticia_check CHECK (((tipo <> 'noticia'::text) OR ((categoria IS NOT NULL) AND (categoria = ANY (ARRAY['lanzamiento'::text, 'video'::text, 'show'::text, 'perfil'::text, 'general'::text]))))),
     CONSTRAINT publicaciones_estado_check CHECK ((estado = ANY (ARRAY['borrador'::text, 'pendiente'::text, 'publicada'::text, 'devuelta'::text]))),
     CONSTRAINT publicaciones_tipo_check CHECK ((tipo = ANY (ARRAY['noticia'::text, 'convocatoria'::text, 'fecha_abierta'::text]))),
     CONSTRAINT publicaciones_titular_check CHECK ((char_length(titular) <= 200)),
@@ -2143,6 +2185,13 @@ CREATE TABLE public.publicaciones (
 --
 
 COMMENT ON TABLE public.publicaciones IS 'Publicaciones autogestionadas por artistas. El acceso se controla por RLS; el artista nunca puede publicar sin pasar por moderación.';
+
+
+--
+-- Name: COLUMN publicaciones.fecha_publicacion; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.publicaciones.fecha_publicacion IS 'Fecha que se muestra y por la que se ordena. Solo el admin la edita (trigger publicaciones_fecha_publicacion). Al pasar a publicada sin tocarla, toma now().';
 
 
 --
@@ -2626,6 +2675,13 @@ CREATE INDEX publicaciones_estado_idx ON public.publicaciones USING btree (estad
 
 
 --
+-- Name: publicaciones_fecha_publicacion_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX publicaciones_fecha_publicacion_idx ON public.publicaciones USING btree (fecha_publicacion DESC);
+
+
+--
 -- Name: publicaciones_tipo_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2714,6 +2770,13 @@ CREATE UNIQUE INDEX objects_bucket_id_name_version_key ON storage.objects USING 
 --
 
 CREATE UNIQUE INDEX vector_indexes_name_bucket_id_idx ON storage.vector_indexes USING btree (name, bucket_id);
+
+
+--
+-- Name: publicaciones publicaciones_fecha_publicacion; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER publicaciones_fecha_publicacion BEFORE INSERT OR UPDATE ON public.publicaciones FOR EACH ROW EXECUTE FUNCTION public.publicaciones_fecha_publicacion();
 
 
 --
@@ -3217,6 +3280,13 @@ CREATE POLICY publicaciones_delete_propias ON public.publicaciones FOR DELETE TO
 
 
 --
+-- Name: publicaciones publicaciones_insert_admin; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY publicaciones_insert_admin ON public.publicaciones FOR INSERT TO authenticated WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
 -- Name: publicaciones publicaciones_insert_propias; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -3394,6 +3464,34 @@ ALTER TABLE storage.buckets_vectors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE storage.migrations ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: objects noticias_admin_delete; Type: POLICY; Schema: storage; Owner: -
+--
+
+CREATE POLICY noticias_admin_delete ON storage.objects FOR DELETE TO authenticated USING (((bucket_id = 'noticias'::text) AND public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
+-- Name: objects noticias_admin_insert; Type: POLICY; Schema: storage; Owner: -
+--
+
+CREATE POLICY noticias_admin_insert ON storage.objects FOR INSERT TO authenticated WITH CHECK (((bucket_id = 'noticias'::text) AND public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
+-- Name: objects noticias_admin_update; Type: POLICY; Schema: storage; Owner: -
+--
+
+CREATE POLICY noticias_admin_update ON storage.objects FOR UPDATE TO authenticated USING (((bucket_id = 'noticias'::text) AND public.has_role(auth.uid(), 'admin'::public.app_role))) WITH CHECK (((bucket_id = 'noticias'::text) AND public.has_role(auth.uid(), 'admin'::public.app_role)));
+
+
+--
+-- Name: objects noticias_select_publico; Type: POLICY; Schema: storage; Owner: -
+--
+
+CREATE POLICY noticias_select_publico ON storage.objects FOR SELECT TO authenticated, anon USING ((bucket_id = 'noticias'::text));
+
+
+--
 -- Name: objects; Type: ROW SECURITY; Schema: storage; Owner: -
 --
 
@@ -3476,5 +3574,5 @@ ALTER TABLE storage.vector_indexes ENABLE ROW LEVEL SECURITY;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict g7MmyVlMSXfA1wC4ZIWlyCxbdthVfE8osBTMu1YXWFPBhXZuL5g8M6SIxloAi4V
+\unrestrict Mpuh7Kl6ziy9p580vlkWgzGuqoG3SKG2x7eIYSbi1glO6EPdE23q8AFSbPCexbg
 

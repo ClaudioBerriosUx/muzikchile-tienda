@@ -1437,9 +1437,11 @@ Remove-Item Env:SUPABASE_DB_PASSWORD
 columnas, hay que resolver el permiso (rol en la organización) o generar los
 tipos desde una cuenta Owner.
 
-### Pendiente
-- Regenerar `supabase/schema_baseline.sql` con `pg_dump` (receta en
-  "Siguiente (prioridad)", punto 0): no incluye todavía este CHECK.
+- ✅ `supabase/schema_baseline.sql` regenerado con `pg_dump` tras la
+  migración: trae el CHECK de cinco valores y, de paso, objetos que le
+  faltaban de migraciones anteriores (trigger e índice de
+  `fecha_publicacion`, política `publicaciones_insert_admin`, cuatro
+  políticas del bucket `noticias`).
 
 ---
 
