@@ -97,7 +97,7 @@ export default function FormLogin() {
           Acceso artistas
         </div>
         <Titulo grande>Entra a tu escenario</Titulo>
-        <Bajada>Gestiona tu ficha, tu tienda y tus noticias desde un solo lugar.</Bajada>
+        <Bajada>Gestiona tu perfil, tu tienda y tus noticias desde un solo lugar.</Bajada>
       </div>
 
       {errorAuth && (

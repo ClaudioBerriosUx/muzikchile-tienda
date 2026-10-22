@@ -1181,8 +1181,7 @@ era el ISR de 5 min: aprobar no invalidaba nada.
   y se detienen con movimiento reducido, contraste ≥5.95:1 sobre el fondo real.
 
 ### Pendiente
-- La bajada del formulario aún dice "Gestiona tu **ficha**…"; los beneficios
-  ahora dicen "perfil".
+- ✅ La bajada del formulario pasó de "ficha" a "perfil" (2026-10-22).
 
 ---
 
