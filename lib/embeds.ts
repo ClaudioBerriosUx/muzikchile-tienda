@@ -105,7 +105,7 @@ export function validarEmbed(tipo: TipoEmbed, bruto: string): Embed | null {
 // ── URLs de reproductor ──────────────────────────────────────────────────────
 
 export function urlYoutube(id: string): string {
-  return `https://www.youtube.com/embed/${id}?rel=0`;
+  return `https://www.youtube-nocookie.com/embed/${id}?rel=0`;
 }
 
 export function urlSpotify(tipoYId: string): string {

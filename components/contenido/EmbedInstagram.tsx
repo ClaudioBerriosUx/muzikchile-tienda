@@ -6,11 +6,16 @@ import { PATHS_MARCA } from "@/components/layout/iconos-marca";
 import { urlInstagram, urlPostInstagram } from "@/lib/embed-instagram";
 
 /**
- * Post o reel de Instagram dentro de una noticia, con CARGA DIFERIDA.
+ * Post o reel de Instagram dentro de una noticia, con CARGA PEREZOSA.
  *
- * Hasta que el lector hace clic no hay iframe ni ninguna petición a Meta (y por
- * lo tanto ninguna cookie suya): solo una tarjeta con un enlace al post. Recién
- * al pedirlo se monta el iframe a `/embed/captioned/`.
+ * El iframe a `/embed/captioned/` se monta solo cuando el bloque se acerca a la
+ * pantalla (IntersectionObserver con MARGEN_CARGA), no al abrir la página: una
+ * nota que nadie lee hasta abajo no hace ninguna petición a Meta. Mientras
+ * tanto, y hasta que llega la primera medida, se ve un esqueleto del mismo
+ * alto inicial para que el contenido no salte.
+ *
+ * ⚠️ Al cargar, Instagram puede dejar cookies sin consentimiento previo. Queda
+ * pendiente el aviso de cookies (ver PROGRESS.md).
  *
  * No se usa embed.js de Instagram: el iframe puro basta, y así no corre script
  * de terceros en nuestra página. El alto se ajusta con los mensajes `MEASURE`
@@ -27,9 +32,10 @@ import { urlInstagram, urlPostInstagram } from "@/lib/embed-instagram";
 
 const ORIGEN_INSTAGRAM = "https://www.instagram.com";
 const ALTO_INICIAL = 640;
-const TIEMPO_ESPERA = 10_000;
+const TIEMPO_ESPERA = 8_000;
+const MARGEN_CARGA = "300px 0px";
 
-type Estado = "tarjeta" | "cargando" | "listo" | "fallido";
+type Estado = "espera" | "cargando" | "listo" | "fallido";
 
 /** El iframe manda `{"type":"MEASURE","details":{"height":N}}`, a veces como string. */
 function altoDeMensaje(data: unknown): number | null {
@@ -48,12 +54,32 @@ function altoDeMensaje(data: unknown): number | null {
 }
 
 export default function EmbedInstagram({ valor }: { valor: string }) {
-  const [estado, setEstado] = useState<Estado>("tarjeta");
+  const [estado, setEstado] = useState<Estado>("espera");
   const [alto, setAlto] = useState(ALTO_INICIAL);
+  const bloqueRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const esReel = valor.startsWith("reel/");
+  const titulo = esReel ? "Reel de Instagram" : "Publicación de Instagram";
   const urlPost = urlPostInstagram(valor);
+
+  // Monta el iframe cuando el bloque entra en MARGEN_CARGA de la pantalla.
+  useEffect(() => {
+    if (estado !== "espera") return;
+    const bloque = bloqueRef.current;
+    if (!bloque) return;
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        if (entradas.some((e) => e.isIntersecting)) {
+          observador.disconnect();
+          setEstado("cargando");
+        }
+      },
+      { rootMargin: MARGEN_CARGA }
+    );
+    observador.observe(bloque);
+    return () => observador.disconnect();
+  }, [estado]);
 
   useEffect(() => {
     if (estado !== "cargando" && estado !== "listo") return;
@@ -79,80 +105,69 @@ export default function EmbedInstagram({ valor }: { valor: string }) {
     };
   }, [estado]);
 
-  const enlace = (texto: string) => (
-    <a
-      href={urlPost}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="underline-offset-4 hover:underline"
-      style={{ fontFamily: F.body, fontSize: "14px", color: C.rojoClaro }}
-    >
-      {texto} →
-    </a>
-  );
-
-  if (estado === "tarjeta") {
-    return (
-      <div
-        className="my-8 mx-auto w-full max-w-[540px] rounded-lg border p-5 flex flex-col gap-4"
-        style={{ borderColor: TEMA.borde, backgroundColor: TEMA.superficie }}
-      >
-        <div className="flex items-center gap-3">
-          <span
-            className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center border"
-            style={{ borderColor: C.rojo, color: C.rojoClaro }}
-            aria-hidden
-          >
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-              <path d={PATHS_MARCA.instagram} />
-            </svg>
-          </span>
-          <div className="min-w-0">
-            <p style={{ fontFamily: F.body, fontSize: "15px", fontWeight: 600, color: C.blanco }}>
-              {esReel ? "Reel de Instagram" : "Publicación de Instagram"}
-            </p>
-            <p style={{ fontFamily: F.body, fontSize: "12px", color: TEMA.texto2 }}>
-              Al cargarla, Instagram puede guardar cookies en tu navegador.
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-          <button
-            type="button"
-            onClick={() => setEstado("cargando")}
-            className="h-10 px-4 rounded-md text-sm font-semibold"
-            style={{ fontFamily: F.body, backgroundColor: C.rojo, color: C.blanco }}
-          >
-            Cargar publicación
-          </button>
-          {enlace("Ver en Instagram")}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="my-8 mx-auto w-full max-w-[540px] flex flex-col items-center gap-3">
+    <div ref={bloqueRef} className="my-8 mx-auto w-full max-w-[540px] flex flex-col items-center gap-3">
       {estado !== "fallido" && (
-        <iframe
-          ref={iframeRef}
-          src={urlInstagram(valor)}
-          title={esReel ? "Reel de Instagram" : "Publicación de Instagram"}
-          className="w-full rounded-lg"
-          style={{ border: 0, height: `${alto}px`, backgroundColor: C.blanco }}
-          // Sin allow-same-origin el embed no carga; sin allow-top-navigation
-          // no puede llevarse la pestaña. Los enlaces del post abren en otra.
-          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-          referrerPolicy="strict-origin-when-cross-origin"
-          onError={() => setEstado("fallido")}
-        />
+        <div
+          className="relative w-full"
+          style={{ height: `${alto}px` }}
+          aria-busy={estado !== "listo"}
+        >
+          {estado !== "espera" && (
+            <iframe
+              ref={iframeRef}
+              src={urlInstagram(valor)}
+              title={titulo}
+              className="absolute inset-0 w-full h-full rounded-lg"
+              style={{ border: 0, backgroundColor: C.blanco }}
+              // Sin allow-same-origin el embed no carga; sin allow-top-navigation
+              // no puede llevarse la pestaña. Los enlaces del post abren en otra.
+              sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+              referrerPolicy="strict-origin-when-cross-origin"
+              onError={() => setEstado("fallido")}
+            />
+          )}
+          {estado !== "listo" && <Esqueleto />}
+        </div>
       )}
       {estado === "fallido" && (
         <p style={{ fontFamily: F.body, fontSize: "13px", color: TEMA.texto2 }}>
           No se pudo mostrar la publicación aquí.
         </p>
       )}
-      {enlace("Ver publicación en Instagram")}
+      <a
+        href={urlPost}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline-offset-4 hover:underline"
+        style={{ fontFamily: F.body, fontSize: "14px", color: C.rojoClaro }}
+      >
+        Ver publicación en Instagram →
+      </a>
+    </div>
+  );
+}
+
+/** Silueta de un post (cabecera, imagen cuadrada, líneas de texto) sobre el iframe. */
+function Esqueleto() {
+  const gris = { backgroundColor: TEMA.borde };
+  return (
+    <div
+      className="absolute inset-0 rounded-lg border p-4 flex flex-col gap-4 overflow-hidden motion-safe:animate-pulse"
+      style={{ borderColor: TEMA.borde, backgroundColor: TEMA.superficie }}
+      aria-hidden
+    >
+      <div className="flex items-center gap-3">
+        <span className="w-9 h-9 rounded-full" style={gris} />
+        <span className="h-3 w-32 rounded" style={gris} />
+      </div>
+      <div className="w-full aspect-square rounded flex items-center justify-center" style={gris}>
+        <svg viewBox="0 0 24 24" width="36" height="36" fill={TEMA.superficie}>
+          <path d={PATHS_MARCA.instagram} />
+        </svg>
+      </div>
+      <span className="h-3 w-3/4 rounded" style={gris} />
+      <span className="h-3 w-1/2 rounded" style={gris} />
     </div>
   );
 }

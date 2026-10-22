@@ -85,7 +85,7 @@ function VideoModal({
           style={{ aspectRatio: "16 / 9", borderColor: TEMA.borde }}
         >
           <iframe
-            src={`https://www.youtube.com/embed/${id}?autoplay=1&rel=0`}
+            src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`}
             title={video.tracktitle ?? "Video"}
             className="absolute inset-0 w-full h-full"
             style={{ border: 0 }}

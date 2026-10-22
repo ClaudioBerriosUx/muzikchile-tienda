@@ -1312,7 +1312,8 @@ era el ISR de 5 min: aprobar no invalidaba nada.
   `urlPostInstagram`. Reemplaza al `validarUrlDe(["instagram.com"])` de
   `lib/embeds.ts`: los `[instagram:URL]` migrados del Channel pasan por el mismo
   validador y ahora se ven como embed en vez de enlace.
-- **`components/contenido/EmbedInstagram.tsx`** (isla cliente): tarjeta
+- **`components/contenido/EmbedInstagram.tsx`** (isla cliente) — *reemplazado
+  el 2026-10-22 por la carga perezosa sin clic, ver la sección siguiente*: tarjeta
   "Publicación/Reel de Instagram" con "Cargar publicación" + "Ver en Instagram";
   el iframe a `/embed/captioned/` se monta recién al clic (verificado: 0
   peticiones a Meta antes). Ancho máx. 540px; alto por los mensajes `MEASURE`
@@ -1334,6 +1335,34 @@ era el ISR de 5 min: aprobar no invalidaba nada.
   del editor: requiere login; la validación es la misma función ya cubierta
   por el test).
 - TikTok y X siguen como enlace (`EmbedEnlace`).
+
+---
+
+## 📸 Instagram sin clic + YouTube nocookie — 2026-10-22
+
+- **`EmbedInstagram` carga solo**: sale la tarjeta "Cargar publicación". El
+  iframe se monta cuando el bloque entra a 300px de la pantalla
+  (IntersectionObserver, `rootMargin: "300px 0px"`), no al abrir la página.
+  Mientras tanto, y hasta el primer `MEASURE`, un esqueleto (`Esqueleto`:
+  cabecera, cuadrado con el ícono, dos líneas; `motion-safe:animate-pulse`)
+  ocupa los mismos 640px iniciales. Se mantienen el ajuste de alto por
+  `MEASURE` y el enlace "Ver publicación en Instagram" siempre visible; el
+  plazo sin medida baja de 10 s a **8 s** → "No se pudo mostrar…" + enlace.
+- **YouTube a `www.youtube-nocookie.com`**: `urlYoutube` (`lib/embeds.ts`,
+  embeds de noticias) y el modal de `VideosDestacados` en la portada. Las
+  miniaturas siguen en `img.youtube.com` (imágenes, sin cookies). No hay CSP
+  `frame-src` que actualizar.
+- Probado en local con Chrome headless por CDP (página temporal, ya borrada):
+  al abrir, 0 iframes y 0 peticiones a Meta; a ~370px del bloque, todavía 0;
+  al acercarse, esqueleto de 640px → post real (`natgeo/p/DeuOR-CjKE9`)
+  ajustado a 1150px; código inexistente → mensaje + enlace a los 8 s.
+
+### Pendiente
+- El esqueleto mide 640px y un post con texto largo mide ~1150: al llegar la
+  medida el bloque crece y empuja lo de abajo (pasa fuera de pantalla casi
+  siempre, porque carga 300px antes). Si molesta, subir `ALTO_INICIAL`.
+- Instagram ahora deja cookies **sin consentimiento previo** → ver el aviso de
+  cookies en "Siguiente (prioridad)".
 
 ---
 
@@ -1389,6 +1418,14 @@ que migrar.
 ---
 
 ## ⏭️ Siguiente (prioridad)
+
+⚠️ **PRIORITARIO — Aviso de cookies, antes de diciembre 2026.** Un banner de
+consentimiento que controle **Google Analytics, YouTube, Spotify e Instagram**:
+nada de terceros hasta que la persona acepte (GA con Consent Mode o sin cargar;
+los embeds con un reemplazo + "Cargar" mientras no haya consentimiento). Hoy
+GA mide de entrada, y desde el 2026-10-22 Instagram carga sin clic. Al
+hacerlo, actualizar `/privacidad` (el borrador ya anticipa "cookies con
+consentimiento previo; hoy no lo hay").
 
 0. ✅ **Baseline de esquema — generado 2026-09-25**, regenerado tras la
    migración de storage, en `supabase/schema_baseline.sql` (schemas `public` +
