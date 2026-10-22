@@ -1445,6 +1445,47 @@ tipos desde una cuenta Owner.
 
 ---
 
+## 📺 Señal del hero: retoma sola al volver a la pestaña — 2026-10-22
+
+**Arreglo en el repo muzik-channel** (`main`, merge `c4759b6`, en producción
+en tv.muzikchile.cl). La tienda no cambió, pero el hero de la portada embebe
+ese reproductor.
+
+**Síntoma:** al cambiar de pestaña la señal se pausaba y seguía pausada al
+volver. **Causa, verificada con cambio de pestaña real:** Chrome de escritorio
+pausa un video **silenciado** apenas la pestaña se oculta (con sonido sigue).
+El hero arranca silenciado, así que pasaba casi siempre. El Channel tomaba esa
+pausa como si fuera del usuario (`onPlayingChange={setIsPlaying}`) y no la
+retomaba nunca. (La medición del 2026-10-11 que decía "silenciado sigue
+sonando" estaba mal: esa prueba no ocultaba la pestaña de verdad.)
+
+**Qué hace ahora el Channel** (`VideoPlayer.tsx`, `YouTubePlayer.tsx`):
+- Separa la intención del usuario (`wantsToPlay`: botón,
+  `muzik_play`/`muzik_pause`, Media Session) del estado del video (solo el
+  ícono).
+- Silenciado y oculta: deja que Chrome la pause, sin reintentos (no gasta datos
+  ni batería). Al volver (`visibilitychange`/`pageshow`) retoma sola.
+- Con sonido: sigue sonando en segundo plano; si el navegador la pausa igual,
+  reintenta una vez.
+- Una pausa del usuario no se reanuda al volver.
+- Media Session desde el inicio (título y artista del tema, play, pausa,
+  siguiente, anterior), sin esperar un clic.
+
+**Probado** con Chrome sin ventana en Windows y cambio de pestaña real:
+www y /tv × silenciado y con sonido; pausa del usuario; 5 min oculta en los dos
+modos. Con sonido, el tema cambió solo a los ~4 min. Verificado en producción
+después del deploy: www, silenciado → retoma al volver; pausa del usuario →
+sigue pausada.
+
+### Pendiente
+- Probarlo en un celular (Safari en iPhone, Chrome en Android): ahí el sistema
+  puede pausar también con sonido y bloquear el reintento; debería retomar al
+  volver.
+- En el Channel queda un `package-lock.json` modificado sin commitear, que no
+  es de este trabajo: revisar de dónde viene antes de incluirlo.
+
+---
+
 ## 🚧 En progreso / bugs conocidos
 
 - ✅ **Resuelto 2026-10-19 — los chips de categoría de `/tienda` no filtraban
