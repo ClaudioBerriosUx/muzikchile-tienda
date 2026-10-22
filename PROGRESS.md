@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-10-19
+> Actualizado: 2026-10-21
 > Branch: `main` (lanzamiento mergeado y en producción en www.muzikchile.cl)
 
 ---
@@ -1162,6 +1162,44 @@ era el ISR de 5 min: aprobar no invalidaba nada.
   el badge, la firma de artista y el chip "Comunidad" no se vieron renderizados
   con una nota real.
 - Probar en producción que aprobar una nota la muestra al instante en `/`.
+
+---
+
+## 📸 Noticias: embeds de Instagram — 2026-10-21
+
+- **Botón "Instagram"** en la barra de `EditorContenido` (lo usan el panel del
+  artista y el admin editorial vía `PublicacionForm`). Acepta `/p/`, `/reel/` y
+  `/tv/` (→ `p/`), con o sin `www`/`m.`, `?igsh=`, `?utm_source=`, `#…` o
+  `/usuario/` antes del tipo. Inserta `[instagram:p/CODIGO]` o
+  `[instagram:reel/CODIGO]`.
+- **`lib/embed-instagram.ts`** (sin imports, lo importa el test con Node):
+  `validarInstagram` (host exacto `instagram.com`/`www.`/`m.`, https, sin
+  userinfo ni puerto; código `[A-Za-z0-9_-]{5,64}`), `urlInstagram`,
+  `urlPostInstagram`. Reemplaza al `validarUrlDe(["instagram.com"])` de
+  `lib/embeds.ts`: los `[instagram:URL]` migrados del Channel pasan por el mismo
+  validador y ahora se ven como embed en vez de enlace.
+- **`components/contenido/EmbedInstagram.tsx`** (isla cliente): tarjeta
+  "Publicación/Reel de Instagram" con "Cargar publicación" + "Ver en Instagram";
+  el iframe a `/embed/captioned/` se monta recién al clic (verificado: 0
+  peticiones a Meta antes). Ancho máx. 540px; alto por los mensajes `MEASURE`
+  del iframe (filtrados por origen y `source`). Sin `MEASURE` en 10 s (post
+  borrado/privado/sin inserción) → se retira el iframe y queda "No se pudo
+  mostrar la publicación aquí" + enlace. El enlace "Ver publicación en
+  Instagram" queda siempre bajo el iframe. `sandbox` sin `allow-top-navigation`.
+- `lib/sanitizar.ts` sin cambios: iframes y scripts siguen prohibidos en el
+  HTML. `verificar:sanitizacion` suma 2 ataques (código oficial
+  blockquote+embed.js, iframe pegado) y 24 casos del validador → 51/51.
+- Los paths de iconos de marca salieron del Footer a
+  `components/layout/iconos-marca.ts` (`PATHS_MARCA`), para reutilizarlos.
+- Probado en local con un post real (`natgeo/p/DeuOR-CjKE9`), un reel real
+  (`instagram/reel/DecLR_vvrW6`) y un código inexistente, a 375 y 1280, con
+  Chrome headless por CDP (las capturas de la extensión de Chrome se colgaban).
+
+### Pendiente
+- Probar el botón del editor en el panel con sesión real (no se probó la UI
+  del editor: requiere login; la validación es la misma función ya cubierta
+  por el test).
+- TikTok y X siguen como enlace (`EmbedEnlace`).
 
 ---
 

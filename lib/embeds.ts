@@ -1,4 +1,5 @@
 import { idYoutube } from "@/lib/portada";
+import { validarInstagram } from "@/lib/embed-instagram";
 
 /**
  * Detección y validación de embeds en el cuerpo de una noticia.
@@ -89,7 +90,9 @@ function validarUrlDe(dominios: string[]) {
 const VALIDADORES: Record<TipoEmbed, (bruto: string) => string | null> = {
   youtube: validarYoutube,
   spotify: validarSpotify,
-  instagram: validarUrlDe(["instagram.com"]),
+  // Devuelve "p/CODIGO" o "reel/CODIGO"; acepta también la URL completa, que
+  // es como vienen las noticias migradas del Channel.
+  instagram: validarInstagram,
   tiktok: validarUrlDe(["tiktok.com"]),
   twitter: validarUrlDe(["twitter.com", "x.com"]),
 };

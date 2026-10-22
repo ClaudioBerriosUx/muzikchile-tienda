@@ -17,7 +17,8 @@ import { ACCEPT_IMAGEN_NOTICIA, altDesdeNombre } from "@/lib/subir-imagen-notici
 /**
  * Editor de contenido rico para el cuerpo de las publicaciones.
  *
- * FORMATO CANÓNICO DE EMBED: shortcodes `[youtube:ID]` y `[spotify:tipo/id]`.
+ * FORMATO CANÓNICO DE EMBED: shortcodes `[youtube:ID]`, `[spotify:tipo/id]` e
+ * `[instagram:p/CODIGO]` / `[instagram:reel/CODIGO]`.
  *
  * El editor los escribe como TEXTO PLANO dentro de un párrafo, que es
  * exactamente lo que `trocearContenido` ya sabe leer en el renderizador. No hay
@@ -80,13 +81,22 @@ function Boton({
   );
 }
 
-/** Panel para pegar una URL de YouTube/Spotify. */
+/** Los embeds que se insertan desde la barra. */
+type TipoBoton = "youtube" | "spotify" | "instagram";
+
+const EMBEDS_BARRA: Record<TipoBoton, { nombre: string; ejemplo: string }> = {
+  youtube: { nombre: "YouTube", ejemplo: "https://youtu.be/dQw4w9WgXcQ" },
+  spotify: { nombre: "Spotify", ejemplo: "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT" },
+  instagram: { nombre: "Instagram", ejemplo: "https://www.instagram.com/reel/CODIGO/" },
+};
+
+/** Panel para pegar la URL de un embed. */
 function PanelEmbed({
   tipo,
   onInsertar,
   onCerrar,
 }: {
-  tipo: "youtube" | "spotify";
+  tipo: TipoBoton;
   onInsertar: (url: string) => string | null;
   onCerrar: () => void;
 }) {
@@ -101,18 +111,14 @@ function PanelEmbed({
     onCerrar();
   };
 
-  const ejemplo =
-    tipo === "youtube"
-      ? "https://youtu.be/dQw4w9WgXcQ"
-      : "https://open.spotify.com/track/4cOdK2wGLETKBW3PvgPWqT";
-
   return (
     <div className="p-3 border-t" style={{ borderColor: "#e8e8e8", backgroundColor: "#f8f7f5" }}>
       <label
         className="block mb-1.5"
         style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#444444" }}
       >
-        Pega la URL de {tipo === "youtube" ? "YouTube" : "Spotify"}
+        Pega la URL de {EMBEDS_BARRA[tipo].nombre}
+        {tipo === "instagram" && " (post o reel público)"}
       </label>
       <div className="flex gap-2">
         <input
@@ -123,7 +129,7 @@ function PanelEmbed({
             if (e.key === "Enter") { e.preventDefault(); insertar(); }
             if (e.key === "Escape") onCerrar();
           }}
-          placeholder={ejemplo}
+          placeholder={EMBEDS_BARRA[tipo].ejemplo}
           className="flex-1 rounded-md px-3 py-2 text-sm border focus:outline-none"
           style={{
             fontFamily: "var(--font-body)",
@@ -226,21 +232,21 @@ function Barra({
   onArchivos?: (archivos: File[]) => void;
   subiendo: boolean;
 }) {
-  const [panel, setPanel] = useState<"youtube" | "spotify" | null>(null);
+  const [panel, setPanel] = useState<TipoBoton | null>(null);
   const inputArchivoRef = useRef<HTMLInputElement>(null);
 
   /**
    * Inserta el shortcode como texto. Devuelve un mensaje de error si la URL no
    * valida, o null si salió bien.
    */
-  const insertarEmbed = (tipo: "youtube" | "spotify") => (url: string): string | null => {
+  const insertarEmbed = (tipo: TipoBoton) => (url: string): string | null => {
     if (!url.trim()) return "Pega una URL primero";
 
     const embed = validarEmbed(tipo, url);
     if (!embed) {
-      return tipo === "youtube"
-        ? "No reconocí esa URL de YouTube"
-        : "No reconocí esa URL de Spotify";
+      return tipo === "instagram"
+        ? "No reconocí esa URL de Instagram (tiene que ser un post o reel: /p/, /reel/ o /tv/)"
+        : `No reconocí esa URL de ${EMBEDS_BARRA[tipo].nombre}`;
     }
 
     // El shortcode va en su propio párrafo para que quede aislado del texto.
@@ -342,9 +348,9 @@ function Barra({
           />
         )}
 
-        {/* Los dos destacados */}
+        {/* Los destacados */}
         <div className="flex gap-1.5 ml-auto">
-          {(["youtube", "spotify"] as const).map((t) => (
+          {(Object.keys(EMBEDS_BARRA) as TipoBoton[]).map((t) => (
             <button
               key={t}
               type="button"
@@ -356,7 +362,7 @@ function Barra({
                 color: C.blanco,
               }}
             >
-              {t === "youtube" ? "YouTube" : "Spotify"}
+              {EMBEDS_BARRA[t].nombre}
             </button>
           ))}
         </div>
@@ -536,8 +542,8 @@ export default function EditorContenido({
         {subiendo > 0
           ? "Subiendo imagen..."
           : subirImagen
-            ? "Imágenes: botón, pegar o arrastrar (JPG, PNG o WEBP, máx. 5 MB); clic en una para editar su texto alternativo. Videos y música: botones YouTube y Spotify."
-            : "Los videos y la música se insertan con los botones YouTube y Spotify."}
+            ? "Imágenes: botón, pegar o arrastrar (JPG, PNG o WEBP, máx. 5 MB); clic en una para editar su texto alternativo. Videos, música y posts: botones YouTube, Spotify e Instagram."
+            : "Los videos, la música y los posts se insertan con los botones YouTube, Spotify e Instagram."}
       </p>
     </div>
   );

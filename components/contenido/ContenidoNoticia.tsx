@@ -8,13 +8,15 @@ import {
   urlYoutube,
   type Embed,
 } from "@/lib/embeds";
+import EmbedInstagram from "./EmbedInstagram";
 
 /**
  * Renderiza el cuerpo de una noticia: HTML rico + embeds.
  *
  * Es un Server Component. La sanitización corre acá, en el servidor, antes de
  * que el HTML llegue al navegador. YouTube y Spotify son iframes puros, así que
- * no hace falta JS de cliente para nada.
+ * no hace falta JS de cliente; Instagram es una isla cliente (`EmbedInstagram`)
+ * solo por la carga diferida al hacer clic.
  *
  * ORDEN DE OPERACIONES (importa):
  *   1. Si el cuerpo es texto plano, se escapa y se envuelve en párrafos.
@@ -83,19 +85,17 @@ function EmbedSpotify({ valor }: { valor: string }) {
 }
 
 const ETIQUETA: Record<string, string> = {
-  instagram: "Instagram",
   tiktok: "TikTok",
   twitter: "X",
 };
 
 /**
- * Instagram, TikTok y X necesitan cargar el script de cada plataforma y
- * reprocesar el DOM al montar. Por ahora se muestra un enlace claro al post
- * original en vez de un embed.
+ * TikTok y X necesitan cargar el script de cada plataforma y reprocesar el DOM
+ * al montar. Por ahora se muestra un enlace claro al post original en vez de un
+ * embed.
  *
  * TODO: reemplazar por el embed real cargando el script correspondiente solo si
- * hay un embed de ese tipo en el contenido (window.instgrm.Embeds.process(),
- * el de TikTok y widgets.twitter.js).
+ * hay un embed de ese tipo en el contenido (el de TikTok y widgets.twitter.js).
  */
 function EmbedEnlace({ tipo, url }: { tipo: string; url: string }) {
   return (
@@ -138,6 +138,7 @@ function EmbedEnlace({ tipo, url }: { tipo: string; url: string }) {
 function RenderEmbed({ embed }: { embed: Embed }) {
   if (embed.tipo === "youtube") return <EmbedYoutube id={embed.valor} />;
   if (embed.tipo === "spotify") return <EmbedSpotify valor={embed.valor} />;
+  if (embed.tipo === "instagram") return <EmbedInstagram valor={embed.valor} />;
   return <EmbedEnlace tipo={embed.tipo} url={embed.valor} />;
 }
 

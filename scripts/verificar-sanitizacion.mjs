@@ -13,10 +13,14 @@
  * Cada caso de ataque declara lo que NO puede aparecer en la salida. Los casos
  * legítimos declaran lo que SÍ tiene que sobrevivir: un sanitizador que lo
  * borra todo también "bloquea" todos los ataques.
+ *
+ * También verifica el validador de embeds de Instagram (`lib/embed-instagram.ts`):
+ * el iframe se arma con lo que devuelve, así que es la allowlist de ese embed.
  */
 
 import { sanitizarHtml } from "../lib/sanitizar.ts";
 import { REMOTE_PATTERNS } from "../lib/imagenes-remotas.ts";
+import { validarInstagram, urlInstagram } from "../lib/embed-instagram.ts";
 
 /** Hosts permitidos para <img>, leídos de la misma lista que usa el sanitizador. */
 const STORAGE = REMOTE_PATTERNS[0].hostname; // Supabase de la tienda (solo /storage/v1/object/public/)
@@ -141,6 +145,53 @@ const ATAQUES = [
       `<img src="https://${STORAGE}:8443/storage/v1/object/public/productos/a.jpg">`,
     prohibido: [/<img/i],
   },
+  // ── Instagram pegado como HTML: los embeds van solo por shortcode ──
+  {
+    nombre: "20. Código de inserción oficial de Instagram (blockquote + embed.js)",
+    html:
+      `<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/C1a2b3c4d5e/">` +
+      `<a href="https://www.instagram.com/p/C1a2b3c4d5e/">post</a></blockquote>` +
+      `<script async src="//www.instagram.com/embed.js"></script>`,
+    prohibido: [/<script/i, /embed\.js/, /data-instgrm/],
+  },
+  {
+    nombre: "21. <iframe> de Instagram pegado a mano",
+    html: `<iframe src="https://www.instagram.com/p/C1a2b3c4d5e/embed/"></iframe><p>ok</p>`,
+    prohibido: [/<iframe/i],
+  },
+];
+
+/**
+ * Embeds de Instagram. `esperado`: lo que tiene que devolver `validarInstagram`
+ * ("p/CODIGO", "reel/CODIGO" o null).
+ */
+const INSTAGRAM = [
+  // Rechazos
+  { nombre: "Otro dominio", bruto: "https://evil.example/p/C1a2b3c4d5e/", esperado: null },
+  { nombre: "Dominio que contiene instagram.com", bruto: "https://instagram.com.evil.example/p/C1a2b3c4d5e/", esperado: null },
+  { nombre: "Subdominio no permitido", bruto: "https://evil.instagram.com/p/C1a2b3c4d5e/", esperado: null },
+  { nombre: "Host en la ruta", bruto: "https://evil.example/www.instagram.com/p/C1a2b3c4d5e/", esperado: null },
+  { nombre: "Userinfo (instagram.com@evil)", bruto: "https://www.instagram.com@evil.example/p/C1a2b3c4d5e/", esperado: null },
+  { nombre: "http en vez de https", bruto: "http://www.instagram.com/p/C1a2b3c4d5e/", esperado: null },
+  { nombre: "javascript:", bruto: "javascript:alert(1)//instagram.com/p/C1a2b3c4d5e/", esperado: null },
+  { nombre: "Código con comillas y <script>", bruto: `p/C1a2"><script>alert(1)</script>`, esperado: null },
+  { nombre: "Código con ../ (path traversal)", bruto: "p/../../accounts/login", esperado: null },
+  { nombre: "Código con %2F codificado", bruto: "https://www.instagram.com/p/abc%2F..%2Fx/", esperado: null },
+  { nombre: "Código con espacio", bruto: "reel/abc def", esperado: null },
+  { nombre: "Código con punto", bruto: "https://www.instagram.com/p/abc.def/", esperado: null },
+  { nombre: "Historia (no es post)", bruto: "https://www.instagram.com/stories/usuario/123456789/", esperado: null },
+  { nombre: "Perfil (no es post)", bruto: "https://www.instagram.com/muzikchilecl/", esperado: null },
+  { nombre: "Tipo inventado", bruto: "embed/C1a2b3c4d5e", esperado: null },
+  // Aceptados
+  { nombre: "/p/ con www", bruto: "https://www.instagram.com/p/C1a2b3c4d5e/", esperado: "p/C1a2b3c4d5e" },
+  { nombre: "/reel/ sin www ni barra final", bruto: "https://instagram.com/reel/DA-b_c9XyZ1", esperado: "reel/DA-b_c9XyZ1" },
+  { nombre: "/tv/ se embebe como post", bruto: "https://www.instagram.com/tv/CB1a2b3c4d5/", esperado: "p/CB1a2b3c4d5" },
+  { nombre: "Con ?igsh=", bruto: "https://www.instagram.com/reel/DA1b2c3d4e5/?igsh=MWQ1ZGUxMzBkMA==", esperado: "reel/DA1b2c3d4e5" },
+  { nombre: "Con ?utm_source= y #hash", bruto: "https://www.instagram.com/p/C1a2b3c4d5e/?utm_source=ig_web_copy_link#x", esperado: "p/C1a2b3c4d5e" },
+  { nombre: "Con usuario en la ruta", bruto: "https://www.instagram.com/muzikchilecl/p/C1a2b3c4d5e/", esperado: "p/C1a2b3c4d5e" },
+  { nombre: "m.instagram.com", bruto: "https://m.instagram.com/p/C1a2b3c4d5e/", esperado: "p/C1a2b3c4d5e" },
+  { nombre: "Formato guardado p/CODIGO", bruto: "p/C1a2b3c4d5e", esperado: "p/C1a2b3c4d5e" },
+  { nombre: "Formato guardado reel/CODIGO con espacios", bruto: "  reel/DA1b2c3d4e5 ", esperado: "reel/DA1b2c3d4e5" },
 ];
 
 const LEGITIMOS = [
@@ -215,7 +266,25 @@ for (const c of LEGITIMOS) {
   else ok(c.nombre);
 }
 
-const total = ATAQUES.length + LEGITIMOS.length;
+console.log("\nEmbeds de Instagram — solo código validado de instagram.com\n");
+for (const c of INSTAGRAM) {
+  const salida = validarInstagram(c.bruto);
+  if (salida !== c.esperado) {
+    mal(`${c.nombre} — esperaba ${c.esperado}`, salida);
+    continue;
+  }
+  // Lo aceptado tiene que producir un iframe a www.instagram.com y nada más.
+  if (salida !== null) {
+    const url = new URL(urlInstagram(salida));
+    if (url.origin !== "https://www.instagram.com" || !/^\/(p|reel)\/[A-Za-z0-9_-]+\/embed\/captioned\/$/.test(url.pathname)) {
+      mal(`${c.nombre} — URL de iframe inesperada`, url.href);
+      continue;
+    }
+  }
+  ok(c.nombre);
+}
+
+const total = ATAQUES.length + LEGITIMOS.length + INSTAGRAM.length;
 console.log("\n" + "─".repeat(60));
 console.log(`Resultado: ${total - fallos}/${total} casos OK`);
 process.exit(fallos ? 1 : 0);
