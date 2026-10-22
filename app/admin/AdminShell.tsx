@@ -8,7 +8,7 @@ import {
   ShoppingBag, Ticket, Wallet, Settings, LogOut, Mail,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import Header from "@/components/layout/Header";
+import HeaderPanel from "@/components/layout/HeaderPanel";
 import Sidebar from "@/components/layout/Sidebar";
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -114,7 +114,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
   return (
     <>
-      <Header />
+      <HeaderPanel />
       <div className="flex min-h-screen">
         <Sidebar
           items={sidebarItems}

@@ -97,7 +97,7 @@ export default function CarritoPage() {
           </section>
 
           {/* Resumen lateral */}
-          <aside aria-label="Resumen" className="lg:sticky lg:top-6">
+          <aside aria-label="Resumen" className="lg:sticky lg:top-[calc(var(--header-ocupa)+24px)]">
             <div className="flex flex-col gap-4 rounded-xl border border-tema-borde bg-tema-campo p-[18px] md:p-6">
               <h2 className="m-0 text-[26px] uppercase leading-none" style={TITULO}>Resumen</h2>
               <div className="flex items-baseline justify-between gap-3">

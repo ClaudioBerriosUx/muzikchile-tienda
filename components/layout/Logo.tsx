@@ -34,6 +34,7 @@ export default function Logo({
   href = "/",
   className = "",
   prioridad = false,
+  children,
 }: {
   /** Altura renderizada en px. El ancho se ajusta solo según `RATIO`. */
   alto?: number;
@@ -41,6 +42,8 @@ export default function Logo({
   className?: string;
   /** `priority` de next/image: activarlo solo en el logo del header (LCP). */
   prioridad?: boolean;
+  /** Algo más dentro del mismo enlace, a la derecha del SVG ("CHILE" en el header). */
+  children?: React.ReactNode;
 }) {
   return (
     <Link
@@ -56,6 +59,7 @@ export default function Logo({
         priority={prioridad}
         style={{ height: alto, width: "auto" }}
       />
+      {children}
     </Link>
   );
 }

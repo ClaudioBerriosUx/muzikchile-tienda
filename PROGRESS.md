@@ -1165,6 +1165,44 @@ era el ISR de 5 min: aprobar no invalidaba nada.
 
 ---
 
+## 🧭 Header público: cápsula flotante — 2026-10-21
+
+- **`components/layout/Header.tsx`** reescrito (diseño de Claude Design): cápsula
+  de vidrio sticky (máx. 1300px, 62px, a 14px del borde), logo SVG oficial +
+  "CHILE", menú segmentado ≥1024px con punto rojo y `aria-current` en el activo,
+  carrito, separador ≥1080px y CTA "Acceso artistas" (↗), que entre 1024 y
+  1080px se acorta a "Artistas". Bajo 1024px: hamburguesa + panel desplegable
+  que cierra con Escape (devuelve el foco), clic fuera y al navegar.
+  - El menú sale de `NAV_LINKS` (Inicio, Noticias; Tienda solo con
+    `TIENDA_VISIBLE`). Sin botón de búsqueda: no hay buscador global.
+  - Contenedor sticky en `top: 0` (no 14px) para que la cápsula no baje 14px al
+    hacer scroll.
+- **El header viejo pasó a `HeaderPanel.tsx`**, solo para /panel y /admin (su
+  `Sidebar` depende de los 64px).
+- `CarritoDrawer` tiene `variante="capsula"` (botón 42×42/44 con bolsa y badge);
+  el drawer y el store no cambiaron. `Logo` acepta `children`.
+- Tokens nuevos en `globals.css`: `tema-activo`, `tema-texto-tenue`,
+  `tema-rojo-hover`, `tema-foco`, y las medidas `--alto-header` (62px) y
+  `--header-ocupa` (76px). `/login`, `/recuperar` y `/registro` usan
+  `calc(100dvh - var(--alto-header))`; los resúmenes sticky de `/carrito` y
+  `/checkout`, `top: calc(var(--header-ocupa) + 24px)`; `<html>` tiene
+  `scroll-padding-top: var(--header-ocupa)`.
+- El layout `(publico)` lleva `bg-tema-fondo` (el `<body>` es blanco y se veía
+  a través del vidrio).
+- Verificado con build de producción a 375, 768, 1024, 1080, 1280 y 1920 en `/`,
+  `/noticias`, `/tienda` y `/login`: sin scroll horizontal ni desborde de la
+  cápsula.
+
+### Pendiente
+- Las páginas que siguen en `#000` (`C.negro`) muestran un corte con el
+  `#161616` del layout bajo el header → se pasan a `bg-tema-fondo` en el commit
+  siguiente.
+- `CarritoDrawer` tiene un error de lint previo (`set-state-in-effect` en
+  `setMontado`), y `PanelShell` una variable sin usar; los dos son anteriores a
+  este cambio.
+
+---
+
 ## 📸 Noticias: embeds de Instagram — 2026-10-21
 
 - **Botón "Instagram"** en la barra de `EditorContenido` (lo usan el panel del

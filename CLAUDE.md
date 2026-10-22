@@ -43,8 +43,8 @@ app/
 │  ├─ producto/[id]/   artista/[slug]/   carrito/
 │  ├─ checkout/        (+ exito, error, pendiente)
 │  └─ login/  registro/  recuperar/
-├─ panel/              → layout propio (Header + Sidebar), rol artista
-├─ admin/              → layout propio (Header + Sidebar), rol admin
+├─ panel/              → layout propio (HeaderPanel + Sidebar), rol artista
+├─ admin/              → layout propio (HeaderPanel + Sidebar), rol admin
 ├─ api/                → Route Handlers
 ├─ layout.tsx          → root: fuentes, Providers, Toaster, noindex global
 ├─ robots.ts  sitemap.ts
@@ -53,6 +53,15 @@ app/
 
 **Al agregar una ruta pública nueva, va dentro de `(publico)/`** — así hereda
 Header y Footer. No importes `<Header/>` a mano en una página.
+
+**Dos headers:**
+- `components/layout/Header.tsx` — el público: cápsula flotante de vidrio,
+  sticky. Ocupa `--alto-header` (62px) en el flujo y, pegada arriba, tapa hasta
+  `--header-ocupa` (76px). Todo lo que dependa del alto (un `min-h` de "pantalla
+  menos header", un `sticky top-…`) usa esas variables de `globals.css`, nunca
+  un número a mano. `<html>` tiene `scroll-padding-top: var(--header-ocupa)`.
+- `components/layout/HeaderPanel.tsx` — el de /panel y /admin, clásico de 64px.
+  `Sidebar` depende de esos 64px (`top-16`, `calc(100vh - 64px)`).
 
 ### Rutas
 

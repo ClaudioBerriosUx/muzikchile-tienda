@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LayoutDashboard, Package, Plus, Newspaper, User, Ticket, Wallet, LogOut } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import Header from "@/components/layout/Header";
+import HeaderPanel from "@/components/layout/HeaderPanel";
 import Sidebar from "@/components/layout/Sidebar";
 
 const SIDEBAR_ITEMS = [
@@ -111,7 +111,7 @@ export default function PanelShell({ children }: { children: React.ReactNode }) 
 
   return (
     <>
-      <Header />
+      <HeaderPanel />
       <div className="flex min-h-screen">
         <Sidebar
           items={SIDEBAR_ITEMS}

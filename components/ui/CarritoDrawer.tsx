@@ -14,7 +14,17 @@ import { formatCLP } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { BotonQuitar, FOCO, MiniaturaItem, Monto, Stepper } from "@/components/tienda/carrito-ui";
 
-export default function CarritoDrawer() {
+/**
+ * `variante` cambia solo el botón que abre el drawer:
+ *   - "clasica": ícono suelto en blanco (HeaderPanel de /panel y /admin).
+ *   - "capsula": botón 42×42 (44 en móvil) del header público, con bolsa y
+ *     badge rojo.
+ */
+export default function CarritoDrawer({
+  variante = "clasica",
+}: {
+  variante?: "clasica" | "capsula";
+}) {
   const [open, setOpen] = useState(false);
   const [montado, setMontado] = useState(false);
   useEffect(() => setMontado(true), []);
@@ -32,7 +42,22 @@ export default function CarritoDrawer() {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      {/* Trigger: ícono carrito + badge (vive en el Header; sin cambios) */}
+      {variante === "capsula" ? (
+        <SheetTrigger
+          className="relative flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-[10px] border-0 bg-transparent text-tema-texto transition-colors duration-150 hover:bg-tema-activo focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tema-foco lg:h-[42px] lg:w-[42px]"
+          aria-label={cantidad > 0 ? `Abrir carrito (${cantidad} ${cantidad === 1 ? "producto" : "productos"})` : "Abrir carrito"}
+        >
+          <ShoppingBag size={17} strokeWidth={2} aria-hidden="true" />
+          {cantidad > 0 && (
+            <span
+              aria-hidden="true"
+              className="absolute right-px top-[3px] flex h-[15px] min-w-[15px] items-center justify-center rounded-lg border-2 border-tema-campo bg-tema-rojo px-1 text-[9px] font-bold leading-none text-tema-texto"
+            >
+              {cantidad > 99 ? "99+" : cantidad}
+            </span>
+          )}
+        </SheetTrigger>
+      ) : (
       <SheetTrigger
         className="relative text-white bg-transparent border-0 p-0 cursor-pointer"
         aria-label="Abrir carrito"
@@ -47,6 +72,7 @@ export default function CarritoDrawer() {
           </span>
         )}
       </SheetTrigger>
+      )}
 
       {/* Drawer */}
       <SheetContent

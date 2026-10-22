@@ -10,7 +10,10 @@ import Analitica from "@/components/Analitica";
  * El wrapper es un <div> y no un <main> a propósito: la home, /carrito y
  * /checkout ya traen su propio <main>, y anidarlos sería HTML inválido.
  *
- * /panel y /admin quedan fuera de este grupo: montan su propio Header + Sidebar.
+ * /panel y /admin quedan fuera de este grupo: montan HeaderPanel + Sidebar.
+ *
+ * El wrapper lleva `bg-tema-fondo` porque el header (cápsula de vidrio) deja
+ * ver lo que hay detrás, y el <body> es blanco.
  *
  * Google Analytics se monta acá y no en el layout raíz, para que la etiqueta
  * no aparezca en el HTML de /panel ni /admin. Ver components/Analitica.tsx.
@@ -21,11 +24,11 @@ export default function PublicoLayout({
   children: React.ReactNode;
 }) {
   return (
-    <>
+    <div className="flex flex-1 flex-col bg-tema-fondo">
       <Header />
       <div className="flex-1">{children}</div>
       <Footer />
       <Analitica />
-    </>
+    </div>
   );
 }

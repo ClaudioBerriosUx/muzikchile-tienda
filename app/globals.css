@@ -259,6 +259,8 @@
   --tema-campo: #1E1E1E;
   /** Hover sutil sobre superficies (botones fantasma). */
   --tema-hover: #242424;
+  /** Ítem activo de un control segmentado (menú del header). */
+  --tema-activo: #262626;
   /** Separadores y bordes de tarjetas. */
   --tema-borde: #2A2A2A;
   /** Borde de inputs en reposo. */
@@ -272,11 +274,15 @@
   --tema-texto-3: #9A9A9A;
   /** Texto secundario destacado: chips en reposo, migas activas, bio. */
   --tema-texto-claro: #C9C9C9;
+  /** Texto decorativo muy tenue ("CHILE" junto al logo). No para texto que haya que leer. */
+  --tema-texto-tenue: #7A7A7A;
   /** Precios en Anton sobre oscuro (rojo claro, AA a tamaño de titular). */
   --tema-precio: #E8707C;
 
   /* ── Rojo: acción y error ─────────────────────────────────────────────── */
   --tema-rojo: #B02F3C;
+  /** Hover del botón primario. */
+  --tema-rojo-hover: #C8404F;
   /** Botón primario mientras carga. */
   --tema-rojo-oscuro: #7E2530;
   /** Texto de error sobre oscuro (AA). */
@@ -297,6 +303,8 @@
   --tema-azul-fondo: #131F2C;
   /** Texto de etiquetas sobre `--tema-azul-fondo` (badge de categoría). */
   --tema-azul-etiqueta: #9CBDE3;
+  /** Anillo de foco visible (mismo azul que `--tema-azul-texto`). */
+  --tema-foco: var(--tema-azul-texto);
 
   /* ── Estado OK ────────────────────────────────────────────────────────── */
   --tema-ok: #3E7D5A;
@@ -306,6 +314,12 @@
   --tema-aviso: #C7893A;
   /** Texto/ícono ámbar sobre oscuro (AA). */
   --tema-aviso-texto: #E3B26A;
+
+  /* ── Header público (cápsula flotante, components/layout/Header.tsx) ──── */
+  /** Lo que el header ocupa en el flujo: 14px de aire + 62px de cápsula − 14px de margen negativo. */
+  --alto-header: 62px;
+  /** Borde inferior de la cápsula pegada arriba (14 + 62). Para sticky y scroll-padding. */
+  --header-ocupa: 76px;
 }
 
 @theme {
@@ -313,14 +327,17 @@
   --color-tema-superficie: var(--tema-superficie);
   --color-tema-campo: var(--tema-campo);
   --color-tema-hover: var(--tema-hover);
+  --color-tema-activo: var(--tema-activo);
   --color-tema-borde: var(--tema-borde);
   --color-tema-borde-campo: var(--tema-borde-campo);
   --color-tema-texto: var(--tema-texto);
   --color-tema-texto-2: var(--tema-texto-2);
   --color-tema-texto-3: var(--tema-texto-3);
   --color-tema-texto-claro: var(--tema-texto-claro);
+  --color-tema-texto-tenue: var(--tema-texto-tenue);
   --color-tema-precio: var(--tema-precio);
   --color-tema-rojo: var(--tema-rojo);
+  --color-tema-rojo-hover: var(--tema-rojo-hover);
   --color-tema-rojo-oscuro: var(--tema-rojo-oscuro);
   --color-tema-rojo-texto: var(--tema-rojo-texto);
   --color-tema-rojo-texto-suave: var(--tema-rojo-texto-suave);
@@ -331,6 +348,7 @@
   --color-tema-azul-texto-suave: var(--tema-azul-texto-suave);
   --color-tema-azul-fondo: var(--tema-azul-fondo);
   --color-tema-azul-etiqueta: var(--tema-azul-etiqueta);
+  --color-tema-foco: var(--tema-foco);
   --color-tema-ok: var(--tema-ok);
   --color-tema-ok-texto: var(--tema-ok-texto);
   --color-tema-aviso: var(--tema-aviso);
@@ -349,6 +367,9 @@
   }
   html {
     @apply font-sans;
+    /* La cápsula sticky del header público tapa los primeros 76px: el foco por
+       teclado, las anclas y scrollIntoView dejan el elemento debajo de ella. */
+    scroll-padding-top: var(--header-ocupa);
   }
   /* ────────────────────────────────────────────────────────────────────────
      La regla central de titulares: TODO h1–h6 del sitio es Anton, sin excepción
