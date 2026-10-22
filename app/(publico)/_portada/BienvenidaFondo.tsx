@@ -66,15 +66,6 @@ export default function BienvenidaFondo() {
       >
         Escena
       </span>
-
-      {/* 6. Línea de horizonte al pie: rojo → claro → azul. */}
-      <div
-        className={`${CAPA} inset-x-0 bottom-0 h-px`}
-        style={{
-          background:
-            "linear-gradient(90deg, transparent, rgba(176,47,60,0.5) 30%, rgba(237,237,237,0.18) 50%, rgba(44,86,127,0.5) 70%, transparent)",
-        }}
-      />
     </div>
   );
 }

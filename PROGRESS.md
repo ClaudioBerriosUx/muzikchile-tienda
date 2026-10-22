@@ -1165,6 +1165,34 @@ era el ISR de 5 min: aprobar no invalidaba nada.
 
 ---
 
+## 🎬 Portada: bienvenida y videos destacados del diseño — 2026-10-21
+
+- **`_portada/Bienvenida.tsx`** (Server Component): kicker "Vitrina de la
+  escena independiente", H1 en 2 líneas (Anton 400, `clamp(40px, 7vw, 76px)`),
+  bajada nueva y cifras. Sin la línea de horizonte (pasa directo a los videos).
+  Gris de kicker y etiquetas en `tema-texto-3` (el #7A7A7A del diseño no llega
+  a AA a 11–12px). Sin barras de ecualizador.
+- **`lib/cifras-channel.ts`**: artistas distintos, ciudades distintas y videos
+  activos desde el Supabase del Channel, `revalidate: 300`. Si falla →
+  `null` y no se muestran cifras. Ciudades: normaliza tildes/mayúsculas,
+  descarta vacíos y "Región …", une errores de tipeo (≤2 letras). Formato
+  "240+" (decena hacia abajo). Hoy: 240+ · 30+ · 260+.
+- **`VideosDestacados`**: tarjetas del diseño (miniatura 16:9, badge azul de
+  ciudad, play rojo en hover/foco y siempre en táctil, artista en Anton),
+  "VIDEOS" fantasma y halo azul. Modal y `silenciar`/`restaurar` sin cambios.
+  Sin filtros por ciudad ni "Ver todos" (decisión del usuario).
+- Verificado a 375/768/1280/1920: sin scroll horizontal, Hero igual, modal
+  abre y cierra con Escape. Contraste peor píxel ≥4.79:1.
+
+### Pendiente
+- `videos.ubicacion` del Channel tiene errores de tipeo ("Santiafo de Chile")
+  y valores raros ("Dash", "Holanda"): se ven tal cual en el badge y afectan
+  la cifra de ciudades. Arreglarlos en los datos del Channel.
+- En 375 el kicker se parte en 2 líneas, y "ESCENA" y "VIDEOS" fantasma quedan
+  casi pegadas detrás del título de videos.
+
+---
+
 ## 🌌 Portada: fondo con atmósfera en la bienvenida — 2026-10-21
 
 - **`app/(publico)/_portada/BienvenidaFondo.tsx`** (Server Component, estático):

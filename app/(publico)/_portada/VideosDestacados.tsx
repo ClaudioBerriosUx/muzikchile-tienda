@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Play, X, MapPin } from "lucide-react";
+import { X } from "lucide-react";
 import { C, F, idYoutube, thumbYoutube, thumbYoutubeFallback, TEMA } from "@/lib/portada";
 import { useSenal } from "./SenalProvider";
 
@@ -150,6 +150,14 @@ function VideoModal({
 
 // ── Card ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Tarjeta del diseño de la portada (variante A): miniatura 16:9 con badge de
+ * ciudad y botón play, artista en Anton y canción debajo.
+ *
+ * El play aparece en hover y también con foco de teclado; en pantallas
+ * táctiles (sin hover) se ve siempre. El texto va en <span>, no en <h3>: un
+ * heading no puede ir dentro de un <button>.
+ */
 function VideoCard({
   video,
   onSelect,
@@ -166,81 +174,53 @@ function VideoCard({
     <button
       type="button"
       onClick={onSelect}
-      className="group text-left rounded-lg overflow-hidden border transition-all duration-200 hover:-translate-y-1"
-      style={{ borderColor: TEMA.borde, backgroundColor: TEMA.superficie }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = C.rojo;
-        e.currentTarget.style.boxShadow = "0 10px 30px -10px rgba(204,0,0,0.55)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = TEMA.borde;
-        e.currentTarget.style.boxShadow = "none";
-      }}
+      className="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-tema-borde bg-tema-superficie p-0 text-left transition-[transform,border-color,background-color] duration-200 hover:-translate-y-1 hover:border-tema-borde-campo hover:bg-tema-hover focus-visible:-translate-y-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tema-foco"
     >
-      {/* Thumbnail + overlay */}
-      <div className="relative w-full overflow-hidden" style={{ aspectRatio: "16 / 9" }}>
+      <div className="relative aspect-video w-full overflow-hidden bg-tema-fondo">
         {src && (
           <img
             src={src}
-            alt={`${video.artist ?? ""} — ${video.tracktitle ?? ""}`}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            alt=""
+            className="h-full w-full object-cover"
             loading="lazy"
             // maxresdefault no existe para todos los videos: cae a hqdefault.
             onError={() => setSrc(thumbYoutubeFallback(id))}
           />
         )}
 
-        <div
-          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-          style={{ backgroundColor: "rgba(0,0,0,0.45)" }}
-        >
-          <span
-            className="w-14 h-14 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: C.rojo }}
-          >
-            <Play size={22} fill="white" color="white" />
-          </span>
-        </div>
-      </div>
-
-      {/* Datos */}
-      <div className="p-4">
-        <p
-          className="truncate"
-          style={{
-            fontFamily: F.body,
-            textTransform: "uppercase",
-            letterSpacing: "0.08em",
-            fontSize: "17px",
-            color: C.blanco,
-          }}
-        >
-          {video.artist ?? "—"}
-        </p>
-        <p
-          className="truncate mt-0.5"
-          style={{ fontFamily: F.body, fontSize: "13px", color: TEMA.texto2 }}
-        >
-          {video.tracktitle ?? ""}
-        </p>
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_top,rgba(22,22,22,0.6),rgba(22,22,22,0)_55%)]"
+        />
 
         {video.ubicacion && (
-          <span
-            className="inline-flex items-center gap-1 mt-3 px-2 py-0.5 rounded-full border"
-            style={{
-              borderColor: C.rojo,
-              color: C.rojoClaro,
-              fontFamily: F.body,
-              fontSize: "10px",
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-            }}
-          >
-            <MapPin size={10} />
-            {video.ubicacion}
+          <span className="pointer-events-none absolute bottom-3.5 left-3.5 flex max-w-[calc(100%-84px)] items-center gap-[5px] rounded-md bg-tema-azul/90 px-[9px] py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-tema-texto">
+            <svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" className="shrink-0">
+              <path d="M12 21s-7-6-7-11a7 7 0 0 1 14 0c0 5-7 11-7 11z" />
+              <circle cx="12" cy="10" r="2.4" />
+            </svg>
+            <span className="truncate">{video.ubicacion}</span>
           </span>
         )}
+
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-3.5 right-3.5 flex h-[42px] w-[42px] scale-[0.85] items-center justify-center rounded-full bg-tema-rojo opacity-0 shadow-[0_8px_24px_rgba(22,22,22,0.6)] transition-[opacity,transform,background-color] duration-200 group-hover:scale-100 group-hover:bg-tema-rojo-hover group-hover:opacity-100 group-focus-visible:scale-100 group-focus-visible:opacity-100 [@media(hover:none)]:scale-100 [@media(hover:none)]:opacity-100"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" className="text-tema-texto">
+            <polygon points="7 4 20 12 7 20" />
+          </svg>
+        </span>
       </div>
+
+      <span className="flex flex-col gap-1.5 px-[18px] pb-[18px] pt-4">
+        <span className="font-heading text-[19px] leading-[1.14] tracking-[0.01em] text-tema-texto" style={{ fontWeight: 400 }}>
+          {video.artist ?? "—"}
+        </span>
+        <span className="text-sm text-tema-texto-2" style={{ fontFamily: F.body }}>
+          {video.tracktitle ?? ""}
+        </span>
+      </span>
     </button>
   );
 }
@@ -279,21 +259,40 @@ export default function VideosDestacados() {
   const configurado = !!CHANNEL_URL && !!CHANNEL_KEY;
 
   return (
-    <section style={{ backgroundColor: TEMA.fondo }} className="py-14">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <h2
-          className="pl-4 mb-8"
+    <section
+      style={{ backgroundColor: TEMA.fondo }}
+      className="relative overflow-hidden px-5 pb-16 pt-4 md:px-10 md:pb-[88px]"
+    >
+      {/* Fondo: "VIDEOS" fantasma arriba a la derecha y halo azul a la izquierda. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 select-none">
+        <span
+          className="absolute -right-5 -top-[30px] whitespace-nowrap font-heading leading-none"
           style={{
-            fontFamily: F.titulo,
-            fontSize: "38px",
-            letterSpacing: "0.04em",
-            color: C.blanco,
-            borderLeft: `4px solid ${C.rojo}`,
-            lineHeight: 1.1,
+            fontSize: "clamp(120px, 20vw, 260px)",
+            fontWeight: 400,
+            letterSpacing: "0.02em",
+            color: "transparent",
+            WebkitTextStroke: "1px rgba(237,237,237,0.07)",
           }}
         >
-          VIDEOS DESTACADOS
-        </h2>
+          VIDEOS
+        </span>
+        <span
+          className="absolute -left-[200px] top-[120px] h-[520px] w-[520px] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(44,86,127,0.18) 0%, rgba(44,86,127,0) 68%)" }}
+        />
+      </div>
+
+      <div className="relative mx-auto max-w-[1360px]">
+        <div className="mb-7 flex items-center gap-3.5">
+          <span aria-hidden="true" className="h-[34px] w-1 shrink-0 rounded-sm bg-tema-rojo" />
+          <h2
+            className="m-0 font-heading text-[38px] leading-none tracking-[0.01em] text-tema-texto"
+            style={{ fontWeight: 400 }}
+          >
+            VIDEOS DESTACADOS
+          </h2>
+        </div>
 
         {!configurado ? (
           <p
@@ -304,17 +303,16 @@ export default function VideosDestacados() {
             <code>NEXT_PUBLIC_CHANNEL_SUPABASE_ANON_KEY</code> para mostrar los videos del Channel.
           </p>
         ) : isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="rounded-lg overflow-hidden border animate-pulse"
-                style={{ borderColor: TEMA.borde, backgroundColor: TEMA.superficie }}
+                className="animate-pulse overflow-hidden rounded-xl border border-tema-borde bg-tema-superficie"
               >
-                <div style={{ aspectRatio: "16 / 9", backgroundColor: "#141414" }} />
-                <div className="p-4 flex flex-col gap-2">
-                  <div className="h-4 rounded" style={{ backgroundColor: "#141414" }} />
-                  <div className="h-3 rounded w-2/3" style={{ backgroundColor: "#141414" }} />
+                <div className="aspect-video bg-tema-campo" />
+                <div className="flex flex-col gap-2 px-[18px] pb-[18px] pt-4">
+                  <div className="h-4 rounded bg-tema-campo" />
+                  <div className="h-3 w-2/3 rounded bg-tema-campo" />
                 </div>
               </div>
             ))}
@@ -328,7 +326,7 @@ export default function VideosDestacados() {
             Todavía no hay videos destacados.
           </p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {videos.map((v) => (
               <VideoCard key={v.id} video={v} onSelect={() => abrir(v)} />
             ))}

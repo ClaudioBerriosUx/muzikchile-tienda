@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { C, F, TEMA } from "@/lib/portada";
+import { TEMA } from "@/lib/portada";
 import SenalProvider from "./_portada/SenalProvider";
 import Hero from "./_portada/Hero";
 import VideosDestacados from "./_portada/VideosDestacados";
 import UltimasNoticias from "./_portada/UltimasNoticias";
-import BienvenidaFondo from "./_portada/BienvenidaFondo";
+import Bienvenida from "./_portada/Bienvenida";
+import { traerCifrasChannel } from "@/lib/cifras-channel";
 import GrainOverlay from "@/components/ui/GrainOverlay";
 import PopupSuscripcion from "@/components/ui/PopupSuscripcion";
 
@@ -36,9 +37,8 @@ export const metadata: Metadata = {
  *   4. Videos destacados
  *   5. Últimas noticias
  *
- * El paso 3 es una banda propia, cerrada por la línea de horizonte de
- * `BienvenidaFondo`. Ver el comentario de la sección "Conecta" antes de tocar
- * sus paddings.
+ * La bienvenida (paso 3) pasa directo a los videos, sin línea de corte: los
+ * dos bloques se leen como una sola zona. Ver `_portada/Bienvenida.tsx`.
  *
  * ⚠️ Todavía no es pública de cara a buscadores: el noindex global de
  * `app/layout.tsx` sigue puesto y el dominio sigue redirigido. Eso se levanta
@@ -46,7 +46,10 @@ export const metadata: Metadata = {
  *
  * El catálogo de productos, que antes vivía acá, ahora está en /tienda.
  */
-export default function PortadaPage() {
+export default async function PortadaPage() {
+  // Si falla, `null`: la bienvenida se pinta sin cifras.
+  const cifras = await traerCifrasChannel();
+
   return (
     <div style={{ backgroundColor: TEMA.fondo }}>
       {/*
@@ -59,54 +62,11 @@ export default function PortadaPage() {
         <Hero />
 
         {/*
-          ── Conecta: encabezado de la zona de contenido ──
-
-          Historia: primero compartía color con el final del Hero (el H1 se
-          leía como bajada del reproductor); después pasó al fondo de
-          `VideosDestacados` para agruparse con ellos.
-
-          2026-10-21: pasó a ser una banda propia con fondo de atmósfera
-          (`BienvenidaFondo`: degradado #1C1C1C → #161616, grilla, halos,
-          "ESCENA" fantasma y línea de horizonte al pie). Con la línea cerrando
-          la banda, el padding ya no es asimétrico: 64/72px en móvil y 88/96px
-          en desktop (diseño de Claude Design). Antes era `pt-24 pb-4`, que
-          pegaba el H1 a "VIDEOS DESTACADOS".
+          ── Bienvenida: encabezado de la zona de contenido ──
+          Kicker, H1, bajada y cifras reales del Channel sobre `BienvenidaFondo`.
+          Ver `_portada/Bienvenida.tsx` antes de tocar paddings o colores.
         */}
-        <section
-          style={{ backgroundColor: TEMA.fondo }}
-          className="relative overflow-hidden px-5 pb-[72px] pt-16 md:px-10 md:pb-24 md:pt-[88px]"
-        >
-          <BienvenidaFondo />
-          {/* `relative`: queda por encima de las capas absolutas del fondo. */}
-          <div className="relative mx-auto max-w-3xl text-center">
-            <h1
-              style={{
-                fontFamily: F.titulo,
-                fontSize: "clamp(30px, 5vw, 52px)",
-                fontWeight: 700,
-                letterSpacing: "0.01em",
-                lineHeight: 1.1,
-                color: C.blanco,
-                textTransform: "uppercase",
-              }}
-            >
-              Conéctate con la música chilena
-            </h1>
-
-            <p
-              className="mt-5"
-              style={{
-                fontFamily: F.body,
-                fontSize: "16px",
-                lineHeight: 1.7,
-                color: TEMA.texto2,
-              }}
-            >
-              Nos mueve la pasión por los cantantes chilenos. Descubre el talento de
-              los artistas chilenos, llevándote lo mejor del sonido local.
-            </p>
-          </div>
-        </section>
+        <Bienvenida cifras={cifras} />
 
         <VideosDestacados />
       </SenalProvider>
