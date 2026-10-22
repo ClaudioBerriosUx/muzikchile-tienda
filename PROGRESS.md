@@ -1419,9 +1419,27 @@ o banda), `general` → Escena (análisis, curaduría, industria).
 - En la ficha del artista (`claseCategoria` de `ArtistaClient`) `video` y
   `perfil` usan el pill neutro, como `general`.
 
+- ✅ **Migración aplicada 2026-10-22** y `verificar:rls` → **18/18**.
+  `lib/supabase/types.ts` sin cambios (un CHECK no altera los tipos).
+
+⚠️ **El CLI de Supabase da 403 con esta cuenta** en todo lo que pasa por la
+Management API sin contraseña (`db push`, `migration list`, `gen types`:
+"Your account does not have the necessary privileges"). `supabase login`
+no lo arregla si la cuenta no es Owner/Administrator de la organización, y
+con `!` en el chat ni siquiera corre (no es TTY). Para `db push`, pasar la
+contraseña de la DB, en una terminal propia:
+```powershell
+$env:SUPABASE_DB_PASSWORD = Read-Host "Password DB" -MaskInput
+npx supabase db push
+Remove-Item Env:SUPABASE_DB_PASSWORD
+```
+`gen types` sigue sin camino con esta cuenta: si una migración cambia
+columnas, hay que resolver el permiso (rol en la organización) o generar los
+tipos desde una cuenta Owner.
+
 ### Pendiente
-- **`npx supabase db push`** y luego `npm run verificar:rls` (los casos (o) y (p) fallan
-  hasta que la migración esté aplicada; (q) y (r) deben pasar).
+- Regenerar `supabase/schema_baseline.sql` con `pg_dump` (receta en
+  "Siguiente (prioridad)", punto 0): no incluye todavía este CHECK.
 
 ---
 
