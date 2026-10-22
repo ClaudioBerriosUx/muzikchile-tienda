@@ -253,6 +253,8 @@
   /* ── Superficies ──────────────────────────────────────────────────────── */
   /** Fondo de página. */
   --tema-fondo: #161616;
+  /** Bloques que cierran la página, un escalón bajo el fondo (Footer). Nunca #000. */
+  --tema-fondo-profundo: #111111;
   /** Panel o tarjeta sobre el fondo (el mosaico, columnas laterales). */
   --tema-superficie: #1C1C1C;
   /** Campos de formulario y cajas de información. */
@@ -320,10 +322,14 @@
   --alto-header: 62px;
   /** Borde inferior de la cápsula pegada arriba (14 + 62). Para sticky y scroll-padding. */
   --header-ocupa: 76px;
+  /** Padding superior del primer elemento de una página (la miga de pan) para
+      que quede 16px bajo la cápsula: el contenido arranca 14px debajo de ella. */
+  --aire-bajo-header: calc(var(--header-ocupa) - var(--alto-header) + 16px);
 }
 
 @theme {
   --color-tema-fondo: var(--tema-fondo);
+  --color-tema-fondo-profundo: var(--tema-fondo-profundo);
   --color-tema-superficie: var(--tema-superficie);
   --color-tema-campo: var(--tema-campo);
   --color-tema-hover: var(--tema-hover);

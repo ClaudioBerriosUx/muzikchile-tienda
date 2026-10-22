@@ -60,6 +60,8 @@ Header y Footer. No importes `<Header/>` a mano en una página.
   `--header-ocupa` (76px). Todo lo que dependa del alto (un `min-h` de "pantalla
   menos header", un `sticky top-…`) usa esas variables de `globals.css`, nunca
   un número a mano. `<html>` tiene `scroll-padding-top: var(--header-ocupa)`.
+  El primer elemento de una página (la miga de pan) usa
+  `pt-(--aire-bajo-header)` para quedar 16px bajo la cápsula.
 - `components/layout/HeaderPanel.tsx` — el de /panel y /admin, clásico de 64px.
   `Sidebar` depende de esos 64px (`top-16`, `calc(100vh - 64px)`).
 

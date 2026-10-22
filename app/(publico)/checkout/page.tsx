@@ -192,7 +192,7 @@ export default function CheckoutPage() {
   return (
     <main className="min-h-screen bg-tema-fondo text-tema-texto">
       <div className="mx-auto max-w-[1280px] px-5 md:px-10">
-        <nav aria-label="Migas de pan" className="flex flex-wrap items-center gap-[9px] pb-1 pt-4 text-[13px] text-tema-texto-3 md:pt-5">
+        <nav aria-label="Migas de pan" className="flex flex-wrap items-center gap-[9px] pb-1 pt-(--aire-bajo-header) text-[13px] text-tema-texto-3 md:pt-[calc(var(--aire-bajo-header)+4px)]">
           <Link href="/tienda" className="text-tema-texto-3 hover:text-tema-texto-claro">Tienda</Link>
           <span aria-hidden="true">/</span>
           <Link href="/carrito" className="text-tema-texto-3 hover:text-tema-texto-claro">Carrito</Link>

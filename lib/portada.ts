@@ -51,6 +51,8 @@ export const MARCA = {
  */
 export const TEMA = {
   fondo:       "var(--tema-fondo)",
+  /** Un escalón bajo el fondo: el Footer. */
+  fondoProfundo: "var(--tema-fondo-profundo)",
   superficie:  "var(--tema-superficie)",
   campo:       "var(--tema-campo)",
   borde:       "var(--tema-borde)",

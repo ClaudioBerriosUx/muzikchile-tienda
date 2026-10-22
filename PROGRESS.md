@@ -1179,9 +1179,15 @@ era el ISR de 5 min: aprobar no invalidaba nada.
   las 5 páginas a 375 y 1280: **25 textos bajo AA antes → 0 después**. Los 25
   ya fallaban sobre el negro (fechas `#555`, el rojo y el azul de arriba).
 
+- **Footer** (después, mismo día): token nuevo `--tema-fondo-profundo`
+  (`#111111`, `TEMA.fondoProfundo`), un escalón bajo la página y sin #000.
+  Bordes `tema-borde`, enlaces `tema-texto-2`, copyright `tema-texto-3`
+  (antes `#555`, 2.8:1). Auditoría: 9/9 textos del Footer en AA.
+- **Migas de pan** de `/tienda`, `/carrito`, `/checkout` y `/producto/[id]`
+  quedaban a 2px de la cápsula en móvil (6px en desktop). Ahora usan
+  `--aire-bajo-header`: 16px en móvil y 20px desde 768 (medido).
+
 ### Pendiente
-- El Footer sigue en negro (no estaba en el alcance): con el resto en `#161616`,
-  se lee como bloque aparte. Decidir si pasa a `tema-*`.
 - `ImagenNoticia` mantiene `#141414` de fondo en el recuadro de la imagen.
 
 ---

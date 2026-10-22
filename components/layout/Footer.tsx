@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import Logo from "./Logo";
 import { NAV_LINKS, ACCESO_ARTISTAS_HREF, TIENDA_VISIBLE } from "./nav-links";
-import { C, F } from "@/lib/portada";
+import { C, F, TEMA } from "@/lib/portada";
 import { PATHS_MARCA as PATHS } from "./iconos-marca";
 
 /**
@@ -43,12 +43,12 @@ const tituloColumna: React.CSSProperties = {
 const linkStyle: React.CSSProperties = {
   fontFamily: F.body,
   fontSize: "14px",
-  color: C.gris,
+  color: TEMA.texto2,
 };
 
 export default function Footer() {
   return (
-    <footer style={{ backgroundColor: C.negro }} className="mt-auto">
+    <footer style={{ backgroundColor: TEMA.fondoProfundo }} className="mt-auto">
       <div className={`max-w-6xl mx-auto px-6 py-12 grid gap-10 grid-cols-1 sm:grid-cols-2 ${TIENDA_VISIBLE ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
         {/* Marca */}
         <div>
@@ -83,7 +83,7 @@ export default function Footer() {
                 rel="noopener noreferrer"
                 aria-label={`MuzikChile en ${r.label}`}
                 className="w-9 h-9 rounded-md flex items-center justify-center text-white hover:text-brand-rojo transition-colors duration-200"
-                style={{ border: `1px solid ${C.borde}` }}
+                style={{ border: `1px solid ${TEMA.borde}` }}
               >
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden>
                   <path d={r.path} />
@@ -159,9 +159,9 @@ export default function Footer() {
         )}
       </div>
 
-      <div style={{ borderTop: `1px solid ${C.borde}` }}>
+      <div style={{ borderTop: `1px solid ${TEMA.borde}` }}>
         <div className="max-w-6xl mx-auto px-6 py-5">
-          <p style={{ fontFamily: F.body, fontSize: "13px", color: C.grisTenue }}>
+          <p style={{ fontFamily: F.body, fontSize: "13px", color: TEMA.texto3 }}>
             MuzikChile 2024 — 2026
           </p>
         </div>
