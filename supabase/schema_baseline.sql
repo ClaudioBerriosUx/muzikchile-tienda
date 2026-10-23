@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Mpuh7Kl6ziy9p580vlkWgzGuqoG3SKG2x7eIYSbi1glO6EPdE23q8AFSbPCexbg
+\restrict MlpBoveXHfKu90RIoMDPV7ulgLP5gm7wFDAVKSy8dLnKDkHz2bvY6IXnmbosgu9
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.6
@@ -81,6 +81,85 @@ $$;
 
 
 --
+-- Name: confirmar_pago(uuid, text, numeric); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.confirmar_pago(p_grupo_id uuid, p_payment_id text, p_monto numeric) RETURNS text
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+DECLARE
+  v_ordenes integer;
+BEGIN
+  INSERT INTO public.pagos_mp (mp_payment_id, grupo_id, monto)
+  VALUES (p_payment_id, p_grupo_id, p_monto)
+  ON CONFLICT (mp_payment_id) DO NOTHING;
+
+  IF NOT FOUND THEN
+    RETURN 'duplicado';
+  END IF;
+
+  -- Una sola sentencia: los tres UPDATE corren juntos sobre las mismas filas.
+  -- 'cancelado' también: un pago rechazado marca el grupo como cancelado, pero
+  -- el comprador puede reintentar en la misma preferencia y pagar.
+  WITH pagadas AS (
+    UPDATE public.ordenes
+    SET estado         = 'pagado',
+        mercadopago_id = p_payment_id,
+        metodo_pago    = 'mercadopago'
+    WHERE grupo_id = p_grupo_id
+      AND estado IN ('pendiente', 'cancelado')
+    RETURNING producto_id, cantidad, cupon_id
+  ),
+  -- Stock atómico: resta en la misma sentencia, sin leer-y-escribir.
+  stock AS (
+    UPDATE public.productos p
+    SET stock = GREATEST(0, p.stock - s.cantidad)
+    FROM (
+      SELECT producto_id, sum(cantidad)::integer AS cantidad
+      FROM pagadas
+      WHERE producto_id IS NOT NULL
+      GROUP BY producto_id
+    ) s
+    WHERE p.id = s.producto_id
+      AND p.tipo = 'fisico'
+  ),
+  -- Un uso por pago, aunque el grupo tenga varias filas con el cupón.
+  cupon AS (
+    UPDATE public.cupones
+    SET usos_actuales = usos_actuales + 1
+    WHERE id = (SELECT cupon_id FROM pagadas WHERE cupon_id IS NOT NULL LIMIT 1)
+  )
+  SELECT count(*) INTO v_ordenes FROM pagadas;
+
+  IF v_ordenes = 0 THEN
+    RETURN 'sin_ordenes';
+  END IF;
+
+  RETURN 'procesado';
+END;
+$$;
+
+
+--
+-- Name: datos_bancarios(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.datos_bancarios(p_artista_id uuid DEFAULT NULL::uuid) RETURNS TABLE(artista_id uuid, banco text, cuenta_bancaria text, tipo_cuenta text, rut text)
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  SELECT a.id, a.banco, a.cuenta_bancaria, a.tipo_cuenta, a.rut
+  FROM public.artistas a
+  WHERE (p_artista_id IS NULL OR a.id = p_artista_id)
+    AND (
+      a.user_id = auth.uid()
+      OR public.has_role(auth.uid(), 'admin'::public.app_role)
+    );
+$$;
+
+
+--
 -- Name: has_role(uuid, public.app_role); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -103,6 +182,50 @@ CREATE FUNCTION public.incrementar_usos_cupon(cupon_id uuid) RETURNS void
     LANGUAGE sql SECURITY DEFINER
     AS $$
   UPDATE public.cupones SET usos_actuales = usos_actuales + 1 WHERE id = cupon_id;
+$$;
+
+
+--
+-- Name: proteger_columnas_artista(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.proteger_columnas_artista() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO ''
+    AS $$
+BEGIN
+  -- Solo se restringe a los roles de la API pública. El service role (Route
+  -- Handlers, webhook) y las migraciones (postgres) pasan sin chequeo.
+  IF current_user NOT IN ('anon', 'authenticated') THEN
+    RETURN NEW;
+  END IF;
+
+  IF public.has_role(auth.uid(), 'admin'::public.app_role) THEN
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'INSERT' THEN
+    -- El alta la hace PanelShell o el perfil desde el navegador: lo que mande
+    -- en estas columnas se ignora y quedan los valores por defecto.
+    NEW.comision       := 10;
+    NEW.es_founder     := false;
+    NEW.tienda_activa  := false;
+    NEW.verificado     := false;
+    NEW.cobros_activos := false;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.comision       IS DISTINCT FROM OLD.comision
+  OR NEW.es_founder     IS DISTINCT FROM OLD.es_founder
+  OR NEW.tienda_activa  IS DISTINCT FROM OLD.tienda_activa
+  OR NEW.verificado     IS DISTINCT FROM OLD.verificado
+  OR NEW.cobros_activos IS DISTINCT FROM OLD.cobros_activos THEN
+    RAISE EXCEPTION 'Solo un admin puede cambiar comision, es_founder, tienda_activa, verificado o cobros_activos'
+      USING ERRCODE = '42501';
+  END IF;
+
+  RETURN NEW;
+END;
 $$;
 
 
@@ -2036,7 +2159,8 @@ CREATE TABLE public.artistas (
     seo_descripcion text,
     verificado boolean DEFAULT false,
     bio_completa text,
-    es_editorial boolean DEFAULT false NOT NULL
+    es_editorial boolean DEFAULT false NOT NULL,
+    cobros_activos boolean DEFAULT false NOT NULL
 );
 
 
@@ -2125,6 +2249,18 @@ CREATE TABLE public.ordenes (
     ciudad_envio text,
     region_envio text,
     metodo_pago text
+);
+
+
+--
+-- Name: pagos_mp; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.pagos_mp (
+    mp_payment_id text NOT NULL,
+    grupo_id uuid NOT NULL,
+    monto numeric NOT NULL,
+    procesado_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -2484,6 +2620,14 @@ ALTER TABLE ONLY public.ordenes
 
 
 --
+-- Name: pagos_mp pagos_mp_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pagos_mp
+    ADD CONSTRAINT pagos_mp_pkey PRIMARY KEY (mp_payment_id);
+
+
+--
 -- Name: productos productos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -2770,6 +2914,13 @@ CREATE UNIQUE INDEX objects_bucket_id_name_version_key ON storage.objects USING 
 --
 
 CREATE UNIQUE INDEX vector_indexes_name_bucket_id_idx ON storage.vector_indexes USING btree (name, bucket_id);
+
+
+--
+-- Name: artistas proteger_columnas_artista; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER proteger_columnas_artista BEFORE INSERT OR UPDATE ON public.artistas FOR EACH ROW EXECUTE FUNCTION public.proteger_columnas_artista();
 
 
 --
@@ -3217,6 +3368,12 @@ ALTER TABLE public.liquidaciones ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ordenes ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: pagos_mp; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.pagos_mp ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: productos; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -3241,20 +3398,6 @@ CREATE POLICY "public read artistas" ON public.artistas FOR SELECT TO authentica
 --
 
 CREATE POLICY "public read categorias" ON public.categorias FOR SELECT TO authenticated, anon USING (true);
-
-
---
--- Name: cupones public read cupones activos; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "public read cupones activos" ON public.cupones FOR SELECT TO authenticated, anon USING (((activo = true) AND ((expira_at IS NULL) OR (expira_at > now()))));
-
-
---
--- Name: cupones public_read_cupones_activos; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY public_read_cupones_activos ON public.cupones FOR SELECT TO authenticated, anon USING ((activo = true));
 
 
 --
@@ -3574,5 +3717,5 @@ ALTER TABLE storage.vector_indexes ENABLE ROW LEVEL SECURITY;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Mpuh7Kl6ziy9p580vlkWgzGuqoG3SKG2x7eIYSbi1glO6EPdE23q8AFSbPCexbg
+\unrestrict MlpBoveXHfKu90RIoMDPV7ulgLP5gm7wFDAVKSy8dLnKDkHz2bvY6IXnmbosgu9
 

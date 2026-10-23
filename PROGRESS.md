@@ -1548,9 +1548,10 @@ pagadas y 0 liquidaciones** (12 filas en `ordenes`: 11 carritos abandonados y
   sentencia: órdenes → pagado, stock atómico sin bajar de 0, cupón +1;
   devuelve `procesado` | `duplicado` | `sin_ordenes`; solo service role) y
   revoke de `incrementar_usos_cupon`.
-- `20261022200100_lectura_publica_restringida` — ⏳ **aplicar DESPUÉS del
-  deploy**: rompe el código anterior (ficha con `select("*")`, cupones leídos
-  con la anon key). Grants por columna en `artistas` (anon: 25 columnas
+- `20261022200100_lectura_publica_restringida` — ✅ **aplicada 2026-10-22,
+  después del deploy de `461240f`**. Tiene que ir después porque rompe el
+  código anterior: la ficha hacía `select("*")` y los cupones se leían con la
+  anon key. Grants por columna en `artistas` (anon: 25 columnas
   públicas; authenticated: + `user_id`, `comision`, `es_founder`,
   `auth_provider`; datos bancarios para nadie, van por la RPC) y DROP de las dos
   políticas públicas de `cupones`.
@@ -1567,16 +1568,26 @@ escribe en la base real con prefijo `rlstest-`/`RLSTEST-` y limpia):
 - Navegador (local): carrito adulterado a $1 → el checkout muestra $18.000 c/u;
   cupón 10% y cambio de cantidad → recotiza a $16.200.
 - `tsc` limpio, `build` OK, lint sin regresiones (38 = HEAD).
-- Fase 2 (`-- --fase2`): pendiente, va después de aplicar M2.
+- **En producción, tras M2** (`-- --fase2 --api=https://www.muzikchile.cl`):
+  **fase 1 + fase 2 + API = 58/58**. Después se sumaron a la fase 2 la
+  consulta literal de cada pantalla con su rol (23 casos `(cc)`: anon, artista,
+  admin) y el guardado de datos bancarios del perfil `(dd)` → **63/63** sin la
+  API. Si cambias un `select()` sobre `artistas`, actualiza su copia en `(cc)`.
+- Navegador en producción: ficha de Fother Mukcer, `/tienda`, ficha del Hoodie
+  y checkout hasta la cotización ($29.100 = lo que devuelve
+  `/api/checkout/cotizar`), sin errores de consola. `/panel/perfil` y
+  `/admin/liquidaciones` no se abrieron (sin sesión en ese Chrome): sus
+  consultas están cubiertas por `(cc)`/`(dd)`; falta mirarlas logueado.
 
 ### Pendiente
-- **Después del push**: esperar el deploy de Vercel → `db push` (aplica M2) →
-  `npm run verificar:cobro -- --fase2` → revisar en producción la ficha de un
-  artista, `/panel/perfil` (datos bancarios) y `/admin/liquidaciones`.
+- Mirar logueado `/panel/perfil` (datos bancarios cargan y se guardan) y
+  `/admin/liquidaciones`.
 - **`lib/supabase/types.ts` editado a mano** (`gen types` da 403): una cuenta
   Owner debe regenerarlo y confirmar que calza.
-- Regenerar `supabase/schema_baseline.sql` tras M2. Ojo: el dump es solo de
-  `public` y `storage`; por eso la función del trigger vive en `public`.
+- Baseline regenerado tras M2. Ojo: el dump es solo de `public` y `storage`
+  (por eso la función del trigger vive en `public`) y va con
+  `--no-privileges`, así que **los grants por columna y los REVOKE no quedan en
+  el baseline**: la fuente es la migración `20261022200100`.
 - Una orden creada **antes** del deploy con cupón y pagada **después** no se
   confirma sola (su monto registrado es el de lista): queda en el log del
   webhook. Al 2026-10-22 no había ninguna viva.

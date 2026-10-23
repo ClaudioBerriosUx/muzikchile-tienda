@@ -342,7 +342,7 @@ async function fase1(A, B, ADMIN) {
 
 // ── Fase 2 ───────────────────────────────────────────────────────────────────
 
-async function fase2(A, B) {
+async function fase2(A, B, ADMIN) {
   console.log("\n── Fase 2 · lectura de artistas por columna ──");
 
   for (const col of ["rut", "banco", "cuenta_bancaria", "tipo_cuenta", "user_id", "comision", "es_founder", "auth_provider"]) {
@@ -382,6 +382,55 @@ async function fase2(A, B) {
       artista_id: A.artistaId, nombre: `${PREFIJO}-desde-panel`, precio: 5000, estado: "en_revision", imagenes: [],
     });
     check("(z) Artista sube un producto (política con subconsulta a artistas) → permitido", !error, fmt(error));
+  }
+
+  console.log("\n── Fase 2 · consultas de cada pantalla, con su rol ──");
+  // Copia literal de los select() que hacen las pantallas sobre artistas (o
+  // que lo embeben). Si una deja de calzar con los grants por columna, falla
+  // acá y no en producción. Al tocar un select en la app, actualizarlo aquí.
+  const PERFIL = "id, user_id, nombre, slug, foto_url, bio, bio_completa, ciudad, region, color_acento, redes, generos, seo_titulo, seo_descripcion";
+  const pantallas = [
+    // Públicas (anon)
+    ["anon", "ficha del artista (ArtistaClient)", (c) => c.from("artistas").select("id, nombre, slug, ciudad, region, color_acento, foto_url, bio, bio_completa, redes, verificado, generos").eq("slug", `${PREFIJO}-a`).single()],
+    ["anon", "metadata del artista (lib/artistas)", (c) => c.from("artistas").select("id, nombre, slug, bio, foto_url, seo_titulo, seo_descripcion, es_editorial").eq("slug", `${PREFIJO}-a`).maybeSingle()],
+    ["anon", "ficha de producto (ProductoClient)", (c) => c.from("productos").select("*, artistas(id, nombre, slug, ciudad, foto_url, color_acento, verificado, generos), categorias(id, nombre, slug)").limit(1)],
+    ["anon", "metadata de producto (lib/productos)", (c) => c.from("productos").select("id, nombre, descripcion, imagenes, precio, artistas(nombre, slug)").limit(1)],
+    ["anon", "sitemap", (c) => c.from("artistas").select("slug, created_at").eq("es_editorial", false).limit(1)],
+    ["anon", "revalidar noticias", (c) => c.from("publicaciones").select("slug, artistas(slug, es_editorial)").limit(1)],
+    // Panel (artista)
+    ["artista", "PanelShell: ¿existe mi fila?", (c) => c.from("artistas").select("id").eq("user_id", A.userId).maybeSingle()],
+    ["artista", "panel: mi id y nombre", (c) => c.from("artistas").select("id, nombre, slug").eq("user_id", A.userId).single()],
+    ["artista", "/panel/perfil", (c) => c.from("artistas").select(PERFIL).eq("user_id", A.userId).maybeSingle()],
+    ["artista", "/panel/perfil: ¿slug ocupado?", (c) => c.from("artistas").select("id").eq("slug", "slug-que-no-existe").neq("id", A.artistaId).maybeSingle()],
+    ["artista", "/panel/liquidaciones: datos bancarios", (c) => c.rpc("datos_bancarios", { p_artista_id: A.artistaId })],
+    // Admin
+    ["admin", "/admin (cuenta de tiendas)", (c) => c.from("artistas").select("id", { count: "exact", head: true }).eq("tienda_activa", true)],
+    ["admin", "/admin (ventas)", (c) => c.from("ordenes").select("artista_id, monto_artista, comision_monto, precio_unitario, artistas(nombre)").limit(1)],
+    ["admin", "/admin/artistas", (c) => c.from("artistas").select("id, nombre, slug, foto_url, bio, ciudad, region, comision, es_founder, tienda_activa, verificado").order("nombre").limit(5)],
+    ["admin", "/admin/artistas/[id]/editar", (c) => c.from("artistas").select(PERFIL).eq("id", A.artistaId).maybeSingle()],
+    ["admin", "/admin/liquidaciones (artistas)", (c) => c.from("artistas").select("id, nombre, foto_url, ordenes(id, monto_artista, estado, liquidado, created_at)").order("nombre").limit(5)],
+    ["admin", "/admin/liquidaciones (bancos)", (c) => c.rpc("datos_bancarios")],
+    ["admin", "/admin/liquidaciones (historial)", (c) => c.from("liquidaciones").select("*, artistas(nombre)").limit(1)],
+    ["admin", "/admin/ordenes", (c) => c.from("ordenes").select("*, artistas(nombre), productos(nombre)").limit(1)],
+    ["admin", "/admin/cupones", (c) => c.from("cupones").select("*, artistas(nombre)").limit(1)],
+    ["admin", "/admin/productos", (c) => c.from("productos").select("id, nombre, precio, imagenes, tipo, estado, descripcion, zonas_envio, artista_id, artistas(nombre, slug), categorias(nombre)").limit(1)],
+    ["admin", "/admin/publicaciones", (c) => c.from("publicaciones").select("*, artistas(nombre, es_editorial)").limit(1)],
+    ["admin", "/admin/publicaciones/nueva", (c) => c.from("artistas").select("id, nombre").eq("slug", "muzikchile").eq("es_editorial", true).maybeSingle()],
+  ];
+  const clientes = { anon, artista: A.cliente, admin: ADMIN.cliente };
+  for (const [rol, nombre, consulta] of pantallas) {
+    const { error } = await consulta(clientes[rol]);
+    check(`(cc) [${rol}] ${nombre}`, !error, fmt(error));
+  }
+  {
+    // Guardar el perfil escribe columnas que el artista ya no puede leer:
+    // UPDATE sigue permitido, y lo nuevo se ve por la RPC.
+    const { error } = await A.cliente
+      .from("artistas")
+      .update({ user_id: A.userId, nombre: "RLS Test a", banco: "Banco Nuevo", cuenta_bancaria: "999", tipo_cuenta: "Cuenta RUT", rut: "11.111.111-1" })
+      .eq("id", A.artistaId);
+    const { data } = await A.cliente.rpc("datos_bancarios", { p_artista_id: A.artistaId });
+    check("(dd) /panel/perfil guarda sus datos bancarios", !error && data?.[0]?.banco === "Banco Nuevo", error ? fmt(error) : JSON.stringify(data?.[0]));
   }
 
   console.log("\n── Fase 2 · cupones ──");
@@ -497,7 +546,7 @@ async function main() {
     const ADMIN = await crearUsuario("admin", "admin");
 
     await fase1(A, B, ADMIN);
-    if (FASE2) await fase2(A, B);
+    if (FASE2) await fase2(A, B, ADMIN);
     if (API) await api(A, B);
   } catch (err) {
     console.error("\nError montando o ejecutando la verificación:");
