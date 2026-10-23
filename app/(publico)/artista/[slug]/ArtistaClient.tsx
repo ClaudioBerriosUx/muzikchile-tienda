@@ -132,7 +132,7 @@ export default function ArtistaClient({ slug, noticias }: { slug: string; notici
     queryFn: async () => {
       const { data, error } = await supabase
         .from("artistas")
-        .select("*")
+        .select("id, nombre, slug, ciudad, region, color_acento, foto_url, bio, bio_completa, redes, verificado, generos")
         .eq("slug", slug)
         .single();
       if (error) throw error;

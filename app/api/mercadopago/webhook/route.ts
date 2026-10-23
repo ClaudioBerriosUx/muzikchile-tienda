@@ -1,113 +1,121 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import type { Database } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Aviso de MercadoPago (IPN o webhook). El aviso solo dice "mira el pago X":
+ * el estado, el monto y el external_reference se leen siempre de la API de MP.
+ *
+ * MP manda varios avisos por pago (payment, payment.updated, reintentos), a
+ * veces simultáneos. Los efectos (órdenes, stock, cupón) los aplica
+ * confirmar_pago() en una transacción y una sola vez por payment_id.
+ *
+ * Respuestas: 200 cuando el aviso quedó atendido o no hay nada que hacer;
+ * 500 ante un error temporal (MP caído, la base falló) para que MP reintente.
+ */
 export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
+  const ok = () => NextResponse.json({ ok: true });
+  const reintentar = () => NextResponse.json({ ok: false }, { status: 500 });
 
-    const supabase = createClient(
+  try {
+    // El IPN viejo manda topic e id por query; el webhook nuevo, en el body.
+    const body = await req.json().catch(() => ({}));
+    const params = req.nextUrl.searchParams;
+
+    const topic      = body.topic ?? body.type ?? params.get("topic") ?? params.get("type");
+    const resourceId = body.data?.id ?? params.get("data.id") ?? body.id ?? params.get("id");
+
+    if (!resourceId || (topic !== "payment" && topic !== "payment.updated")) {
+      return ok();
+    }
+
+    // Solo dígitos: el id termina en una URL de la API.
+    const paymentId = String(resourceId);
+    if (!/^\d+$/.test(paymentId)) return ok();
+
+    const supabase = createClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const topic      = body.topic ?? body.type;
-    const resourceId = body.data?.id ?? body.id;
+    const { data: settings, error: settingsError } = await supabase
+      .from("app_settings")
+      .select("key, value")
+      .eq("key", "mp_access_token")
+      .maybeSingle();
+    if (settingsError) return reintentar();
 
-    if (!resourceId) {
-      return NextResponse.json({ ok: true });
+    const token = settings?.value;
+    if (!token) {
+      console.error("[webhook] mp_access_token no configurado");
+      return ok();
     }
 
-    if (topic === "payment" || topic === "payment.updated") {
-      const { data: settings } = await supabase
-        .from("app_settings")
-        .select("key, value")
-        .in("key", ["mp_access_token", "mp_modo"]);
+    const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (mpRes.status >= 500) return reintentar();
+    if (!mpRes.ok) {
+      console.error("[webhook] MP respondió", mpRes.status, "para el pago", paymentId);
+      return ok();
+    }
 
-      const config = Object.fromEntries(
-        (settings ?? []).map((s: { key: string; value: string }) => [s.key, s.value])
-      );
+    const pago = await mpRes.json();
+    const grupoId: unknown = pago.external_reference;
+    if (typeof grupoId !== "string" || !/^[0-9a-f-]{36}$/i.test(grupoId)) return ok();
 
-      const token = config.mp_access_token;
-      if (!token) return NextResponse.json({ ok: true });
+    if (pago.status === "approved") {
+      const { data: ordenes, error: ordenesError } = await supabase
+        .from("ordenes")
+        .select("monto_artista, comision_monto")
+        .eq("grupo_id", grupoId);
+      if (ordenesError) return reintentar();
 
-      const mpRes = await fetch(
-        `https://api.mercadopago.com/v1/payments/${resourceId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (!mpRes.ok) return NextResponse.json({ ok: true });
-
-      const pago = await mpRes.json();
-
-      const externalRef = pago.external_reference;
-      const status      = pago.status;
-
-      if (!externalRef) return NextResponse.json({ ok: true });
-
-      if (status === "approved") {
-        await supabase
-          .from("ordenes")
-          .update({
-            estado:         "pagado",
-            mercadopago_id: String(resourceId),
-            metodo_pago:    "mercadopago",
-          })
-          .eq("grupo_id", externalRef)
-          .eq("estado", "pendiente");
-
-        const { data: ordenesPagadas } = await supabase
-          .from("ordenes")
-          .select("producto_id, cantidad, cupon_id")
-          .eq("grupo_id", externalRef)
-          .eq("estado", "pagado");
-
-        // Incrementar usos del cupón (una sola vez por grupo)
-        const cuponId = ordenesPagadas?.find((o) => o.cupon_id)?.cupon_id;
-        if (cuponId) {
-          await supabase.rpc("incrementar_usos_cupon", { cupon_id: cuponId });
-        }
-
-        // Descontar stock de productos físicos
-        if (ordenesPagadas?.length) {
-          const productoIds = ordenesPagadas.map((o) => o.producto_id).filter(Boolean);
-          const { data: productos } = await supabase
-            .from("productos")
-            .select("id, tipo, stock")
-            .in("id", productoIds);
-
-          const productoMap = Object.fromEntries(
-            (productos ?? []).map((p) => [p.id, p])
-          );
-
-          for (const orden of ordenesPagadas) {
-            const producto = productoMap[orden.producto_id];
-            if (producto?.tipo === "fisico" && producto.stock !== null) {
-              const nuevoStock = Math.max(0, producto.stock - orden.cantidad);
-              const { error: stockError } = await supabase
-                .from("productos")
-                .update({ stock: nuevoStock })
-                .eq("id", orden.producto_id);
-              if (stockError) {
-                console.error("Error descontando stock:", orden.producto_id, JSON.stringify(stockError));
-              }
-            }
-          }
-        }
-      } else if (status === "rejected" || status === "cancelled") {
-        await supabase
-          .from("ordenes")
-          .update({ estado: "cancelado" })
-          .eq("grupo_id", externalRef)
-          .eq("estado", "pendiente");
+      if (!ordenes?.length) {
+        console.error("[webhook] pago aprobado sin órdenes:", paymentId, grupoId);
+        return ok();
       }
+
+      // Lo cobrado tiene que cubrir lo que se registró. Si no calza, el pago
+      // no se confirma: queda en el log para revisión manual.
+      const esperado = ordenes.reduce((acc, o) => acc + o.monto_artista + o.comision_monto, 0);
+      const pagado = Number(pago.transaction_amount);
+      if (pago.currency_id !== "CLP" || !(pagado >= esperado)) {
+        console.error(
+          "[webhook] monto o moneda no calzan; no se confirma:",
+          JSON.stringify({ paymentId, grupoId, pagado, moneda: pago.currency_id, esperado })
+        );
+        return ok();
+      }
+
+      const { data: resultado, error: rpcError } = await supabase.rpc("confirmar_pago", {
+        p_grupo_id:   grupoId,
+        p_payment_id: paymentId,
+        p_monto:      pagado,
+      });
+      if (rpcError) {
+        console.error("[webhook] confirmar_pago falló:", JSON.stringify(rpcError));
+        return reintentar();
+      }
+      if (resultado === "sin_ordenes") {
+        console.error("[webhook] pago registrado sin órdenes por confirmar:", paymentId, grupoId);
+      }
+      // resultado === "procesado" → acá irán los correos (una sola vez por pago).
+    } else if (pago.status === "rejected" || pago.status === "cancelled") {
+      const { error } = await supabase
+        .from("ordenes")
+        .update({ estado: "cancelado" })
+        .eq("grupo_id", grupoId)
+        .eq("estado", "pendiente");
+      if (error) return reintentar();
     }
 
-    return NextResponse.json({ ok: true });
+    return ok();
   } catch (error) {
     console.error("Webhook MP error:", error);
-    return NextResponse.json({ ok: true }, { status: 200 });
+    return reintentar();
   }
 }
 

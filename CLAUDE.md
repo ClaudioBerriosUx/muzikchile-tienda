@@ -135,7 +135,8 @@ automáticamente y crea el registro en `artistas`.
 
 Tablas: `artistas`, `productos` (estados: `en_revision` → `aprobado`), `ordenes`,
 `categorias`, `cupones`, `user_roles`, `app_settings` (tokens de MercadoPago y
-modo sandbox/prod), `liquidaciones`.
+modo sandbox/prod), `liquidaciones`, `pagos_mp` (pagos de MP ya procesados;
+solo service role).
 
 **La fuente de verdad del esquema es `lib/supabase/types.ts`** (generado), no los
 queries. Los clientes de `lib/supabase/{client,server}.ts` están tipados con
@@ -169,18 +170,30 @@ type Cupon = Database["public"]["Tables"]["cupones"]["Row"];
 
 ### Flujo de pago
 
-`POST /api/mercadopago/crear-preferencia`:
-1. Lee `mp_access_token` y `mp_modo` de `app_settings`
-2. Aplica descuento por cupón si se envía `cupon_id`
-3. Obtiene comisión por artista (`artistas.comision`; founders: 0%)
-4. Crea preferencia en MercadoPago
-5. Inserta filas en `ordenes` (estado `pendiente`, una por item)
-6. Retorna `init_point` / `sandbox_init_point`
+**Precio, stock, cupón y comisión se calculan solo en el servidor**, en
+`lib/checkout/cotizar.ts`. El navegador manda `{ id, cantidad }` y el código del
+cupón; nunca uses un precio que venga del body. La comisión
+(`artistas.comision`; founders: 0%) va sobre lo cobrado, después del descuento.
 
-`POST /api/mercadopago/webhook` recibe el IPN, consulta el pago en MP, actualiza
-`ordenes` a `pagado`/`cancelado`, incrementa los usos del cupón y descuenta stock
-de productos físicos. La `notification_url` solo se envía a MP cuando
-`NEXT_PUBLIC_URL` es HTTPS (en local, MP la rechaza).
+- `POST /api/checkout/cotizar` — lo que muestra el checkout (misma función).
+- `POST /api/mercadopago/crear-preferencia` — cotiza, lee `mp_access_token` y
+  `mp_modo` de `app_settings`, crea la preferencia e inserta una fila
+  `pendiente` en `ordenes` por línea (`monto_artista + comision_monto` = lo
+  cobrado por la línea).
+- `POST /api/mercadopago/webhook` — consulta el pago en la API de MP (el aviso
+  no se cree), compara monto y moneda, y llama a `confirmar_pago()`: órdenes a
+  `pagado`, stock y cupón, **una sola vez por pago** (lock en `pagos_mp`).
+  Devuelve 500 ante errores temporales para que MP reintente.
+
+La `notification_url` solo se envía a MP cuando `NEXT_PUBLIC_URL` es HTTPS (en
+local, MP la rechaza).
+
+Lectura de `artistas`: anon y authenticated tienen **grants por columna**, así
+que `select("*")` falla con 42501; nombra las columnas. Los datos bancarios
+(`banco`, `cuenta_bancaria`, `tipo_cuenta`, `rut`) se leen con la RPC
+`datos_bancarios()`. Solo un admin puede cambiar `comision`, `es_founder`,
+`tienda_activa`, `verificado` y `cobros_activos` (trigger). Verificación:
+`npm run verificar:cobro`.
 
 ### Convenciones de estilo
 

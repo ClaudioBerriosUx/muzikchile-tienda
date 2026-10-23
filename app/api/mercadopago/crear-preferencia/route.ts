@@ -1,13 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-
-interface ItemBody {
-  id: string;
-  nombre: string;
-  precio: number;
-  cantidad: number;
-  imagen?: string;
-}
+import type { Database } from "@/lib/supabase/types";
+import { cotizarCarrito, normalizarItems } from "@/lib/checkout/cotizar";
 
 interface CompradorBody {
   nombre: string;
@@ -18,32 +12,33 @@ interface CompradorBody {
   region?: string;
 }
 
-interface RequestBody {
-  items: ItemBody[];
-  comprador: CompradorBody;
-  cupon_id?: string | null;
-}
-
-interface ProductoRow {
-  id: string;
-  artista_id: string | null;
-  artistas: { comision: number; es_founder: boolean } | { comision: number; es_founder: boolean }[] | null;
-}
-
+/**
+ * Body: `{ items: [{ id, cantidad }], comprador, cupon_codigo? }`.
+ * Precio, stock, cupón y comisión salen de la base (lib/checkout/cotizar.ts);
+ * si el cliente manda `precio` o `nombre`, se ignoran.
+ */
 export async function POST(request: Request) {
   try {
-    const body: RequestBody = await request.json();
-    const { items, comprador, cupon_id } = body;
+    const body = await request.json().catch(() => null);
+    const items = normalizarItems(body?.items);
+    const comprador = body?.comprador as CompradorBody | undefined;
 
-    if (!items?.length || !comprador?.email) {
+    if (!items || typeof comprador?.email !== "string" || typeof comprador?.nombre !== "string") {
       return NextResponse.json({ error: "Datos de compra incompletos" }, { status: 400 });
     }
 
     // Cliente con service role (acceso total sin RLS)
-    const supabase = createClient(
+    const supabase = createClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+
+    const codigo = typeof body?.cupon_codigo === "string" ? body.cupon_codigo : null;
+    const resultado = await cotizarCarrito(supabase, items, codigo);
+    if (!resultado.ok) {
+      return NextResponse.json({ error: resultado.error, campo: resultado.campo }, { status: 422 });
+    }
+    const { lineas, cupon } = resultado.cotizacion;
 
     // Leer configuración de MercadoPago
     const { data: settingsRaw } = await supabase
@@ -51,8 +46,8 @@ export async function POST(request: Request) {
       .select("key, value")
       .in("key", ["mp_access_token", "mp_modo"]);
 
-    const settings: Record<string, string> = Object.fromEntries(
-      (settingsRaw ?? []).map(({ key, value }: { key: string; value: string }) => [key, value])
+    const settings: Record<string, string | null> = Object.fromEntries(
+      (settingsRaw ?? []).map(({ key, value }) => [key, value])
     );
 
     const access_token = settings.mp_access_token;
@@ -62,56 +57,8 @@ export async function POST(request: Request) {
 
     const modo = settings.mp_modo ?? "sandbox";
 
-    // Calcular descuento por cupón
-    let descuentoTotal = 0;
-    let cuponData: { id: string; tipo_descuento: string; valor: number } | null = null;
-    if (cupon_id) {
-      const { data: cupon, error: cuponError } = await supabase
-        .from("cupones")
-        .select("id, tipo_descuento, valor")
-        .eq("id", cupon_id)
-        .single();
-
-      if (cuponError) {
-        console.error("Error consultando cupón:", JSON.stringify(cuponError));
-      }
-
-      if (cupon) {
-        cuponData = cupon;
-        const subtotal = items.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
-        descuentoTotal = cupon.tipo_descuento === "porcentaje"
-          ? Math.round(subtotal * cupon.valor / 100)
-          : Math.min(cupon.valor, subtotal);
-      }
-    }
-
-    // Obtener artistas y comisiones de cada producto
-    const productIds = items.map((i) => i.id);
-    const { data: productosRaw } = await supabase
-      .from("productos")
-      .select("id, artista_id, artistas(comision, es_founder)")
-      .in("id", productIds);
-
-    const productoMap = Object.fromEntries(
-      ((productosRaw ?? []) as ProductoRow[]).map((p) => [p.id, p])
-    );
-
     // External reference único para este pedido
     const external_reference = crypto.randomUUID();
-
-    // Precio por item con descuento incorporado en unit_price
-    // La comisión se calcula sobre precio original (ver más abajo)
-    const subtotalBruto = items.reduce((acc, i) => acc + i.precio * i.cantidad, 0);
-    const precioConDescuento = (precio: number, cantidad: number): number => {
-      if (!cuponData || descuentoTotal === 0) return precio;
-      if (cuponData.tipo_descuento === "porcentaje") {
-        return Math.max(1, Math.round(precio * (1 - cuponData.valor / 100)));
-      }
-      // Monto fijo: prorratear según el peso del item en el subtotal
-      const peso = (precio * cantidad) / subtotalBruto;
-      const descuentoItem = Math.round(descuentoTotal * peso / cantidad);
-      return Math.max(1, precio - descuentoItem);
-    };
 
     // Construir preferencia de MP
     const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
@@ -121,12 +68,13 @@ export async function POST(request: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        items: items.map((item) => ({
-          title:       item.nombre,
-          quantity:    item.cantidad,
-          unit_price:  precioConDescuento(item.precio, item.cantidad),
+        items: lineas.map((l) => ({
+          id:          l.producto_id,
+          title:       l.nombre,
+          quantity:    l.cantidad,
+          unit_price:  l.precio_cobrado,
           currency_id: "CLP",
-          ...(item.imagen ? { picture_url: item.imagen } : {}),
+          ...(l.imagen ? { picture_url: l.imagen } : {}),
         })),
         payer: {
           name:  comprador.nombre,
@@ -151,7 +99,6 @@ export async function POST(request: Request) {
         ...(process.env.NEXT_PUBLIC_URL?.startsWith("https://")
           ? { notification_url: `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook` }
           : {}),
-        // descuentoTotal ya está incorporado en unit_price de cada item
       }),
     });
 
@@ -165,34 +112,27 @@ export async function POST(request: Request) {
       );
     }
 
-    // Crear órdenes pendientes en Supabase (una por item)
-    const ordenes = items.map((item) => {
-      const prod   = productoMap[item.id] as ProductoRow | undefined;
-      const artista = Array.isArray(prod?.artistas)
-        ? prod!.artistas[0]
-        : (prod?.artistas as { comision: number; es_founder: boolean } | null);
-      const comisionPct = artista?.es_founder ? 0 : (artista?.comision ?? 10);
-      const montoItem   = item.precio * item.cantidad;
-      const comisionMonto = Math.round(montoItem * comisionPct / 100);
-
-      return {
-        artista_id:         prod?.artista_id ?? null,
-        producto_id:        item.id,
-        comprador_nombre:   comprador.nombre,
-        comprador_email:    comprador.email,
-        precio_unitario:    item.precio,
-        cantidad:           item.cantidad,
-        monto_artista:      montoItem - comisionMonto,
-        comision_monto:     comisionMonto,
-        estado:             "pendiente",
-        grupo_id:           external_reference,
-        mp_preference_id:   mpData.id,
-        cupon_id:           cuponData?.id ?? null,
-        direccion_envio:    comprador.direccion ?? null,
-        ciudad_envio:       comprador.ciudad ?? null,
-        region_envio:       comprador.region ?? null,
-      };
-    });
+    // Crear órdenes pendientes en Supabase (una por línea).
+    // monto_artista + comision_monto = lo que MP cobra por la línea: el webhook
+    // compara esa suma con el monto del pago.
+    const ordenes = lineas.map((l) => ({
+      artista_id:          l.artista_id,
+      producto_id:         l.producto_id,
+      comprador_nombre:    comprador.nombre,
+      comprador_email:     comprador.email,
+      precio_unitario:     l.precio_unitario,
+      cantidad:            l.cantidad,
+      monto_artista:       l.monto_artista,
+      comision_monto:      l.comision_monto,
+      comision_porcentaje: l.comision_pct,
+      estado:              "pendiente",
+      grupo_id:            external_reference,
+      mp_preference_id:    mpData.id,
+      cupon_id:            cupon?.id ?? null,
+      direccion_envio:     comprador.direccion ?? null,
+      ciudad_envio:        comprador.ciudad ?? null,
+      region_envio:        comprador.region ?? null,
+    }));
 
     const { error: insertError } = await supabase.from("ordenes").insert(ordenes);
     if (insertError) {

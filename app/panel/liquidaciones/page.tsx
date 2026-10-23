@@ -37,10 +37,12 @@ export default function LiquidacionesPage() {
       if (!user) return null;
       const { data } = await supabase
         .from("artistas")
-        .select("id, nombre, banco, cuenta_bancaria, tipo_cuenta, rut")
+        .select("id, nombre")
         .eq("user_id", user.id)
         .single();
-      return data ?? null;
+      if (!data) return null;
+      const { data: banco } = await supabase.rpc("datos_bancarios", { p_artista_id: data.id });
+      return { ...data, ...(banco?.[0] ?? {}) };
     },
   });
 

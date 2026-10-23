@@ -1427,11 +1427,16 @@ Management API sin contraseña (`db push`, `migration list`, `gen types`:
 "Your account does not have the necessary privileges"). `supabase login`
 no lo arregla si la cuenta no es Owner/Administrator de la organización, y
 con `!` en el chat ni siquiera corre (no es TTY). Para `db push`, pasar la
-contraseña de la DB, en una terminal propia:
+contraseña de la DB, en una terminal propia. Compatible con Windows PowerShell
+5.1 (`-MaskInput` solo existe en PowerShell 7; `-AsSecureString` oculta lo que
+se escribe en las dos):
 ```powershell
-$env:SUPABASE_DB_PASSWORD = Read-Host "Password DB" -MaskInput
+cd "C:\Users\raice\OneDrive\Documentos\muzikchile-tienda"
+$pw = Read-Host "Password DB" -AsSecureString
+$env:SUPABASE_DB_PASSWORD = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($pw))
 npx supabase db push
 Remove-Item Env:SUPABASE_DB_PASSWORD
+Remove-Variable pw
 ```
 `gen types` sigue sin camino con esta cuenta: si una migración cambia
 columnas, hay que resolver el permiso (rol en la organización) o generar los
@@ -1483,6 +1488,115 @@ sigue pausada.
   volver.
 - En el Channel queda un `package-lock.json` modificado sin commitear, que no
   es de este trabajo: revisar de dónde viene antes de incluirlo.
+
+---
+
+## 🔒 Seguridad del cobro (commit 1 del marketplace de MP) — 2026-10-22
+
+Primer paso del cambio al **modelo marketplace de Mercado Pago** (split 1:1:
+cada artista conecta su cuenta y cobra directo; la comisión de MuzikChile va
+por `marketplace_fee`). Antes de tocar el cobro se cerraron hoyos que existían
+en producción. Ninguna venta real afectada: **al 2026-10-22 había 0 órdenes
+pagadas y 0 liquidaciones** (12 filas en `ordenes`: 11 carritos abandonados y
+1 rechazo `cc_rejected_high_risk`, verificado contra la API de MP).
+
+**Hoyos encontrados y cerrados**
+- 🔴 `crear-preferencia` cobraba el **precio que mandaba el navegador**
+  (`item.precio` del body): cualquiera podía pagar $1. No validaba estado
+  `aprobado` ni stock.
+- 🔴 Un artista podía **cambiar su propia `comision`, `es_founder`,
+  `tienda_activa` y `verificado`** (la política "artist update own" deja editar
+  toda la fila) y darse de alta ya como founder. Comprobado: el artista de
+  prueba se declaró founder antes de la migración.
+- 🔴 La anon key leía **las 32 columnas de `artistas`**, incluidos `rut`,
+  `banco`, `cuenta_bancaria`, `tipo_cuenta`, `user_id`, `comision`.
+- 🟠 Cualquiera podía **listar los códigos de todos los cupones activos** y
+  **ejecutar `incrementar_usos_cupon`** (agotar un cupón). El cupón solo se
+  validaba en el cliente, y un cupón del artista A descontaba productos del B.
+- 🟠 El webhook descontaba stock y sumaba usos de cupón en **cada** aviso de MP
+  (payment, payment.updated, reintentos), con stock leído y reescrito aparte.
+  Respondía 200 aun fallando, así que MP no reintentaba.
+
+**Qué cambió**
+- `lib/checkout/cotizar.ts`: precio, stock, estado, cupón y comisión **desde la
+  base**. El navegador solo manda `{ id, cantidad }` y el código del cupón. La
+  usan `/api/checkout/cotizar` (lo que muestra el checkout) y
+  `crear-preferencia` (lo que se cobra): no pueden divergir.
+  - **Comisión sobre lo cobrado** (después del descuento), decisión 2026-10-22.
+  - Cupón de artista: descuenta solo los productos de ese artista. Global
+    (`artista_id` null): todo el carrito.
+  - Se guarda `comision_porcentaje` (antes nunca se llenaba).
+- `/checkout` cotiza en el servidor en cada cambio del carrito y muestra esos
+  precios (un carrito local con precio viejo o adulterado ya no engaña). Si el
+  cupón deja de aplicar, se quita con aviso.
+- Webhook: llama a `confirmar_pago()`; compara el monto pagado con
+  `Σ(monto_artista + comision_monto)` del grupo y exige CLP (si no calza, no
+  confirma y lo deja en el log); id de pago solo numérico; **500 ante errores
+  temporales** para que MP reintente. Un grupo `cancelado` por un rechazo puede
+  pasar a `pagado` si el comprador reintenta y paga.
+- Ficha pública, perfil, editar artista (admin) y liquidaciones (panel y
+  admin): columnas explícitas (nada de `select("*")` sobre `artistas`) y datos
+  bancarios por `datos_bancarios()`.
+
+**Migraciones (dos, a propósito)**
+- `20261022200000_seguridad_cobro` — ✅ **aplicada 2026-10-22**. Compatible con
+  el código anterior: trigger `proteger_columnas_artista` (anon/authenticated no
+  admin no pueden cambiar las 5 columnas; al insertar se fuerzan los valores por
+  defecto), columna `artistas.cobros_activos` (la usará el marketplace),
+  `datos_bancarios(p_artista_id)`, tabla `pagos_mp` (RLS sin políticas; la PK
+  `mp_payment_id` es el lock), `confirmar_pago(grupo, payment, monto)` (una
+  sentencia: órdenes → pagado, stock atómico sin bajar de 0, cupón +1;
+  devuelve `procesado` | `duplicado` | `sin_ordenes`; solo service role) y
+  revoke de `incrementar_usos_cupon`.
+- `20261022200100_lectura_publica_restringida` — ⏳ **aplicar DESPUÉS del
+  deploy**: rompe el código anterior (ficha con `select("*")`, cupones leídos
+  con la anon key). Grants por columna en `artistas` (anon: 25 columnas
+  públicas; authenticated: + `user_id`, `comision`, `es_founder`,
+  `auth_provider`; datos bancarios para nadie, van por la RPC) y DROP de las dos
+  políticas públicas de `cupones`.
+
+**Verificación** — `npm run verificar:cobro` (`scripts/verificar-seguridad-cobro.mjs`,
+escribe en la base real con prefijo `rlstest-`/`RLSTEST-` y limpia):
+- Fase 1: **23/23** tras aplicar M1 (antes: 5/23, mostrando los hoyos).
+  Incluye 5 avisos simultáneos del mismo pago → un solo `procesado`.
+- API (`-- --api=http://localhost:3000`, con `npm run dev`): **19/19**. Precio
+  adulterado $1 → se cobra $20.000; 7 casos de cupón; stock; producto en
+  revisión; cantidades inválidas; comisión 1.800 sobre 18.000; webhook con id
+  falso, no numérico y con el pago real rechazado. ⚠️ Crea una preferencia real
+  sin pagar en la cuenta de MP de producción (cada corrida).
+- Navegador (local): carrito adulterado a $1 → el checkout muestra $18.000 c/u;
+  cupón 10% y cambio de cantidad → recotiza a $16.200.
+- `tsc` limpio, `build` OK, lint sin regresiones (38 = HEAD).
+- Fase 2 (`-- --fase2`): pendiente, va después de aplicar M2.
+
+### Pendiente
+- **Después del push**: esperar el deploy de Vercel → `db push` (aplica M2) →
+  `npm run verificar:cobro -- --fase2` → revisar en producción la ficha de un
+  artista, `/panel/perfil` (datos bancarios) y `/admin/liquidaciones`.
+- **`lib/supabase/types.ts` editado a mano** (`gen types` da 403): una cuenta
+  Owner debe regenerarlo y confirmar que calza.
+- Regenerar `supabase/schema_baseline.sql` tras M2. Ojo: el dump es solo de
+  `public` y `storage`; por eso la función del trigger vive en `public`.
+- Una orden creada **antes** del deploy con cupón y pagada **después** no se
+  confirma sola (su monto registrado es el de lista): queda en el log del
+  webhook. Al 2026-10-22 no había ninguna viva.
+- **Siguiente: marketplace de MP** (diseño aprobado 2026-10-22): OAuth con PKCE
+  y `state` vía `auth.mercadopago.cl`, tabla `mp_conexiones` con tokens
+  cifrados, `/panel/cobros`, un artista por carrito, "Pronto disponible" para
+  artistas sin conectar, preferencia con el token del artista y
+  `marketplace_fee`, flag `app_settings.cobro_modelo`, admin con el estado de
+  conexión, liquidaciones que excluyan las órdenes `marketplace`. Decisiones:
+  cupones globales desactivados en modo marketplace; reconectar = banner en el
+  panel + badge en el admin (correos después, con Resend y
+  noreply@muzikchile.cl). **Sin decidir: founders** (0% indefinido o 0% por 12
+  meses desde que activan la tienda).
+- Datos verificados en el sandbox de MP Chile (proyecto ALIADAS):
+  `auth.mercadopago.cl` (el `.com` pide país); `expires_in` = 180 días; el
+  `refresh_token` rota en cada renovación; `x-signature` llega pero **no calza**
+  con la clave de la app (validarla solo como capa extra, no estricta; la verdad
+  es la API); `marketplace_fee` 0 u omitido se acepta; MP deja autorizar con
+  una cuenta tipo comprador (avisar en el panel); en sandbox las tarjetas de
+  prueba fallan, solo paga con "dinero disponible" de la cuenta compradora.
 
 ---
 
@@ -1559,7 +1673,7 @@ consentimiento previo; hoy no lo hay").
 - **`force-dynamic` extensivo**: múltiples layouts y pages lo usan para evitar errores de SSG en Vercel. Desactiva caching a nivel de página.
 - **Guards de auth client-side**: flash de "Verificando acceso..." antes de redirigir. Considerar middleware si se optimiza UX.
 - **Slug sin unicidad garantizada en código**: se auto-genera desde `user_id` al primer acceso; el artista puede cambiarlo. (verificar unique constraint en DB)
-- **Cupones artista vs. globales**: misma tabla `cupones`, diferenciados por `artista_id` nulo/no nulo. Confirmar que el checkout aplica ambos tipos correctamente.
+- ✅ **Cupones artista vs. globales** (resuelto 2026-10-22): `lib/checkout/cotizar.ts` aplica el global a todo el carrito y el de artista solo a sus productos; probado en `verificar:cobro`.
 
 ---
 
@@ -1573,8 +1687,10 @@ consentimiento previo; hoy no lo hay").
 | `force-dynamic` extensivo | Vercel generaba páginas estáticas que rompían con `useSearchParams` y auth dinámica en Next.js 16 |
 | Inline styles + Tailwind conviviendo | Decisión de diseño; los tokens de color/font no están en Tailwind config, se aplican directamente |
 | Descuento de cupón en `unit_price` por item (no `coupon_amount`) | `coupon_amount` de MP no reducía el precio visible; el descuento se incorpora directamente en cada `unit_price` antes de crear la preferencia |
-| Comisión MuzikChile sobre precio original | El descuento del cupón lo absorbe el artista, no la plataforma |
+| Comisión MuzikChile sobre lo cobrado, después del descuento (2026-10-22; antes era sobre el precio original) | La comisión no puede salir de plata que nunca entró; en el marketplace va como `marketplace_fee` del pago real |
+| Precio, stock y cupón se calculan solo en el servidor (`lib/checkout/cotizar.ts`) | El cliente mandaba el precio y se cobraba ese; lo que se muestra y lo que se cobra salen de la misma función |
+| Pagos idempotentes con lock en la base (`pagos_mp` + `confirmar_pago()`) | MP manda varios avisos por pago, a veces simultáneos; el efecto se aplica una vez |
 | `notification_url` condicional a HTTPS | MP rechaza con "policy UNAUTHORIZED" si la URL es localhost/HTTP |
-| No hay tests | Proyecto en etapa MVP/early |
+| Sin tests unitarios; verificación con scripts `npm run verificar:*` contra la base real | No hay entorno de test; los scripts crean y limpian datos con prefijo `rlstest-` |
 | Único branch `main` | Desarrollo directo en main, sin feature branches |
 | Deploy manual (`vercel --prod`), no auto-deploy por push a GitHub | El proyecto Vercel no tiene el repo Git conectado (confirmado 2026-06-30). `git push` a `main` NO dispara deploy — hay que correr `vercel --prod` explícitamente después de cada push |

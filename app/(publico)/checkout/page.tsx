@@ -10,20 +10,50 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { Check, ChevronDown, Lock } from "lucide-react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { useCarrito } from "@/lib/stores/carrito";
 import { formatCLP, REGIONES_CHILE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { BotonQuitar, FOCO, MiniaturaItem, Monto, Stepper } from "@/components/tienda/carrito-ui";
 
 interface Cupon {
-  id: string;
   codigo: string;
   tipo_descuento: string;
   valor: number;
-  expira_at?: string;
-  usos_actuales: number;
-  usos_maximos?: number;
+}
+
+/** Respuesta de /api/checkout/cotizar: los montos que de verdad se cobran. */
+interface Cotizacion {
+  lineas: { id: string; precio_unitario: number; cantidad: number }[];
+  subtotal: number;
+  descuento: number;
+  total: number;
+  cupon: Cupon | null;
+}
+
+type ItemCotizable = { id: string; cantidad: number };
+
+type ResultadoCotizar =
+  | { ok: true; cotizacion: Cotizacion }
+  | { ok: false; error: string; delCupon: boolean };
+
+/**
+ * Pide al servidor el total del carrito (precios de la base, stock y cupón).
+ * El precio guardado en el carrito local puede estar viejo o adulterado: lo
+ * que se muestra es esto, que es lo mismo que cobra crear-preferencia.
+ */
+async function cotizar(items: ItemCotizable[], codigo: string | null): Promise<ResultadoCotizar> {
+  try {
+    const res = await fetch("/api/checkout/cotizar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items, cupon_codigo: codigo }),
+    });
+    const data = await res.json();
+    if (!res.ok) return { ok: false, error: data.error ?? "No pudimos calcular tu pedido", delCupon: data.campo === "cupon" };
+    return { ok: true, cotizacion: data as Cotizacion };
+  } catch {
+    return { ok: false, error: "Error de conexión. Intenta de nuevo.", delCupon: false };
+  }
 }
 
 const schema = z.object({
@@ -77,7 +107,6 @@ function Cargando({ texto }: { texto: string }) {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const supabase = createClient();
 
   const items          = useCarrito((s) => s.items);
   const remover        = useCarrito((s) => s.remover);
@@ -86,6 +115,7 @@ export default function CheckoutPage() {
 
   const [cuponCodigo,    setCuponCodigo]    = useState("");
   const [cuponAplicado,  setCuponAplicado]  = useState<Cupon | null>(null);
+  const [cotizacion,     setCotizacion]     = useState<Cotizacion | null>(null);
   const [buscandoCupon,  setBuscandoCupon]  = useState(false);
   const [metodoPago,     setMetodoPago]     = useState<"mercadopago" | "webpay">("mercadopago");
   const [pagando,        setPagando]        = useState(false);
@@ -108,6 +138,27 @@ export default function CheckoutPage() {
     if (hidratado && items.length === 0) router.replace("/tienda");
   }, [hidratado, items.length, router]);
 
+  // Cada cambio del carrito se vuelve a cotizar en el servidor: el precio puede
+  // haber cambiado desde que se agregó, y el descuento depende de qué productos
+  // hay (un cupón de artista solo descuenta los suyos).
+  const claveItems = items.map((i) => `${i.id}:${i.cantidad}`).join(",");
+  const codigoAplicado = cuponAplicado?.codigo ?? null;
+  useEffect(() => {
+    if (!hidratado || items.length === 0) return;
+    let vigente = true;
+    cotizar(items.map(({ id, cantidad }) => ({ id, cantidad })), codigoAplicado).then((r) => {
+      if (!vigente) return;
+      if (r.ok) { setCotizacion(r.cotizacion); return; }
+      // Si lo que falló es el cupón, se quita y se recotiza sin él.
+      if (r.delCupon) setCuponAplicado(null);
+      else setCotizacion(null);
+      toast.error(r.error);
+    });
+    return () => { vigente = false; };
+    // claveItems resume items; items en sí cambia de identidad en cada render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hidratado, claveItems, codigoAplicado]);
+
   if (!hidratado) {
     return <Cargando texto="Cargando..." />;
   }
@@ -116,34 +167,22 @@ export default function CheckoutPage() {
     return <Cargando texto="Redirigiendo..." />;
   }
 
-  const subtotal = totalFn();
-
-  const calcularDescuento = (): number => {
-    if (!cuponAplicado) return 0;
-    if (cuponAplicado.tipo_descuento === "porcentaje") return Math.round(subtotal * cuponAplicado.valor / 100);
-    return Math.min(cuponAplicado.valor, subtotal);
-  };
-
-  const descuento = calcularDescuento();
-  const total     = subtotal - descuento;
+  // Lo cotizado por el servidor manda; el carrito local solo mientras responde.
+  const precioDe  = (id: string, local: number) => cotizacion?.lineas.find((l) => l.id === id)?.precio_unitario ?? local;
+  const subtotal  = cotizacion ? cotizacion.subtotal : totalFn();
+  const descuento = cotizacion ? cotizacion.descuento : 0;
+  const total     = cotizacion ? cotizacion.total : subtotal;
 
   const validarCupon = async () => {
     if (!cuponCodigo.trim()) return;
     setBuscandoCupon(true);
     try {
-      const { data, error } = await supabase
-        .from("cupones")
-        .select("*")
-        .eq("codigo", cuponCodigo.toUpperCase())
-        .eq("activo", true)
-        .single();
+      const r = await cotizar(items.map(({ id, cantidad }) => ({ id, cantidad })), cuponCodigo);
+      if (!r.ok || !r.cotizacion.cupon) { toast.error(r.ok ? "Cupón inválido o no existe" : r.error); return; }
 
-      if (error || !data) { toast.error("Cupón inválido o no existe"); return; }
-      if (data.expira_at && new Date(data.expira_at) < new Date()) { toast.error("Este cupón ha expirado"); return; }
-      if (data.usos_maximos && data.usos_actuales >= data.usos_maximos) { toast.error("Este cupón ya alcanzó su límite de usos"); return; }
-
-      setCuponAplicado(data as Cupon);
-      toast.success(`Cupón aplicado: ${data.valor}${data.tipo_descuento === "porcentaje" ? "%" : ` ${formatCLP(data.valor)}`} de descuento`);
+      setCotizacion(r.cotizacion);
+      setCuponAplicado(r.cotizacion.cupon);
+      toast.success(`Cupón aplicado: ${formatCLP(r.cotizacion.descuento)} de descuento`);
     } finally {
       setBuscandoCupon(false);
     }
@@ -157,13 +196,18 @@ export default function CheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items: items.map((i) => ({ id: i.id, nombre: i.nombre, precio: i.precio, cantidad: i.cantidad, imagen: i.imagen })),
+          items: items.map((i) => ({ id: i.id, cantidad: i.cantidad })),
           comprador,
-          cupon_id: cuponAplicado?.id ?? null,
+          cupon_codigo: cuponAplicado?.codigo ?? null,
         }),
       });
       const data = await res.json();
-      if (!res.ok) { toast.error(data.error ?? "Error al procesar el pago"); return; }
+      if (!res.ok) {
+        // El cupón pudo vencer o agotarse entre que se aplicó y se pagó.
+        if (data.campo === "cupon") setCuponAplicado(null);
+        toast.error(data.error ?? "Error al procesar el pago");
+        return;
+      }
       const url = data.modo === "produccion" ? data.init_point : data.sandbox_init_point;
       window.location.href = url;
     } catch {
@@ -219,7 +263,7 @@ export default function CheckoutPage() {
                       <div className="min-w-0">
                         <p className="m-0 text-[15px] font-bold leading-[1.35] text-tema-texto">{item.nombre}</p>
                         <p className="m-0 text-[13px] text-tema-texto-3">
-                          {item.artista ? `${item.artista} · ` : ""}{formatCLP(item.precio)} c/u
+                          {item.artista ? `${item.artista} · ` : ""}{formatCLP(precioDe(item.id, item.precio))} c/u
                         </p>
                       </div>
                       <div className="col-span-2 flex items-center justify-between gap-3 sm:col-span-1 sm:justify-end">
@@ -229,7 +273,7 @@ export default function CheckoutPage() {
                           onMenos={() => actualizarCantidad(item.id, item.cantidad - 1)}
                           onMas={() => actualizarCantidad(item.id, item.cantidad + 1)}
                         />
-                        <Monto className="min-w-[84px] text-right text-xl text-tema-precio">{formatCLP(item.precio * item.cantidad)}</Monto>
+                        <Monto className="min-w-[84px] text-right text-xl text-tema-precio">{formatCLP(precioDe(item.id, item.precio) * item.cantidad)}</Monto>
                         <BotonQuitar nombre={item.nombre} onClick={() => remover(item.id)} />
                       </div>
                     </li>

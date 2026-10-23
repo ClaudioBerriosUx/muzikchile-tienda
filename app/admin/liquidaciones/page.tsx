@@ -15,7 +15,7 @@ interface OrdenLiq {
   id: string;
   monto_artista: number;
   estado: string;
-  liquidado?: boolean;
+  liquidado?: boolean | null;
   created_at: string;
 }
 
@@ -57,12 +57,28 @@ export default function LiquidacionesPage() {
   const { data: artistas = [] } = useQuery<Artista[]>({
     queryKey: ["admin-liquidaciones-artistas"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("artistas")
-        .select("id, nombre, foto_url, banco, cuenta_bancaria, tipo_cuenta, rut, ordenes(id, monto_artista, estado, liquidado, created_at)")
-        .order("nombre");
+      const [{ data, error }, { data: bancos, error: bancoError }] = await Promise.all([
+        supabase
+          .from("artistas")
+          .select("id, nombre, foto_url, ordenes(id, monto_artista, estado, liquidado, created_at)")
+          .order("nombre"),
+        // Los datos bancarios no se leen de la tabla, van por datos_bancarios().
+        supabase.rpc("datos_bancarios"),
+      ]);
       if (error) throw error;
-      return (data ?? []) as unknown as Artista[];
+      if (bancoError) throw bancoError;
+      const bancoPorArtista = new Map((bancos ?? []).map((b) => [b.artista_id, b]));
+      return (data ?? []).map((a) => {
+        const b = bancoPorArtista.get(a.id);
+        return {
+          ...a,
+          foto_url:        a.foto_url ?? undefined,
+          banco:           b?.banco ?? undefined,
+          cuenta_bancaria: b?.cuenta_bancaria ?? undefined,
+          tipo_cuenta:     b?.tipo_cuenta ?? undefined,
+          rut:             b?.rut ?? undefined,
+        };
+      });
     },
   });
 

@@ -39,6 +39,7 @@ export type Database = {
           bio: string | null
           bio_completa: string | null
           ciudad: string | null
+          cobros_activos: boolean
           color_acento: string
           comision: number
           created_at: string
@@ -73,6 +74,7 @@ export type Database = {
           bio?: string | null
           bio_completa?: string | null
           ciudad?: string | null
+          cobros_activos?: boolean
           color_acento?: string
           comision?: number
           created_at?: string
@@ -107,6 +109,7 @@ export type Database = {
           bio?: string | null
           bio_completa?: string | null
           ciudad?: string | null
+          cobros_activos?: boolean
           color_acento?: string
           comision?: number
           created_at?: string
@@ -366,6 +369,27 @@ export type Database = {
           },
         ]
       }
+      pagos_mp: {
+        Row: {
+          grupo_id: string
+          monto: number
+          mp_payment_id: string
+          procesado_at: string
+        }
+        Insert: {
+          grupo_id: string
+          monto: number
+          mp_payment_id: string
+          procesado_at?: string
+        }
+        Update: {
+          grupo_id?: string
+          monto?: number
+          mp_payment_id?: string
+          procesado_at?: string
+        }
+        Relationships: []
+      }
       productos: {
         Row: {
           artista_id: string
@@ -550,6 +574,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      confirmar_pago: {
+        Args: { p_grupo_id: string; p_monto: number; p_payment_id: string }
+        Returns: string
+      }
+      datos_bancarios: {
+        Args: { p_artista_id?: string }
+        Returns: {
+          artista_id: string
+          banco: string
+          cuenta_bancaria: string
+          rut: string
+          tipo_cuenta: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

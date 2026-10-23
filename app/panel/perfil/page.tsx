@@ -108,6 +108,10 @@ interface Artista {
   cuenta_bancaria?: string;
 }
 
+/** Columnas de `artistas` que el perfil lee. Un select("*") lo rechaza la base. */
+const COLUMNAS_PERFIL =
+  "id, user_id, nombre, slug, foto_url, bio, bio_completa, ciudad, region, color_acento, redes, generos, seo_titulo, seo_descripcion";
+
 const hintStyle: React.CSSProperties = {
   fontFamily: "var(--font-body)",
   fontSize: "12px",
@@ -135,8 +139,12 @@ export default function PerfilPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
       const { data } = await supabase
-        .from("artistas").select("*").eq("user_id", user.id).single();
-      return data as Artista | null;
+        .from("artistas").select(COLUMNAS_PERFIL).eq("user_id", user.id).maybeSingle();
+      if (!data) return null;
+      // Los datos bancarios no se leen de la tabla: solo el dueño y el admin
+      // los ven, vía datos_bancarios().
+      const { data: banco } = await supabase.rpc("datos_bancarios", { p_artista_id: data.id });
+      return { ...data, ...(banco?.[0] ?? {}) } as Artista;
     },
     staleTime:          0,
     gcTime:             0,
