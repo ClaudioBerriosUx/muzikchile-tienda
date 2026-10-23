@@ -1611,6 +1611,76 @@ escribe en la base real con prefijo `rlstest-`/`RLSTEST-` y limpia):
 
 ---
 
+## 🏷️ Founder con fecha y comisión por defecto (commit 2a) — 2026-10-23
+
+- `artistas.founder_hasta` (fecha opcional). Vacío = 0% de por vida (los tres
+  founders actuales quedan así); con fecha, 0% hasta ese día inclusive en hora de
+  Chile y después `artistas.comision`. Regla única en **`lib/comision.ts`**
+  (`comisionEfectiva`, `founderVigente`, `textoFounder`), usada por `cotizar` y
+  `/admin/artistas`.
+- `/admin/artistas`: campo "Founder hasta (opcional)" + "Quitar fecha"; texto
+  "Comisión 0% de por vida" / "Comisión 0% hasta 31-12-2027"; en la lista "0% de
+  por vida", "0% hasta …" o "10% · founder vencido".
+- 🐛 **Arreglado**: al guardar un founder el admin escribía `comision: 0`, así
+  que al vencer `founder_hasta` habría seguido en 0%. Ahora `comision` es siempre
+  la tarifa del artista. Los tres founders tenían 10 guardado: no se perdió nada.
+- El 10% fijo salió del código (trigger, default de la columna, PanelShell,
+  `cotizar`): `comision_por_defecto()` lee `app_settings.comision_default`. Es la
+  comisión de un artista **nuevo**; cambiarla no toca a los existentes (nota en
+  `/admin/configuracion`).
+- Migración `20261023120000_founder_hasta_y_comision_default` ✅ aplicada
+  2026-10-23. El trigger protege también `founder_hasta`.
+
+## 🔌 Marketplace MP: conexiones, OAuth y /panel/cobros (commit 2b) — 2026-10-23
+
+Detrás del flag: `app_settings.cobro_modelo = 'centralizado'`. El cobro no
+cambió; esto solo deja que los artistas conecten su cuenta.
+
+- Migración `20261023130000_mp_conexiones` ✅ aplicada 2026-10-23:
+  `mp_conexiones` (una fila por artista, `mp_user_id` único, tokens cifrados,
+  estado `conectado`/`reconectar`, RLS sin políticas), trigger que mantiene
+  `artistas.cobros_activos`, `tomar_lock_renovacion_mp()` (lock con el reloj de
+  la base) y la fila `cobro_modelo`.
+- `lib/mp/cifrado.ts` (AES-256-GCM, `MP_TOKENS_KEY`), `lib/mp/oauth.ts`
+  (PKCE S256, `auth.mercadopago.cl`, canje y renovación), `lib/mp/conexiones.ts`
+  (guardar, renovar con lock, `tokenVigente()` para el commit 3).
+- Rutas: `GET /api/mp/oauth/iniciar` (state + verifier en cookie httpOnly cifrada,
+  Lax, 10 min, solo `/api/mp/oauth`), `GET /api/mp/oauth/callback` (valida
+  cookie, state en tiempo constante y que la sesión sea la misma; rechaza la
+  cuenta de MuzikChile y una cuenta ya conectada a otro artista),
+  `GET /api/mp/conexion` (estado, nunca tokens), `POST /api/mp/desconectar`,
+  `GET /api/cron/mp-renovar` (diario 12:00 UTC en `vercel.json`, `CRON_SECRET`;
+  renueva lo que vence en < 30 días; si MP rechaza → `reconectar`).
+- `/panel/cobros`: No conectado / Conectado como … / Reconectar, botones
+  Conectar y Desconectar (diálogo), aviso de la sesión de MP y de no usar una
+  cuenta de comprador. Banner de "reconectar" en todo el panel. El menú
+  **"Cobros" solo aparece** si `cobro_modelo = 'marketplace'` o el artista ya
+  conectó: mientras tanto, a cada artista se le comparte el enlace.
+- Verificado: `verificar:cobro -- --fase2 --api=local` **92/92** (incluye 9 de
+  la regla de comisión y el founder vencido cobrando 10% en `api-8`);
+  `verificar:mp -- --api=local` **31/31** (cifrado y PKCE, tabla y trigger, una
+  cuenta por artista, 5 locks simultáneos → 1, endpoints, callback con state
+  falso / sin cookie / sesión de otro / código falso). Navegador en local con
+  usuarios de prueba: los tres estados de `/panel/cobros`, banner, desconectar,
+  y `/admin/artistas` guardando sin fecha (la base quedó con `comision` 10).
+- ⚠️ En `.env.local`, `NEXT_PUBLIC_URL` es `https://tienda.muzikchile.cl`: en
+  local la `redirect_uri` sale con ese host. Producción usa www (lo confirma el
+  canonical publicado).
+
+### Pendiente
+- Cargar en Vercel `MP_CLIENT_ID`, `MP_CLIENT_SECRET`, `MP_TOKENS_KEY`,
+  `CRON_SECRET` y probar la conexión real con el vendedor de prueba en
+  producción (única `redirect_uri` registrada en la app real).
+- **Commit 3**: un artista por carrito, "Pronto disponible", preferencia con
+  `tokenVigente()` + `marketplace_fee`, webhook que consulta el pago con el
+  token del artista, `/checkout/exito` con el estado real.
+- **Admin**: estado de conexión por artista + badge de "reconectar";
+  liquidaciones que excluyan órdenes `marketplace`; switch de `cobro_modelo`
+  con chequeo previo.
+- Correos de "reconectar" (Resend, noreply@muzikchile.cl).
+
+---
+
 ## 🚧 En progreso / bugs conocidos
 
 - ✅ **Resuelto 2026-10-19 — los chips de categoría de `/tienda` no filtraban

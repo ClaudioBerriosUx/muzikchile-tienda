@@ -272,6 +272,71 @@ export type Database = {
           },
         ]
       }
+      mp_conexiones: {
+        Row: {
+          access_token_cifrado: string
+          artista_id: string
+          conectado_at: string
+          email: string | null
+          estado: string
+          expires_at: string
+          live_mode: boolean
+          mp_user_id: number
+          nickname: string | null
+          public_key: string | null
+          refrescado_at: string | null
+          refrescando_hasta: string | null
+          refresh_token_cifrado: string
+          scope: string | null
+          ultimo_error: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token_cifrado: string
+          artista_id: string
+          conectado_at?: string
+          email?: string | null
+          estado?: string
+          expires_at: string
+          live_mode: boolean
+          mp_user_id: number
+          nickname?: string | null
+          public_key?: string | null
+          refrescado_at?: string | null
+          refrescando_hasta?: string | null
+          refresh_token_cifrado: string
+          scope?: string | null
+          ultimo_error?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token_cifrado?: string
+          artista_id?: string
+          conectado_at?: string
+          email?: string | null
+          estado?: string
+          expires_at?: string
+          live_mode?: boolean
+          mp_user_id?: number
+          nickname?: string | null
+          public_key?: string | null
+          refrescado_at?: string | null
+          refrescando_hasta?: string | null
+          refresh_token_cifrado?: string
+          scope?: string | null
+          ultimo_error?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mp_conexiones_artista_id_fkey"
+            columns: ["artista_id"]
+            isOneToOne: true
+            referencedRelation: "artistas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ordenes: {
         Row: {
           artista_id: string | null
@@ -600,6 +665,10 @@ export type Database = {
         Returns: boolean
       }
       incrementar_usos_cupon: { Args: { cupon_id: string }; Returns: undefined }
+      tomar_lock_renovacion_mp: {
+        Args: { p_artista_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "artista"

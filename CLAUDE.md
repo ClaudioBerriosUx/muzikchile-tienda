@@ -24,6 +24,12 @@ Copia `.env.example` → `.env.local`:
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` — credenciales públicas de Supabase
 - `SUPABASE_SERVICE_ROLE_KEY` — solo en Route Handlers (bypassa RLS)
 - `NEXT_PUBLIC_URL` — URL base para los `back_urls` de MercadoPago (ej. `http://localhost:3000`)
+  y la `redirect_uri` del OAuth de MP: en producción tiene que ser exactamente
+  `https://www.muzikchile.cl` (la registrada en la aplicación de MP)
+- `MP_CLIENT_ID` / `MP_CLIENT_SECRET` — aplicación de MP del marketplace (OAuth)
+- `MP_TOKENS_KEY` — llave AES-256 (32 bytes base64) que cifra los tokens de los
+  artistas; si cambia, todas las cuentas tienen que reconectarse
+- `CRON_SECRET` — lo manda Vercel al cron `/api/cron/mp-renovar` (`vercel.json`)
 
 ## Arquitectura general
 
@@ -81,6 +87,7 @@ Header y Footer. No importes `<Header/>` a mano en una página.
 | `/contacto` | público | Correo de contacto |
 | `/login`, `/registro`, `/recuperar` | público | Auth (registro = set-password tras invitación o recuperación) |
 | `/panel/**` | rol: `artista` | Dashboard del artista |
+| `/panel/cobros` | rol: `artista` | Conectar/desconectar su cuenta de Mercado Pago (marketplace) |
 | `/admin/**` | rol: `admin` | Panel de administración |
 
 `/contacto` es una página simple con `CORREO_CONTACTO` (`lib/site.ts`).
@@ -135,8 +142,9 @@ automáticamente y crea el registro en `artistas`.
 
 Tablas: `artistas`, `productos` (estados: `en_revision` → `aprobado`), `ordenes`,
 `categorias`, `cupones`, `user_roles`, `app_settings` (tokens de MercadoPago y
-modo sandbox/prod), `liquidaciones`, `pagos_mp` (pagos de MP ya procesados;
-solo service role).
+modo sandbox/prod, flag `cobro_modelo`, `comision_default`), `liquidaciones`,
+`pagos_mp` (pagos de MP ya procesados) y `mp_conexiones` (cuenta de MP de cada
+artista, tokens cifrados). Las dos últimas: RLS sin políticas, solo service role.
 
 **La fuente de verdad del esquema es `lib/supabase/types.ts`** (generado), no los
 queries. Los clientes de `lib/supabase/{client,server}.ts` están tipados con
@@ -173,7 +181,11 @@ type Cupon = Database["public"]["Tables"]["cupones"]["Row"];
 **Precio, stock, cupón y comisión se calculan solo en el servidor**, en
 `lib/checkout/cotizar.ts`. El navegador manda `{ id, cantidad }` y el código del
 cupón; nunca uses un precio que venga del body. La comisión
-(`artistas.comision`; founders: 0%) va sobre lo cobrado, después del descuento.
+va sobre lo cobrado, después del descuento, y la decide **`lib/comision.ts`**:
+founder sin `founder_hasta` = 0% de por vida; con fecha, 0% hasta ese día
+inclusive (hora de Chile) y después `artistas.comision`. Un artista nuevo recibe
+`app_settings.comision_default` (vía `comision_por_defecto()`); no hay un 10%
+escrito en el código.
 
 - `POST /api/checkout/cotizar` — lo que muestra el checkout (misma función).
 - `POST /api/mercadopago/crear-preferencia` — cotiza, lee `mp_access_token` y
@@ -185,6 +197,14 @@ cupón; nunca uses un precio que venga del body. La comisión
   `pagado`, stock y cupón, **una sola vez por pago** (lock en `pagos_mp`).
   Devuelve 500 ante errores temporales para que MP reintente.
 
+### Marketplace de Mercado Pago (en construcción)
+
+Flag `app_settings.cobro_modelo`: `centralizado` (hoy, todo entra a la cuenta de
+MuzikChile) o `marketplace` (cada artista cobra con su cuenta y MuzikChile
+recibe `marketplace_fee`). Cada artista conecta su cuenta en `/panel/cobros`
+(OAuth con PKCE vía `auth.mercadopago.cl`, `lib/mp/`). `artistas.cobros_activos`
+lo mantiene un trigger sobre `mp_conexiones`; nunca lo escribas a mano.
+
 La `notification_url` solo se envía a MP cuando `NEXT_PUBLIC_URL` es HTTPS (en
 local, MP la rechaza).
 
@@ -192,8 +212,8 @@ Lectura de `artistas`: anon y authenticated tienen **grants por columna**, así
 que `select("*")` falla con 42501; nombra las columnas. Los datos bancarios
 (`banco`, `cuenta_bancaria`, `tipo_cuenta`, `rut`) se leen con la RPC
 `datos_bancarios()`. Solo un admin puede cambiar `comision`, `es_founder`,
-`tienda_activa`, `verificado` y `cobros_activos` (trigger). Verificación:
-`npm run verificar:cobro`.
+`founder_hasta`, `tienda_activa`, `verificado` y `cobros_activos` (trigger). Verificación:
+`npm run verificar:cobro` y `npm run verificar:mp`.
 
 ### Convenciones de estilo
 

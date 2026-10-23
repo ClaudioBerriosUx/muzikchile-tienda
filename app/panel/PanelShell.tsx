@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LayoutDashboard, Package, Plus, Newspaper, User, Ticket, Wallet, LogOut } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { LayoutDashboard, Package, Plus, Newspaper, User, Ticket, Wallet, CreditCard, LogOut, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import HeaderPanel from "@/components/layout/HeaderPanel";
 import Sidebar from "@/components/layout/Sidebar";
@@ -16,6 +18,8 @@ const SIDEBAR_ITEMS = [
   { label: "Mis cupones",     href: "/panel/cupones",            icon: <Ticket size={16} /> },
   { label: "Liquidaciones",   href: "/panel/liquidaciones",      icon: <Wallet size={16} /> },
 ];
+
+const ITEM_COBROS = { label: "Cobros", href: "/panel/cobros", icon: <CreditCard size={16} /> };
 
 export default function PanelShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -88,6 +92,22 @@ export default function PanelShell({ children }: { children: React.ReactNode }) 
     checkAuth();
   }, [router]);
 
+  // Conexión de Mercado Pago: decide si se muestra "Cobros" en el menú y el
+  // aviso de reconectar. Mientras el cobro sea centralizado, "Cobros" solo
+  // aparece para quien ya conectó; al resto se le comparte /panel/cobros.
+  const { data: mp } = useQuery<{ modelo: string; conexion: { estado: string } | null }>({
+    queryKey: ["mp-conexion-shell"],
+    queryFn: async () => {
+      const res = await fetch("/api/mp/conexion");
+      if (!res.ok) throw new Error("conexion");
+      return res.json();
+    },
+    enabled: authorized,
+    staleTime: 5 * 60_000,
+  });
+  const mostrarCobros = mp?.modelo === "marketplace" || !!mp?.conexion;
+  const reconectar = mp?.conexion?.estado === "reconectar";
+
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -112,7 +132,7 @@ export default function PanelShell({ children }: { children: React.ReactNode }) 
       <HeaderPanel />
       <div className="flex min-h-screen">
         <Sidebar
-          items={SIDEBAR_ITEMS}
+          items={mostrarCobros ? [...SIDEBAR_ITEMS, ITEM_COBROS] : SIDEBAR_ITEMS}
           footer={
             <button
               onClick={handleSignOut}
@@ -132,7 +152,18 @@ export default function PanelShell({ children }: { children: React.ReactNode }) 
             </button>
           }
         />
-        <main className="flex-1 p-8 bg-white">{children}</main>
+        <main className="flex-1 p-8 bg-white">
+          {reconectar && (
+            <div className="mb-6 flex items-start gap-3 rounded-xl border p-4" style={{ backgroundColor: "#fffbeb", borderColor: "#fcd34d" }}>
+              <AlertTriangle size={18} className="mt-0.5 shrink-0" style={{ color: "#b45309" }} />
+              <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#92400e" }}>
+                Tu cuenta de Mercado Pago se desconectó y no podemos cobrar tus ventas con ella.{" "}
+                <Link href="/panel/cobros" className="font-semibold underline">Reconéctala en Cobros</Link>.
+              </p>
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     </>
   );
