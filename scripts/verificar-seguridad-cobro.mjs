@@ -33,6 +33,8 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+// Node 24 importa TypeScript sin compilar (solo quita los tipos).
+import { comisionEfectiva, founderVigente, textoFounder } from "../lib/comision.ts";
 
 const URL          = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON_KEY     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -198,12 +200,34 @@ async function limpiar() {
   }
 }
 
+// ── Regla de comisión (lib/comision.ts, sin base de datos) ────────────────────
+
+function reglaComision() {
+  console.log("\n── Regla de comisión ──");
+  const hoy = "2026-10-23";
+  const casos = [
+    ["No founder → su comisión", { comision: 12, es_founder: false, founder_hasta: null }, 12],
+    ["Founder sin fecha → 0% de por vida", { comision: 10, es_founder: true, founder_hasta: null }, 0],
+    ["Founder hasta mañana → 0%", { comision: 10, es_founder: true, founder_hasta: "2026-10-24" }, 0],
+    ["Founder hasta hoy → 0% (inclusive)", { comision: 10, es_founder: true, founder_hasta: "2026-10-23" }, 0],
+    ["Founder hasta ayer → su comisión", { comision: 10, es_founder: true, founder_hasta: "2026-10-22" }, 10],
+    ["Fecha sin founder → su comisión", { comision: 8, es_founder: false, founder_hasta: "2099-01-01" }, 8],
+  ];
+  for (const [caso, datos, esperado] of casos) {
+    const r = comisionEfectiva(datos, hoy);
+    check(`(com) ${caso}`, r === esperado, `obtuvo ${r}`);
+  }
+  check("(com) Texto de por vida", textoFounder(null) === "Comisión 0% de por vida", textoFounder(null));
+  check("(com) Texto con fecha", textoFounder("2027-12-31") === "Comisión 0% hasta 31-12-2027", textoFounder("2027-12-31"));
+  check("(com) founderVigente sin founder → false", founderVigente({ es_founder: false, founder_hasta: null }, hoy) === false);
+}
+
 // ── Fase 1 ───────────────────────────────────────────────────────────────────
 
 async function fase1(A, B, ADMIN) {
   console.log("\n── Fase 1 · columnas protegidas ──");
 
-  for (const [campo, valor] of [["comision", 0], ["es_founder", true], ["tienda_activa", true], ["verificado", true], ["cobros_activos", true]]) {
+  for (const [campo, valor] of [["comision", 0], ["es_founder", true], ["founder_hasta", "2099-12-31"], ["tienda_activa", true], ["verificado", true], ["cobros_activos", true]]) {
     const { error } = await A.cliente.from("artistas").update({ [campo]: valor }).eq("id", A.artistaId);
     check(`(a) Artista cambia su propio ${campo} → rechazado`, error?.code === "42501", fmt(error));
   }
@@ -214,10 +238,10 @@ async function fase1(A, B, ADMIN) {
   }
 
   {
-    const { error } = await ADMIN.cliente.from("artistas").update({ comision: 15 }).eq("id", A.artistaId);
-    const { data } = await admin.from("artistas").select("comision").eq("id", A.artistaId).single();
-    check("(c) Admin cambia la comision de un artista → permitido", !error && Number(data?.comision) === 15, fmt(error));
-    await admin.from("artistas").update({ comision: 10 }).eq("id", A.artistaId);
+    const { error } = await ADMIN.cliente.from("artistas").update({ comision: 15, founder_hasta: "2027-12-31" }).eq("id", A.artistaId);
+    const { data } = await admin.from("artistas").select("comision, founder_hasta").eq("id", A.artistaId).single();
+    check("(c) Admin cambia comision y founder_hasta de un artista → permitido", !error && Number(data?.comision) === 15 && data?.founder_hasta === "2027-12-31", fmt(error));
+    await admin.from("artistas").update({ comision: 10, founder_hasta: null }).eq("id", A.artistaId);
   }
 
   {
@@ -225,16 +249,19 @@ async function fase1(A, B, ADMIN) {
     const N = await crearUsuario("nuevo", "artista");
     const { error } = await N.cliente.from("artistas").insert({
       user_id: N.userId, nombre: "RLS Test nuevo", slug: `${PREFIJO}-nuevo`,
-      comision: 0, es_founder: true, tienda_activa: true, verificado: true, cobros_activos: true,
+      comision: 0, es_founder: true, founder_hasta: "2099-12-31", tienda_activa: true, verificado: true, cobros_activos: true,
     });
     const { data } = await admin
       .from("artistas")
-      .select("comision, es_founder, tienda_activa, verificado, cobros_activos")
+      .select("comision, es_founder, founder_hasta, tienda_activa, verificado, cobros_activos")
       .eq("user_id", N.userId)
       .maybeSingle();
-    const neutralizado = data && Number(data.comision) === 10 && !data.es_founder && !data.tienda_activa && !data.verificado && !data.cobros_activos;
+    const { data: ajuste } = await admin.from("app_settings").select("value").eq("key", "comision_default").maybeSingle();
+    const porDefecto = Number(ajuste?.value ?? 10);
+    const neutralizado = data && Number(data.comision) === porDefecto && !data.es_founder && data.founder_hasta === null
+      && !data.tienda_activa && !data.verificado && !data.cobros_activos;
     check(
-      "(d) Artista se da de alta como founder/0%/verificado → se guarda con los valores por defecto",
+      `(d) Artista se da de alta como founder/0%/verificado → valores por defecto (comision = comision_default = ${porDefecto})`,
       !error && neutralizado,
       error ? fmt(error) : `quedó: ${JSON.stringify(data)}`
     );
@@ -499,6 +526,8 @@ async function api(A, B) {
     check(`(api-7) Cantidad inválida (${JSON.stringify(cantidad)}) → 400`, r.status === 400, `status=${r.status}`);
   }
   {
+    // Founder vencido ayer: tiene que cobrar su comisión (10%), no 0%.
+    await admin.from("artistas").update({ es_founder: true, founder_hasta: "2020-01-01" }).eq("id", A.artistaId);
     const r = await post("/api/mercadopago/crear-preferencia", {
       items: [{ id: P, cantidad: 2, precio: 1 }],
       comprador: { nombre: "RLS Test", email: `${PREFIJO}-comprador@example.com` },
@@ -512,7 +541,7 @@ async function api(A, B) {
     const ok = r.status === 200 && !!r.data?.init_point && ordenes?.length === 1
       && o.precio_unitario === 10000 && o.monto_artista + o.comision_monto === 18000
       && o.comision_monto === 1800 && Number(o.comision_porcentaje) === 10 && o.cupon_id === cA.id;
-    check("(api-8) crear-preferencia: precio de la base, cupón y comisión sobre lo cobrado (10% de 18.000)", ok, `status=${r.status} ${r.data?.error ?? ""} orden=${JSON.stringify(o)}`);
+    check("(api-8) crear-preferencia: precio de la base, cupón y comisión sobre lo cobrado (founder vencido → 10% de 18.000)", ok, `status=${r.status} ${r.data?.error ?? ""} orden=${JSON.stringify(o)}`);
   }
   for (const [caso, body] of [
     ["id inexistente", { type: "payment", data: { id: "1" } }],
@@ -545,6 +574,7 @@ async function main() {
     const B = await crearArtista("b", { banco: "Banco de Prueba", cuenta_bancaria: "000222", tipo_cuenta: "Cuenta Vista", rut: "22.222.222-2" });
     const ADMIN = await crearUsuario("admin", "admin");
 
+    reglaComision();
     await fase1(A, B, ADMIN);
     if (FASE2) await fase2(A, B, ADMIN);
     if (API) await api(A, B);

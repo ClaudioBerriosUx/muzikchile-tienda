@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
+import { comisionEfectiva, hoyEnChile } from "@/lib/comision";
 
 /**
  * Calcula el carrito con los datos de la base: precio, stock, cupón y comisión.
@@ -56,7 +57,6 @@ export type ResultadoCotizacion =
 
 const MAX_LINEAS = 50;
 const MAX_CANTIDAD = 99;
-const COMISION_POR_DEFECTO = 10;
 
 /** Valida la forma del body. Devuelve null si no sirve. */
 export function normalizarItems(items: unknown): ItemPedido[] | null {
@@ -111,7 +111,7 @@ export async function cotizarCarrito(
 ): Promise<ResultadoCotizacion> {
   const { data: productos, error: prodError } = await supabase
     .from("productos")
-    .select("id, nombre, precio, stock, tipo, estado, imagenes, artista_id, artistas(comision, es_founder)")
+    .select("id, nombre, precio, stock, tipo, estado, imagenes, artista_id, artistas(comision, es_founder, founder_hasta)")
     .in("id", items.map((i) => i.id));
 
   if (prodError) {
@@ -120,12 +120,13 @@ export async function cotizarCarrito(
   }
 
   const porId = new Map((productos ?? []).map((p) => [p.id, p]));
+  const hoy = hoyEnChile();
 
   // ── Líneas a precio de lista ──
   const base: Omit<LineaCotizada, "precio_cobrado" | "monto" | "comision_monto" | "monto_artista">[] = [];
   for (const item of items) {
     const p = porId.get(item.id);
-    if (!p || p.estado !== "aprobado") {
+    if (!p || p.estado !== "aprobado" || !p.artistas) {
       return { ok: false, error: "Uno de los productos ya no está disponible. Revisa tu carrito." };
     }
     if (p.tipo === "fisico" && item.cantidad > p.stock) {
@@ -143,7 +144,7 @@ export async function cotizarCarrito(
       artista_id:      p.artista_id,
       precio_unitario: p.precio,
       cantidad:        item.cantidad,
-      comision_pct:    p.artistas?.es_founder ? 0 : (p.artistas?.comision ?? COMISION_POR_DEFECTO),
+      comision_pct:    comisionEfectiva(p.artistas, hoy),
     });
   }
 

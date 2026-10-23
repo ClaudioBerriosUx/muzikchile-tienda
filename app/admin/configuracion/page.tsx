@@ -115,11 +115,14 @@ export default function ConfiguracionPage() {
             <input
               type="number"
               min={0} max={100}
-              value={form.comision_default ?? "10"}
+              value={form.comision_default ?? ""}
               onChange={(e) => set("comision_default", e.target.value)}
               className={inputClass}
               style={{ fontFamily: "var(--font-body)", color: "#111111", maxWidth: "160px" }}
             />
+            <p className="mt-1.5 text-xs" style={{ fontFamily: "var(--font-body)", color: "#999999" }}>
+              La recibe cada artista al crearse. Cambiarla no modifica la comisión de los que ya existen.
+            </p>
           </div>
         </section>
 

@@ -44,10 +44,8 @@ export default function PanelShell({ children }: { children: React.ReactNode }) 
             nombre: user!.email?.split("@")[0] ?? "Artista",
             slug: user!.id,
             tiene_tienda: false,
-            tienda_activa: false,
-            comision: 10,
-            es_founder: false,
-            verificado: false,
+            // comision, es_founder, founder_hasta, tienda_activa y verificado
+            // los fija la base (trigger proteger_columnas_artista).
           });
           if (insertError) console.error("[ensureArtista] insert error:", insertError);
         }

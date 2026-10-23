@@ -47,6 +47,7 @@ export type Database = {
           es_editorial: boolean
           es_founder: boolean
           foto_url: string | null
+          founder_hasta: string | null
           generos: string[] | null
           id: string
           instagram_url: string | null
@@ -82,6 +83,7 @@ export type Database = {
           es_editorial?: boolean
           es_founder?: boolean
           foto_url?: string | null
+          founder_hasta?: string | null
           generos?: string[] | null
           id?: string
           instagram_url?: string | null
@@ -117,6 +119,7 @@ export type Database = {
           es_editorial?: boolean
           es_founder?: boolean
           foto_url?: string | null
+          founder_hasta?: string | null
           generos?: string[] | null
           id?: string
           instagram_url?: string | null
@@ -574,6 +577,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      comision_por_defecto: { Args: never; Returns: number }
       confirmar_pago: {
         Args: { p_grupo_id: string; p_monto: number; p_payment_id: string }
         Returns: string

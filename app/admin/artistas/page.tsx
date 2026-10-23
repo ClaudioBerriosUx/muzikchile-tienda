@@ -11,6 +11,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
+import { formatearFecha, founderVigente, textoFounder } from "@/lib/comision";
 
 interface Artista {
   id: string;
@@ -22,6 +23,7 @@ interface Artista {
   region?: string;
   comision: number;
   es_founder: boolean;
+  founder_hasta: string | null;
   tienda_activa: boolean;
   verificado: boolean;
 }
@@ -32,6 +34,7 @@ export default function ArtistasPage() {
   const [seleccionado, setSeleccionado] = useState<Artista | null>(null);
   const [comision, setComision] = useState(0);
   const [esFounder, setEsFounder] = useState(false);
+  const [founderHasta, setFounderHasta] = useState("");
   const [tiendaActiva, setTiendaActiva] = useState(false);
   const [verificado, setVerificado] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -46,7 +49,7 @@ export default function ArtistasPage() {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("artistas")
-        .select("id, nombre, slug, foto_url, bio, ciudad, region, comision, es_founder, tienda_activa, verificado")
+        .select("id, nombre, slug, foto_url, bio, ciudad, region, comision, es_founder, founder_hasta, tienda_activa, verificado")
         .order("nombre");
       if (error) throw error;
       return (data ?? []) as Artista[];
@@ -57,6 +60,7 @@ export default function ArtistasPage() {
     if (seleccionado) {
       setComision(seleccionado.comision ?? 0);
       setEsFounder(seleccionado.es_founder ?? false);
+      setFounderHasta(seleccionado.founder_hasta ?? "");
       setTiendaActiva(seleccionado.tienda_activa ?? false);
       setVerificado(seleccionado.verificado ?? false);
     }
@@ -68,7 +72,15 @@ export default function ArtistasPage() {
     const supabase = createClient();
     const { error } = await supabase
       .from("artistas")
-      .update({ comision: esFounder ? 0 : comision, es_founder: esFounder, tienda_activa: tiendaActiva, verificado })
+      // La comisión se guarda siempre como la tarifa del artista: el 0% de
+      // founder lo decide lib/comision.ts, así rige al vencer founder_hasta.
+      .update({
+        comision,
+        es_founder:    esFounder,
+        founder_hasta: esFounder && founderHasta ? founderHasta : null,
+        tienda_activa: tiendaActiva,
+        verificado,
+      })
       .eq("id", seleccionado.id);
     if (error) { toast.error("Error al guardar"); }
     else {
@@ -158,10 +170,12 @@ export default function ArtistasPage() {
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className="text-xs px-1.5 py-0.5 rounded" style={{
                     fontFamily: "var(--font-body)",
-                    backgroundColor: a.es_founder ? "#fef9c3" : "#f3f4f6",
-                    color: a.es_founder ? "#854d0e" : "#666666",
+                    backgroundColor: founderVigente(a) ? "#fef9c3" : "#f3f4f6",
+                    color: founderVigente(a) ? "#854d0e" : "#666666",
                   }}>
-                    {a.es_founder ? "Founder 0%" : `${a.comision ?? 0}%`}
+                    {founderVigente(a)
+                      ? (a.founder_hasta ? `0% hasta ${formatearFecha(a.founder_hasta)}` : "0% de por vida")
+                      : `${a.comision ?? 0}%${a.es_founder ? " · founder vencido" : ""}`}
                   </span>
                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: a.tienda_activa ? "#22c55e" : "#d1d5db" }} />
                 </div>
@@ -223,18 +237,14 @@ export default function ArtistasPage() {
                   min={0} max={100}
                   value={comision}
                   onChange={(e) => setComision(Number(e.target.value))}
-                  disabled={esFounder}
                   className={inputClass}
-                  style={{
-                    fontFamily: "var(--font-body)",
-                    color: "#111111",
-                    opacity: esFounder ? 0.5 : 1,
-                    cursor: esFounder ? "not-allowed" : "text",
-                  }}
+                  style={{ fontFamily: "var(--font-body)", color: "#111111" }}
                 />
                 {esFounder && (
                   <p className="mt-1 text-xs" style={{ fontFamily: "var(--font-body)", color: "#854d0e" }}>
-                    Los artistas Founder tienen 0% de comisión
+                    {founderHasta
+                      ? "Se aplica desde el día siguiente al fin del período founder."
+                      : "No se aplica mientras sea founder de por vida."}
                   </p>
                 )}
               </div>
@@ -246,17 +256,42 @@ export default function ArtistasPage() {
                     Es Founder
                   </p>
                   <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#666666" }}>
-                    Comisión 0% de por vida
+                    {textoFounder(founderHasta || null)}
                   </p>
                 </div>
-                <Switch
-                  checked={esFounder}
-                  onCheckedChange={(checked) => {
-                    setEsFounder(checked);
-                    if (checked) setComision(0);
-                  }}
-                />
+                <Switch checked={esFounder} onCheckedChange={setEsFounder} />
               </div>
+
+              {esFounder && (
+                <div className="-mt-3">
+                  <label htmlFor="founder-hasta" style={{ fontFamily: "var(--font-body)", color: "#666666" }} className={labelClass}>
+                    Founder hasta (opcional)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="founder-hasta"
+                      type="date"
+                      value={founderHasta}
+                      onChange={(e) => setFounderHasta(e.target.value)}
+                      className={inputClass}
+                      style={{ fontFamily: "var(--font-body)", color: "#111111", maxWidth: "200px" }}
+                    />
+                    {founderHasta && (
+                      <button
+                        type="button"
+                        onClick={() => setFounderHasta("")}
+                        className="text-xs underline"
+                        style={{ fontFamily: "var(--font-body)", color: "#666666" }}
+                      >
+                        Quitar fecha
+                      </button>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs" style={{ fontFamily: "var(--font-body)", color: "#999999" }}>
+                    Vacío = de por vida. Con fecha, el 0% rige hasta ese día inclusive.
+                  </p>
+                </div>
+              )}
 
               {/* Tienda activa */}
               <div className="flex items-center justify-between py-3 border-t border-[#e8e8e8]">
