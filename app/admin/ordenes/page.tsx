@@ -27,13 +27,16 @@ interface Orden {
   productos: { nombre: string } | { nombre: string }[] | null;
 }
 
-const ESTADOS = ["todos", "pendiente", "pagado", "enviado", "entregado"];
+// 'reembolsado' lo pone el webhook (revertir_pago) cuando MP informa un pago
+// reembolsado o con contracargo.
+const ESTADOS = ["todos", "pendiente", "pagado", "enviado", "entregado", "reembolsado"];
 
 const BADGE_ESTADO: Record<string, { bg: string; text: string }> = {
-  pendiente:  { bg: "#fef9c3", text: "#854d0e" },
-  pagado:     { bg: "#dbeafe", text: "#1e40af" },
-  enviado:    { bg: "#fed7aa", text: "#9a3412" },
-  entregado:  { bg: "#dcfce7", text: "#166534" },
+  pendiente:   { bg: "#fef9c3", text: "#854d0e" },
+  pagado:      { bg: "#dbeafe", text: "#1e40af" },
+  enviado:     { bg: "#fed7aa", text: "#9a3412" },
+  entregado:   { bg: "#dcfce7", text: "#166534" },
+  reembolsado: { bg: "#f3e8ff", text: "#6b21a8" },
 };
 
 function nombre(v: { nombre: string } | { nombre: string }[] | null) {
@@ -247,7 +250,8 @@ export default function OrdenesPage() {
                 className="w-full rounded-md px-3 py-2 text-sm border border-[#e8e8e8] focus:border-[#e8003d] focus:outline-none mb-3"
                 style={{ fontFamily: "var(--font-body)" }}
               >
-                {ESTADOS.filter((e) => e !== "todos").map((e) => (
+                {/* 'reembolsado' no se elige a mano: lo pone el webhook, que además devuelve stock y cupón. */}
+                {ESTADOS.filter((e) => e !== "todos" && e !== "reembolsado").map((e) => (
                   <option key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>
                 ))}
               </select>

@@ -1582,8 +1582,9 @@ escribe en la base real con prefijo `rlstest-`/`RLSTEST-` y limpia):
 ### Pendiente
 - Mirar logueado `/panel/perfil` (datos bancarios cargan y se guardan) y
   `/admin/liquidaciones`.
-- **`lib/supabase/types.ts` editado a mano** (`gen types` da 403): una cuenta
-  Owner debe regenerarlo y confirmar que calza.
+- ~~`lib/supabase/types.ts` editado a mano (`gen types` da 403)~~ ✅ 2026-10-24:
+  tras un nuevo `supabase login`, `gen types --linked` funciona y lo generado es
+  idéntico a lo editado a mano (salvo finales de línea).
 - Baseline regenerado tras M2. Ojo: el dump es solo de `public` y `storage`
   (por eso la función del trigger vive en `public`) y va con
   `--no-privileges`, así que **los grants por columna y los REVOKE no quedan en
@@ -1821,9 +1822,34 @@ www respondiera 500; ahora es 422 "no puede recibir pagos en este momento".
   liberar"** por la operación 184926629417 (confirmado por Claudio en MP).
 - Deployment Protection reactivada tras la prueba.
 
+### Reembolsos y contracargos (commit 4a) — 2026-10-24
+- Migración `20261024232633_revertir_pago` ✅ aplicada (antes del deploy):
+  `pagos_mp.revertido_at` / `revertido_motivo` y `revertir_pago(grupo, pago,
+  motivo)`, contraparte de `confirmar_pago`: una sola vez por pago (lock en
+  `revertido_at`); órdenes `pagado`/`enviado`/`entregado` → `reembolsado`;
+  stock de vuelta **solo de lo que estaba `pagado`** (lo despachado no vuelve
+  solo a bodega; decisión 2026-10-24); uso del cupón −1. Solo service role.
+- Webhook: `refunded` y `charged_back` → `revertir_pago`. **Mismo camino venga
+  de donde venga el reembolso** (ruta de admin, panel de MP del artista o de
+  MuzikChile). Reembolso parcial → solo log. Orden ya liquidada → log para
+  ajustar a mano.
+- `POST /api/admin/mp/reembolsar` `{ grupo }`: solo admin (rol en el servidor),
+  solo pedidos `marketplace` pagados; pide el reembolso total a MP con el token
+  del artista (`X-Idempotency-Key: reembolso-<payment_id>`) y devuelve el
+  status y cuerpo de MP tal cual. No toca la base: lo hace el webhook.
+- Estado `reembolsado` en `StatusBadge` y en el filtro de `/admin/ordenes` (no
+  en el selector manual: no devolvería stock ni cupón).
+- Verificado (`--fase2 --api=local`): **130/130** = 102 originales idénticos +
+  18 `(mk)` + 10 `(rb)` (procesado, duplicado, 5 simultáneos → 1, sin_pago,
+  contracargo de una orden enviada sin devolver stock, permisos de la función,
+  y la ruta: 401 / 403 / 400 / 404 / 422). Build OK.
+- `gen types --linked` vuelve a funcionar: tipos generados = los editados.
+
 ### Pendiente
-- **Probar un reembolso** de la compra 184926629417 (en ALIADAS la API de
-  refunds dio 404) y la **renovación del token**, antes de borrar `mp-pruebas`.
+- **Probar el reembolso real** de la compra 184926629417 en el preview (en
+  ALIADAS la API de refunds dio 404; hipótesis: se pidió con el token del
+  integrador, no con el del vendedor) y la **renovación del token**, antes de
+  borrar `mp-pruebas`.
 - Al terminar: quitar a Valentina del piloto (`[]`), desconectarla desde
   `/panel/cobros` del preview, limpieza de órdenes (script que muestra antes de
   borrar), reactivar Deployment Protection, borrar `mp-pruebas` y sus variables

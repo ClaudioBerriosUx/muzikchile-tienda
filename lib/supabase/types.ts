@@ -452,18 +452,24 @@ export type Database = {
           monto: number
           mp_payment_id: string
           procesado_at: string
+          revertido_at: string | null
+          revertido_motivo: string | null
         }
         Insert: {
           grupo_id: string
           monto: number
           mp_payment_id: string
           procesado_at?: string
+          revertido_at?: string | null
+          revertido_motivo?: string | null
         }
         Update: {
           grupo_id?: string
           monto?: number
           mp_payment_id?: string
           procesado_at?: string
+          revertido_at?: string | null
+          revertido_motivo?: string | null
         }
         Relationships: []
       }
@@ -674,6 +680,10 @@ export type Database = {
         Returns: boolean
       }
       incrementar_usos_cupon: { Args: { cupon_id: string }; Returns: undefined }
+      revertir_pago: {
+        Args: { p_grupo_id: string; p_motivo: string; p_payment_id: string }
+        Returns: string
+      }
       tomar_lock_renovacion_mp: {
         Args: { p_artista_id: string }
         Returns: boolean

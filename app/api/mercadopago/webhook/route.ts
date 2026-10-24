@@ -23,6 +23,13 @@ const UUID = /^[0-9a-f-]{36}$/i;
  * si las órdenes del grupo son 'marketplace', se usa el token del artista y se
  * exige que el pago sea de ese grupo y de esa cuenta (collector). Sin ?grupo=,
  * o con órdenes centralizadas, todo sigue igual que antes.
+ *
+ * Reembolsos y contracargos ('refunded', 'charged_back'): revertir_pago() pasa
+ * las órdenes a 'reembolsado', devuelve el stock no despachado y el uso del
+ * cupón, una sola vez por pago. Es el mismo camino venga de donde venga el
+ * reembolso: la ruta /api/admin/mp/reembolsar, el panel de MP del artista o el
+ * de MuzikChile; lo que manda es el estado del pago en MP. Un reembolso
+ * parcial deja el pago en 'approved': no se revierte nada, queda en el log.
  */
 export async function POST(req: NextRequest) {
   const ok = () => NextResponse.json({ ok: true });
@@ -151,6 +158,36 @@ export async function POST(req: NextRequest) {
         console.error("[webhook] pago registrado sin órdenes por confirmar:", paymentId, grupoId);
       }
       // resultado === "procesado" → acá irán los correos (una sola vez por pago).
+      if (Number(pago.transaction_amount_refunded) > 0) {
+        console.error(
+          "[webhook] reembolso parcial: el pago sigue aprobado, no se revierte nada:",
+          JSON.stringify({ paymentId, grupoId, reembolsado: pago.transaction_amount_refunded, total: pagado })
+        );
+      }
+    } else if (pago.status === "refunded" || pago.status === "charged_back") {
+      const { data: resultado, error: rpcError } = await supabase.rpc("revertir_pago", {
+        p_grupo_id:   grupoId,
+        p_payment_id: paymentId,
+        p_motivo:     pago.status,
+      });
+      if (rpcError) {
+        console.error("[webhook] revertir_pago falló:", JSON.stringify(rpcError));
+        return reintentar();
+      }
+      if (resultado === "sin_pago" || resultado === "sin_ordenes") {
+        console.error("[webhook] reembolso sin pago confirmado u órdenes que revertir:", resultado, paymentId, grupoId);
+      }
+      if (resultado === "procesado") {
+        // Lo que ya se le transfirió al artista no se devuelve solo.
+        const { data: liquidadas } = await supabase
+          .from("ordenes")
+          .select("id")
+          .eq("grupo_id", grupoId)
+          .eq("liquidado", true);
+        if (liquidadas?.length) {
+          console.error("[webhook] reembolso de órdenes ya liquidadas: ajustar a mano con el artista:", grupoId, JSON.stringify(liquidadas));
+        }
+      }
     } else if (pago.status === "rejected" || pago.status === "cancelled") {
       const { error } = await supabase
         .from("ordenes")

@@ -200,6 +200,13 @@ escrito en el código.
   no se cree), compara monto y moneda, y llama a `confirmar_pago()`: órdenes a
   `pagado`, stock y cupón, **una sola vez por pago** (lock en `pagos_mp`).
   Devuelve 500 ante errores temporales para que MP reintente.
+  Un pago `refunded` o `charged_back` llama a `revertir_pago()`: órdenes a
+  `reembolsado`, stock no despachado de vuelta y uso del cupón −1, **una sola
+  vez por pago** (lock en `pagos_mp.revertido_at`). Es el mismo camino venga
+  de donde venga el reembolso: `/api/admin/mp/reembolsar` (marketplace, con el
+  token del artista), el panel de MP del artista o el de MuzikChile. Un
+  reembolso parcial no revierte nada (queda en el log). `reembolsado` no se
+  elige a mano en `/admin/ordenes`.
 
 ### Marketplace de Mercado Pago (en construcción)
 

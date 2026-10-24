@@ -12,6 +12,7 @@ const ESTILOS: Record<string, { bg: string; text: string; label: string }> = {
   pagado:      { bg: "#dcfce7", text: "#166534", label: "Pagado" },
   enviado:     { bg: "#fed7aa", text: "#9a3412", label: "Enviado" },
   entregado:   { bg: "#dcfce7", text: "#166534", label: "Entregado" },
+  reembolsado: { bg: "#f3e8ff", text: "#6b21a8", label: "Reembolsado" },
   // publicaciones ('pendiente' se reutiliza de arriba)
   borrador:    { bg: "#f3f4f6", text: "#374151", label: "Borrador" },
   publicada:   { bg: "#dcfce7", text: "#166534", label: "Publicada" },

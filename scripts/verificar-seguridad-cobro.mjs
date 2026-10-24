@@ -17,6 +17,8 @@
  * API:    precio desde la base, cupón validado en el servidor, stock, webhook.
  *         ⚠️ Crea UNA preferencia real en la cuenta de MercadoPago configurada
  *         en app_settings (sin pagar: no mueve plata).
+ * (rb):   reembolsos y contracargos: revertir_pago() (20261024232633) y, con
+ *         --api, los permisos de /api/admin/mp/reembolsar.
  * (mk):   cobro marketplace en piloto (20261024211159), solo con --api y contra
  *         un servidor LOCAL: la conexión de prueba se cifra con la
  *         MP_TOKENS_KEY de .env.local. Mete al artista de prueba A en
@@ -39,6 +41,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 // Node 24 importa TypeScript sin compilar (solo quita los tipos).
 import { comisionEfectiva, founderVigente, textoFounder } from "../lib/comision.ts";
 import { cifrar } from "../lib/mp/cifrado.ts";
@@ -92,7 +95,7 @@ async function crearUsuario(sufijo, rol) {
   const cliente = createClient(URL, ANON_KEY, opciones);
   const { error: loginErr } = await cliente.auth.signInWithPassword({ email, password });
   if (loginErr) throw new Error(`Login ${sufijo}: ${loginErr.message}`);
-  return { userId, cliente };
+  return { userId, cliente, email, password };
 }
 
 async function crearArtista(sufijo, extra = {}) {
@@ -612,6 +615,116 @@ async function api(A, B) {
   }
 }
 
+// ── Reembolsos (rb) ──────────────────────────────────────────────────────────
+
+/** Cookie de sesión de un usuario, armada por @supabase/ssr (el formato de la app). */
+async function cookieDe(u) {
+  const frasco = new Map();
+  const ssr = createServerClient(URL, ANON_KEY, {
+    cookies: {
+      getAll: () => [...frasco].map(([name, value]) => ({ name, value })),
+      setAll: (lista) => lista.forEach(({ name, value }) => (value ? frasco.set(name, value) : frasco.delete(name))),
+    },
+  });
+  const { error } = await ssr.auth.signInWithPassword({ email: u.email, password: u.password });
+  if (error) throw new Error(`Cookie de sesión: ${error.message}`);
+  return [...frasco].map(([n, v]) => `${n}=${v}`).join("; ");
+}
+
+const revertir = (grupo, pago, motivo = "refunded") =>
+  admin.rpc("revertir_pago", { p_grupo_id: grupo, p_payment_id: pago, p_motivo: motivo });
+
+async function reembolsos(A, B, ADMIN) {
+  console.log("\n── (rb) Reembolsos · revertir_pago ──");
+  const P = await crearProducto(A.artistaId, "rb", { stock: 10 });
+  const C = await crearCupon("rb", { artista_id: A.artistaId });
+
+  const g1 = await crearGrupo(A.artistaId, [{ producto: P, cantidad: 2, cupon: C.id }]);
+  const pago1 = pagoId();
+  await confirmar(g1, pago1);
+  {
+    const antes = [await stockDe(P), await usosDe(C.id)];
+    const { data, error } = await revertir(g1, pago1);
+    const [stock, usos, estados] = [await stockDe(P), await usosDe(C.id), await estadosDe(g1)];
+    check("(rb-1) Pago reembolsado → 'procesado': órdenes 'reembolsado', stock +2, uso del cupón −1",
+      !error && data === "procesado" && antes[0] === 8 && stock === 10 && antes[1] === 1 && usos === 0 && estados.every((e) => e === "reembolsado"),
+      error ? fmt(error) : `resultado=${data} stock ${antes[0]}→${stock} usos ${antes[1]}→${usos} estados=${estados}`);
+  }
+  {
+    const { data, error } = await revertir(g1, pago1);
+    const [stock, usos] = [await stockDe(P), await usosDe(C.id)];
+    check("(rb-2) Mismo aviso repetido → 'duplicado', sin tocar stock ni cupón", !error && data === "duplicado" && stock === 10 && usos === 0, error ? fmt(error) : `resultado=${data} stock=${stock} usos=${usos}`);
+  }
+  {
+    const g = await crearGrupo(A.artistaId, [{ producto: P, cantidad: 1 }]);
+    const pago = pagoId();
+    await confirmar(g, pago); // stock 9
+    const respuestas = await Promise.all(Array.from({ length: 5 }, () => revertir(g, pago)));
+    const datos = respuestas.map((r) => r.data ?? fmt(r.error));
+    const stock = await stockDe(P);
+    check("(rb-3) 5 avisos de reembolso simultáneos → un solo 'procesado', stock +1", datos.filter((d) => d === "procesado").length === 1 && stock === 10, `respuestas=${datos.join(",")} stock=${stock}`);
+  }
+  {
+    const g = await crearGrupo(A.artistaId, [{ producto: P, cantidad: 1 }]);
+    const { data, error } = await revertir(g, pagoId());
+    const [stock, estados] = [await stockDe(P), await estadosDe(g)];
+    check("(rb-4) Reembolso de un pago que nunca se confirmó → 'sin_pago', nada cambia", !error && data === "sin_pago" && stock === 10 && estados.every((e) => e === "pendiente"), error ? fmt(error) : `resultado=${data} stock=${stock} estados=${estados}`);
+  }
+  {
+    const g = await crearGrupo(A.artistaId, [{ producto: P, cantidad: 1 }]);
+    const pago = pagoId();
+    await confirmar(g, pago); // stock 9
+    await admin.from("ordenes").update({ estado: "enviado" }).eq("grupo_id", g);
+    const { data, error } = await revertir(g, pago, "charged_back");
+    const [stock, estados] = [await stockDe(P), await estadosDe(g)];
+    const { data: fila } = await admin.from("pagos_mp").select("revertido_motivo, revertido_at").eq("mp_payment_id", pago).single();
+    check("(rb-5) Contracargo de una orden ya enviada → 'reembolsado' sin devolver stock; motivo guardado",
+      !error && data === "procesado" && stock === 9 && estados.every((e) => e === "reembolsado") && fila?.revertido_motivo === "charged_back" && !!fila?.revertido_at,
+      error ? fmt(error) : `resultado=${data} stock=${stock} estados=${estados} ${JSON.stringify(fila)}`);
+    await admin.from("productos").update({ stock: 10 }).eq("id", P);
+  }
+  {
+    const g = crypto.randomUUID();
+    const r1 = await anon.rpc("revertir_pago", { p_grupo_id: g, p_payment_id: pagoId(), p_motivo: "refunded" });
+    const r2 = await A.cliente.rpc("revertir_pago", { p_grupo_id: g, p_payment_id: pagoId(), p_motivo: "refunded" });
+    check("(rb-6) Anónimo/artista ejecutan revertir_pago → rechazado", !!r1.error && !!r2.error, `anon: ${fmt(r1.error)} · artista: ${fmt(r2.error)}`);
+  }
+
+  if (!API) return;
+  console.log(`\n── (rb) /api/admin/mp/reembolsar · ${API} ──`);
+  const [cookieAdmin, cookieArtista] = [await cookieDe(ADMIN), await cookieDe(A)];
+  const reembolsar = async (body, cookie) => {
+    const res = await fetch(`${API}/api/admin/mp/reembolsar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(cookie ? { cookie } : {}) },
+      body: JSON.stringify(body),
+    });
+    return { status: res.status, data: await res.json().catch(() => null) };
+  };
+  const gCentral = await crearGrupo(A.artistaId, [{ producto: P, cantidad: 1 }], "pagado");
+  const gMkPend = await crearGrupo(A.artistaId, [{ producto: P, cantidad: 1 }]);
+  await admin.from("ordenes").update({ cobro: "marketplace", mp_collector_id: 9_000_000_001 }).eq("grupo_id", gMkPend);
+  {
+    const r = await reembolsar({ grupo: gCentral });
+    check("(rb-7) Sin sesión → 401", r.status === 401, `status=${r.status}`);
+  }
+  {
+    const r = await reembolsar({ grupo: gCentral }, cookieArtista);
+    check("(rb-8) Con sesión de artista → 403", r.status === 403, `status=${r.status}`);
+  }
+  {
+    const r1 = await reembolsar({ grupo: "no-es-uuid" }, cookieAdmin);
+    const r2 = await reembolsar({ grupo: crypto.randomUUID() }, cookieAdmin);
+    check("(rb-9) Admin: grupo inválido → 400; inexistente → 404", r1.status === 400 && r2.status === 404, `inválido=${r1.status} inexistente=${r2.status}`);
+  }
+  {
+    const r1 = await reembolsar({ grupo: gCentral }, cookieAdmin);
+    const r2 = await reembolsar({ grupo: gMkPend }, cookieAdmin);
+    check("(rb-10) Admin: pedido centralizado → 422; marketplace sin pagar → 422 (no se llama a MP)",
+      r1.status === 422 && r2.status === 422, `centralizado=${r1.status} ${r1.data?.error} · pendiente=${r2.status} ${r2.data?.error}`);
+  }
+}
+
 // ── Marketplace en piloto (mk) ───────────────────────────────────────────────
 
 /** Cifra con una llave distinta de MP_TOKENS_KEY (como un token conectado desde otro entorno). */
@@ -808,6 +921,7 @@ async function main() {
 
     reglaComision();
     await fase1(A, B, ADMIN);
+    await reembolsos(A, B, ADMIN);
     if (FASE2) await fase2(A, B, ADMIN);
     if (API) await api(A, B);
     if (API) await marketplace(A, B, ADMIN);
