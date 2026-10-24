@@ -1817,11 +1817,13 @@ www respondiera 500; ahora es 422 "no puede recibir pagos en este momento".
   que la orden llegara a `pagado` (la orden es `marketplace` y el token de
   MuzikChile no ve los pagos del artista: 403 / búsqueda vacía), y además pasó
   el chequeo de grupo + collector. El log de Vercel no se leyó (sin CLI).
-- **Sin verificar desde acá**: que el `marketplace_fee` de 110 llegó al
-  integrador de prueba (mirar la actividad de esa cuenta en MP).
+- ✅ `marketplace_fee`: el integrador de prueba tiene **$110 en "Dinero a
+  liberar"** por la operación 184926629417 (confirmado por Claudio en MP).
+- Deployment Protection reactivada tras la prueba.
 
 ### Pendiente
-- Ver en la cuenta del integrador de prueba el ingreso de $110 (fee).
+- **Probar un reembolso** de la compra 184926629417 (en ALIADAS la API de
+  refunds dio 404) y la **renovación del token**, antes de borrar `mp-pruebas`.
 - Al terminar: quitar a Valentina del piloto (`[]`), desconectarla desde
   `/panel/cobros` del preview, limpieza de órdenes (script que muestra antes de
   borrar), reactivar Deployment Protection, borrar `mp-pruebas` y sus variables
