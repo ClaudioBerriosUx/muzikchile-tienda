@@ -1770,15 +1770,42 @@ Detrás del piloto: con `marketplace_piloto = []` y `cobro_modelo =
 - No se probó todavía un pago marketplace real: desde local no se puede (la
   llave local no descifra el token de Valentina).
 
+### Primera prueba en producción — 2026-10-24: MP no deja pagar
+Valentina en el piloto desde ~21:40 UTC. Tres intentos de comprar el cassette
+($1.100) en www, todos con "Oh, no, algo anduvo mal" en el checkout de MP. Las
+preferencias se crean bien (prefijo 3787758738 = cuenta de Valentina); las
+órdenes quedan `pendiente`/`marketplace`, sin `pagos_mp`, stock intacto:
+
+| Intento | Correo del comprador | Comisión |
+|---|---|---|
+| 1 | @gmail.com real | 110 (`marketplace_fee`) |
+| B | compradora de prueba | 110 |
+| C | compradora de prueba | 0 (founder: sin `marketplace_fee`) |
+
+**Causa: la app real.** MP no permite pagar entre cuentas de prueba con una
+aplicación real, ni sin fee. El token de MuzikChile no ve ni la preferencia
+(403) ni los pagos del artista; el de Valentina no se puede leer desde local
+(`MP_TOKENS_KEY` de Production es Secret en Vercel). Se pasa al preview
+`mp-pruebas` con la app del integrador de prueba (tres cuentas de prueba de la
+misma cuenta real: integrador, vendedor TESTUSER3381887173034331418,
+compradora TESTUSER7269657435267286180).
+
+**Arreglo previo (`tokenVigente`)**: un token cifrado con otra `MP_TOKENS_KEY`
+(la conexión que se rehace desde el preview) hacía que `crear-preferencia` en
+www respondiera 500; ahora es 422 "no puede recibir pagos en este momento".
+`verificar:cobro -- --fase2 --api=local`: **120/120** = 102 originales idénticos
++ 18 `(mk)` (nuevo `mk-18`).
+
 ### Pendiente
-- **Primera prueba en producción**: meter a Valentina en el piloto
-  (`marketplace_piloto = ["a48e4091-2fc8-481e-863d-58c6a2c43a71"]`), comprar el
-  cassette ($1.100) por URL directa con la compradora de prueba (dinero
-  disponible, no tarjeta). Revisar: cobro en la cuenta TESTUSER…, fee a
-  MuzikChile, orden `pagado`/`marketplace`, stock 9, fila en `pagos_mp`,
-  `/checkout/exito` y que no aparezca en liquidaciones. Si MP rechaza la mezcla
-  app real + cuentas de prueba → sacar a Valentina del piloto y volver al
-  preview `mp-pruebas`.
+- **Prueba en el preview `mp-pruebas`** (alias
+  `muzikchile-tienda-git-mp-pruebas-claudioberriosuxs-projects.vercel.app`):
+  desconectar a Valentina en www, reconectarla desde el preview con la app de
+  prueba, quitarle el founder (probar CON comisión) y comprar el cassette con la
+  compradora de prueba. Si el webhook del preview da 401, desactivar Deployment
+  Protection solo durante la prueba. Revisar orden `pagado`/`marketplace`, stock
+  9, `pagos_mp`, `/checkout/exito` y liquidaciones.
+- Estado al 2026-10-24: Valentina **founder** (por el intento C) y **en el
+  piloto**; quitar ambas cosas al terminar.
 - Limpieza final con script que muestra antes de borrar: órdenes de prueba de
   Valentina **y sus 12 órdenes viejas**, filas de `pagos_mp`, stock del cassette
   a 10, Valentina fuera del piloto (la conexión y `es_prueba` se quedan).

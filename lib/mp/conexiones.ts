@@ -152,5 +152,15 @@ export async function tokenVigente(
   // Si la renovación falló por un problema temporal, el token viejo sirve
   // mientras no haya vencido.
   if (new Date(conexion.expires_at).getTime() <= Date.now()) return { ok: false, motivo: "no_disponible" };
-  return { ok: true, accessToken: descifrar(conexion.access_token_cifrado), mpUserId: Number(conexion.mp_user_id) };
+
+  // Un token cifrado con otra MP_TOKENS_KEY (p. ej. conectado desde un preview)
+  // no se puede usar acá: el artista no puede cobrar, pero no es un error 500.
+  let accessToken: string;
+  try {
+    accessToken = descifrar(conexion.access_token_cifrado);
+  } catch (err) {
+    console.error("[mp] el token del artista no se pudo descifrar (¿otra MP_TOKENS_KEY?):", artistaId, err instanceof Error ? err.message : err);
+    return { ok: false, motivo: "no_disponible" };
+  }
+  return { ok: true, accessToken, mpUserId: Number(conexion.mp_user_id) };
 }

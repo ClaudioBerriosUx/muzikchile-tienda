@@ -614,6 +614,13 @@ async function api(A, B) {
 
 // ── Marketplace en piloto (mk) ───────────────────────────────────────────────
 
+/** Cifra con una llave distinta de MP_TOKENS_KEY (como un token conectado desde otro entorno). */
+function cifrarConOtraLlave(texto) {
+  const llave = process.env.MP_TOKENS_KEY;
+  process.env.MP_TOKENS_KEY = Buffer.alloc(32, 7).toString("base64");
+  try { return cifrar(texto); } finally { process.env.MP_TOKENS_KEY = llave; }
+}
+
 const get = async (ruta) => {
   const res = await fetch(`${API}${ruta}`);
   let data = null;
@@ -706,6 +713,22 @@ async function marketplace(A, B, ADMIN) {
       const { data: ords } = await admin.from("ordenes").select("id").eq("producto_id", PA);
       check("(mk-10) crear-preferencia en marketplace usa el token del artista (falso → MP lo rechaza, sin órdenes)",
         r.status !== 200 && (ords ?? []).length === 0, `status=${r.status} ${r.data?.error ?? ""} órdenes=${ords?.length}`);
+    }
+    {
+      // Conexión cifrada con otra llave (la de un preview, por ejemplo): el
+      // artista no puede cobrar acá, y tiene que ser 422, no un 500.
+      const { error: e1 } = await admin.from("mp_conexiones").update({
+        access_token_cifrado: cifrarConOtraLlave("APP_USR-falso-access"),
+      }).eq("artista_id", A.artistaId);
+      const r = await post("/api/mercadopago/crear-preferencia", {
+        items: [{ id: PA, cantidad: 1 }],
+        comprador: { nombre: "RLS Test", email: `${PREFIJO}-comprador@example.com` },
+      });
+      const { data: ords } = await admin.from("ordenes").select("id").eq("producto_id", PA);
+      check("(mk-18) Token cifrado con otra MP_TOKENS_KEY → crear-preferencia 422 'no puede recibir pagos', sin órdenes",
+        !e1 && r.status === 422 && /no puede recibir pagos/.test(r.data?.error ?? "") && (ords ?? []).length === 0,
+        `status=${r.status} ${r.data?.error ?? ""} órdenes=${ords?.length}`);
+      await admin.from("mp_conexiones").update({ access_token_cifrado: cifrar("APP_USR-falso-access") }).eq("artista_id", A.artistaId);
     }
     {
       // Un grupo marketplace como lo dejaría crear-preferencia.
