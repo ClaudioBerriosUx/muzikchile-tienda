@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-10-22
+> Actualizado: 2026-10-24
 > Branch: `main` (lanzamiento mergeado y en producción en www.muzikchile.cl)
 
 ---
@@ -1663,14 +1663,18 @@ cambió; esto solo deja que los artistas conecten su cuenta.
   falso / sin cookie / sesión de otro / código falso). Navegador en local con
   usuarios de prueba: los tres estados de `/panel/cobros`, banner, desconectar,
   y `/admin/artistas` guardando sin fecha (la base quedó con `comision` 10).
-- ⚠️ En `.env.local`, `NEXT_PUBLIC_URL` es `https://tienda.muzikchile.cl`: en
-  local la `redirect_uri` sale con ese host. Producción usa www (lo confirma el
-  canonical publicado).
+- 2026-10-24: Claudio cargó en Vercel (Production) `MP_CLIENT_ID`,
+  `MP_CLIENT_SECRET`, `MP_TOKENS_KEY` y `CRON_SECRET`, pasó `NEXT_PUBLIC_URL`
+  de `.env.local` a `https://www.muzikchile.cl` y redesplegó.
+  `verificar:mp -- --api=https://www.muzikchile.cl` → **31/31**: `redirect_uri`
+  = `https://www.muzikchile.cl/api/mp/oauth/callback`, el código falso vuelve
+  con `error=mp` (no `config`, o sea que el secreto está cargado) y el cron sin
+  secreto da 401.
 
 ### Pendiente
-- Cargar en Vercel `MP_CLIENT_ID`, `MP_CLIENT_SECRET`, `MP_TOKENS_KEY`,
-  `CRON_SECRET` y probar la conexión real con el vendedor de prueba en
-  producción (única `redirect_uri` registrada en la app real).
+- Probar la conexión real con el vendedor de prueba en producción (única
+  `redirect_uri` registrada en la app real): requiere iniciar sesión en MP, no
+  se automatiza. Las variables ya están cargadas (2026-10-24).
 - **Commit 3**: un artista por carrito, "Pronto disponible", preferencia con
   `tokenVigente()` + `marketplace_fee`, webhook que consulta el pago con el
   token del artista, `/checkout/exito` con el estado real.
