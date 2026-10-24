@@ -1,8 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import type { Database } from "@/lib/supabase/types";
+import { tokenVigente } from "@/lib/mp/conexiones";
 
 export const dynamic = "force-dynamic";
+
+const UUID = /^[0-9a-f-]{36}$/i;
 
 /**
  * Aviso de MercadoPago (IPN o webhook). El aviso solo dice "mira el pago X":
@@ -14,6 +17,12 @@ export const dynamic = "force-dynamic";
  *
  * Respuestas: 200 cuando el aviso quedó atendido o no hay nada que hacer;
  * 500 ante un error temporal (MP caído, la base falló) para que MP reintente.
+ *
+ * Marketplace: el pago es de la cuenta del artista, así que se consulta con su
+ * token. La notification_url de esas preferencias trae ?grupo=<external_reference>;
+ * si las órdenes del grupo son 'marketplace', se usa el token del artista y se
+ * exige que el pago sea de ese grupo y de esa cuenta (collector). Sin ?grupo=,
+ * o con órdenes centralizadas, todo sigue igual que antes.
  */
 export async function POST(req: NextRequest) {
   const ok = () => NextResponse.json({ ok: true });
@@ -47,10 +56,39 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
     if (settingsError) return reintentar();
 
-    const token = settings?.value;
+    let token = settings?.value;
     if (!token) {
       console.error("[webhook] mp_access_token no configurado");
       return ok();
+    }
+
+    // ¿Es un pago marketplace? Lo dice la orden, no el aviso: ?grupo= solo
+    // indica dónde mirar.
+    let directo: { grupo: string; collectorId: number } | null = null;
+    const grupoAviso = params.get("grupo");
+    if (grupoAviso && UUID.test(grupoAviso)) {
+      const { data: orden, error: ordenError } = await supabase
+        .from("ordenes")
+        .select("artista_id, cobro, mp_collector_id")
+        .eq("grupo_id", grupoAviso)
+        .limit(1)
+        .maybeSingle();
+      if (ordenError) return reintentar();
+      if (orden?.cobro === "marketplace") {
+        if (!orden.artista_id || !orden.mp_collector_id) {
+          console.error("[webhook] orden marketplace sin artista o collector:", grupoAviso);
+          return ok();
+        }
+        const vendedor = await tokenVigente(supabase, orden.artista_id);
+        if (!vendedor.ok) {
+          // Sin token no se puede consultar el pago: que MP reintente (el
+          // artista puede reconectar, o la renovación salir en otro intento).
+          console.error("[webhook] sin token del artista para consultar el pago:", paymentId, grupoAviso, vendedor.motivo);
+          return reintentar();
+        }
+        token = vendedor.accessToken;
+        directo = { grupo: grupoAviso, collectorId: Number(orden.mp_collector_id) };
+      }
     }
 
     const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
@@ -64,7 +102,17 @@ export async function POST(req: NextRequest) {
 
     const pago = await mpRes.json();
     const grupoId: unknown = pago.external_reference;
-    if (typeof grupoId !== "string" || !/^[0-9a-f-]{36}$/i.test(grupoId)) return ok();
+    if (typeof grupoId !== "string" || !UUID.test(grupoId)) return ok();
+
+    // El pago tiene que ser de ese pedido y haber entrado a la cuenta del
+    // artista: un ?grupo= ajeno no sirve para confirmar otra cosa.
+    if (directo && (grupoId !== directo.grupo || Number(pago.collector_id) !== directo.collectorId)) {
+      console.error(
+        "[webhook] pago marketplace no calza con el grupo o la cuenta del artista; no se confirma:",
+        JSON.stringify({ paymentId, grupoAviso: directo.grupo, grupoPago: grupoId, collector: pago.collector_id, esperado: directo.collectorId })
+      );
+      return ok();
+    }
 
     if (pago.status === "approved") {
       const { data: ordenes, error: ordenesError } = await supabase

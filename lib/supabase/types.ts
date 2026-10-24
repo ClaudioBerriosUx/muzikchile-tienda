@@ -345,6 +345,7 @@ export type Database = {
           artista_id: string | null
           cantidad: number
           ciudad_envio: string | null
+          cobro: string
           comision_monto: number
           comision_porcentaje: number
           comprador_direccion: Json
@@ -361,6 +362,7 @@ export type Database = {
           mercadopago_preference_id: string | null
           metodo_pago: string | null
           monto_artista: number
+          mp_collector_id: number | null
           mp_preference_id: string | null
           precio_unitario: number
           producto_id: string | null
@@ -370,6 +372,7 @@ export type Database = {
           artista_id?: string | null
           cantidad?: number
           ciudad_envio?: string | null
+          cobro?: string
           comision_monto?: number
           comision_porcentaje?: number
           comprador_direccion?: Json
@@ -386,6 +389,7 @@ export type Database = {
           mercadopago_preference_id?: string | null
           metodo_pago?: string | null
           monto_artista?: number
+          mp_collector_id?: number | null
           mp_preference_id?: string | null
           precio_unitario?: number
           producto_id?: string | null
@@ -395,6 +399,7 @@ export type Database = {
           artista_id?: string | null
           cantidad?: number
           ciudad_envio?: string | null
+          cobro?: string
           comision_monto?: number
           comision_porcentaje?: number
           comprador_direccion?: Json
@@ -411,6 +416,7 @@ export type Database = {
           mercadopago_preference_id?: string | null
           metodo_pago?: string | null
           monto_artista?: number
+          mp_collector_id?: number | null
           mp_preference_id?: string | null
           precio_unitario?: number
           producto_id?: string | null

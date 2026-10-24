@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { traerProductoPorId } from "@/lib/productos";
-import ProductoClient from "./ProductoClient";
+import ProductoClient, { type CobroProducto } from "./ProductoClient";
+import { leerConfigCobro, modoCobro } from "@/lib/cobro";
+import { clienteServicio } from "@/lib/mp/conexiones";
 import { BASE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -55,5 +57,20 @@ export default async function ProductoPage({ params }: Props) {
   const producto = await traerProductoPorId(id);
   if (!producto) notFound();
 
-  return <ProductoClient id={id} />;
+  return <ProductoClient id={id} cobro={await cobroDelProducto(producto.artista_id, !!producto.artistas?.cobros_activos)} />;
+}
+
+/**
+ * Cómo cobra el artista del producto (lib/cobro.ts). Solo decide qué muestra
+ * el botón: el que manda es cotizar, en el servidor. Si la configuración no se
+ * puede leer, se muestra como centralizado y el checkout dirá lo que corresponda.
+ */
+async function cobroDelProducto(artistaId: string, cobrosActivos: boolean): Promise<CobroProducto> {
+  try {
+    const config = await leerConfigCobro(clienteServicio());
+    return { directo: modoCobro(config, artistaId) === "marketplace", disponible: cobrosActivos };
+  } catch (err) {
+    console.error("[producto] no se pudo leer el modo de cobro:", err instanceof Error ? err.message : err);
+    return { directo: false, disponible: true };
+  }
 }

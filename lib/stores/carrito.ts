@@ -7,6 +7,10 @@ export interface ItemCarrito {
   precio: number;
   imagen?: string;
   artista?: string;
+  /** Para avisar al agregar si se mezclan artistas; el servidor lo valida igual. */
+  artista_id?: string;
+  /** El artista cobra con su cuenta de MP (lib/cobro.ts): va solo en el pedido. */
+  cobro_directo?: boolean;
   cantidad: number;
 }
 

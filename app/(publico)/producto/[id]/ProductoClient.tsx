@@ -86,7 +86,17 @@ function Stock({ stock, digital }: { stock: number; digital: boolean }) {
   );
 }
 
-export default function ProductoClient({ id }: { id: string }) {
+/**
+ * Cómo cobra el artista (lib/cobro.ts), calculado en el servidor.
+ * `directo`: cobra con su cuenta de MP y va solo en el pedido.
+ * `disponible`: tiene la cuenta conectada (cobros_activos); si no, "Pronto disponible".
+ */
+export interface CobroProducto {
+  directo: boolean;
+  disponible: boolean;
+}
+
+export default function ProductoClient({ id, cobro }: { id: string; cobro: CobroProducto }) {
   const supabase = createClient();
   const agregar  = useCarrito((s) => s.agregar);
   const actualizarCantidad = useCarrito((s) => s.actualizarCantidad);
@@ -152,6 +162,7 @@ export default function ProductoClient({ id }: { id: string }) {
   const imagenes   = producto.imagenes ?? [];
   const imagenActiva = imagenes[imagenIdx] ?? null;
   const sinStock   = producto.stock === 0;
+  const pronto     = cobro.directo && !cobro.disponible;
   const digital    = producto.tipo === "digital";
   const zonas      = producto.zonas_envio ?? [];
 
@@ -161,13 +172,25 @@ export default function ProductoClient({ id }: { id: string }) {
    * store. Si ya estaba en el carrito, se suma a lo que había, con tope en el stock.
    */
   const handleAgregar = () => {
-    const previa = useCarrito.getState().items.find((i) => i.id === producto.id)?.cantidad ?? 0;
+    const enCarrito = useCarrito.getState().items;
+    // Un artista que cobra directo va solo en el pedido (el checkout lo valida
+    // igual en el servidor; acá solo se avisa antes).
+    const otros = enCarrito.filter((i) => i.artista_id !== producto.artista_id);
+    if (otros.length > 0 && (cobro.directo || otros.some((i) => i.cobro_directo))) {
+      toast.error(cobro.directo
+        ? `${artista?.nombre ?? "Este artista"} cobra directo con su cuenta de Mercado Pago: compra sus productos en un pedido aparte.`
+        : "Tu carrito tiene productos de un artista que cobra directo: termina ese pedido antes de agregar otros.");
+      return;
+    }
+    const previa = enCarrito.find((i) => i.id === producto.id)?.cantidad ?? 0;
     agregar({
       id: producto.id,
       nombre: producto.nombre,
       precio: producto.precio,
       imagen: imagenActiva ?? undefined,
       artista: artista?.nombre,
+      artista_id: producto.artista_id,
+      cobro_directo: cobro.directo,
     });
     if (cantidad > 1) {
       actualizarCantidad(producto.id, Math.min(previa + cantidad, producto.stock));
@@ -285,7 +308,7 @@ export default function ProductoClient({ id }: { id: string }) {
             )}
 
             <div className="flex flex-wrap items-stretch gap-3">
-              {!digital && !sinStock && (
+              {!digital && !sinStock && !pronto && (
                 <div role="group" aria-label="Cantidad" className="flex h-[52px] items-center rounded-[10px] border border-tema-borde-campo bg-tema-campo">
                   <button
                     type="button"
@@ -311,17 +334,17 @@ export default function ProductoClient({ id }: { id: string }) {
               <button
                 type="button"
                 onClick={handleAgregar}
-                disabled={sinStock}
+                disabled={sinStock || pronto}
                 className={cn(
                   "flex h-[52px] flex-[1_1_220px] items-center justify-center gap-2.5 rounded-[10px] border-0 text-base font-bold",
-                  sinStock
+                  sinStock || pronto
                     ? "cursor-not-allowed bg-tema-borde text-tema-texto-3"
                     : "cursor-pointer bg-tema-rojo text-tema-texto hover:brightness-110",
                   FOCO
                 )}
               >
                 <ShoppingBag size={18} strokeWidth={2.1} aria-hidden="true" />
-                {sinStock ? "Agotado" : "Agregar al carrito"}
+                {pronto ? "Pronto disponible" : sinStock ? "Agotado" : "Agregar al carrito"}
               </button>
             </div>
 

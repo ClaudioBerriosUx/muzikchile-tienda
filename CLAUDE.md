@@ -209,6 +209,16 @@ recibe `marketplace_fee`). Cada artista conecta su cuenta en `/panel/cobros`
 (OAuth con PKCE vía `auth.mercadopago.cl`, `lib/mp/`). `artistas.cobros_activos`
 lo mantiene un trigger sobre `mp_conexiones`; nunca lo escribas a mano.
 
+**Piloto**: `app_settings.marketplace_piloto` (lista JSON de `artista_id`) pone
+en marketplace a esos artistas aunque `cobro_modelo` siga en `centralizado`. La
+regla única es **`lib/cobro.ts`** (`leerConfigCobro` + `modoCobro`); no
+consultes los flags por tu cuenta. En marketplace: el carrito es de un solo
+artista, los cupones globales no aplican, la preferencia va con el token del
+artista (`tokenVigente`) + `marketplace_fee`, el webhook consulta el pago con
+ese token (`?grupo=` en la `notification_url`) y las órdenes quedan con
+`ordenes.cobro = 'marketplace'`, que **no entran en liquidaciones**. Un
+listado o saldo nuevo sobre `ordenes` tiene que decidir qué hace con `cobro`.
+
 La `notification_url` solo se envía a MP cuando `NEXT_PUBLIC_URL` es HTTPS (en
 local, MP la rechaza).
 

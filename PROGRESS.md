@@ -1720,20 +1720,77 @@ cambió; esto solo deja que los artistas conecten su cuenta.
   `supabase/README-migraciones.md`.
 
 ### Pendiente
-- Tras el deploy: marcar a Valentina como prueba en `/admin/artistas` y revisar
-  en producción `/tienda`, `/sitemap.xml` y el `noindex` del cassette.
-- **Commit 3b** (plan aprobado 2026-10-24): `ordenes.cobro` +
-  `mp_collector_id`, `app_settings.marketplace_piloto`, `lib/cobro.ts`, un
-  artista por carrito (solo con marketplace), cupones globales fuera en líneas
-  marketplace, "Pronto disponible", preferencia con `tokenVigente()` +
-  `marketplace_fee`, webhook con `?grupo=` y token del artista,
-  `/checkout/exito` desde la base, liquidaciones (panel y admin) sin órdenes
-  marketplace. Camino centralizado idéntico.
-- Primera prueba: $1.100 con la compradora de prueba, piloto solo Valentina. Si
-  MP rechaza la mezcla app real + cuentas de prueba → volver al preview.
+- ✅ Valentina marcada como prueba en producción (2026-10-24): fuera de la
+  consulta de `/tienda`; cassette y ficha con `noindex, nofollow`; un producto
+  normal sigue indexable. ⏳ `/sitemap.xml` todavía la lista (caché del build,
+  `revalidate = 3600`; la consulta nueva ya la excluye): **volver a mirar**.
+- ~~Commit 3b~~ ✅ 2026-10-24 (ver abajo).
+
+---
+
+## 💳 Marketplace MP en piloto (commit 3b) — 2026-10-24
+
+Detrás del piloto: con `marketplace_piloto = []` y `cobro_modelo =
+'centralizado'` (como quedó), producción cobra igual que antes.
+
+- Migración `20261024211159_marketplace_piloto` ✅ aplicada 2026-10-24 (antes
+  del deploy: las liquidaciones leen `ordenes.cobro`): `ordenes.cobro`
+  (`centralizado` por defecto | `marketplace`, CHECK), `ordenes.mp_collector_id`
+  y la fila `app_settings.marketplace_piloto = '[]'`.
+- `lib/cobro.ts`: regla única (`leerConfigCobro`, `modoCobro`).
+- `cotizar`: carrito marketplace = un solo artista ("compra sus productos en un
+  pedido aparte"); sin cuenta conectada → "estarán disponibles pronto"; los
+  cupones globales no aplican en marketplace (los del artista sí). Devuelve
+  `cobro`.
+- `crear-preferencia`: en marketplace, token del artista (`tokenVigente`),
+  `marketplace_fee` = Σ comisión (se omite si es 0), `notification_url` con
+  `?grupo=`, órdenes con `cobro` y `mp_collector_id`. Centralizado sin cambios.
+- Webhook: con `?grupo=` y órdenes marketplace consulta el pago con el token del
+  artista y exige mismo grupo y mismo collector; artista desconectado → 500
+  (MP reintenta). Sin `?grupo=`, igual que antes.
+- `/checkout/exito`: estado desde la base (`GET /api/checkout/estado?ref=`),
+  reintenta 6 × 3 s mientras está `pendiente`.
+- Liquidaciones: panel y admin excluyen `cobro = 'marketplace'` del saldo; en el
+  historial del artista salen como "Cobrado directo en Mercado Pago".
+- Ficha de producto: "Pronto disponible" si el artista del piloto no está
+  conectado; avisa antes de mezclar un artista que cobra directo con otros.
+  `/api/mp/conexion` devuelve el modo de ESE artista (menú "Cobros" para el
+  piloto).
+- Verificado (`verificar:cobro -- --fase2 --api=http://localhost:3000`):
+  - Línea base sobre `main` antes de tocar código: **102/102**.
+  - Con el código del 3b sin migración: los 102 **idénticos** (texto y
+    resultado, por `diff`).
+  - Con la migración: **119/119** = 102 idénticos + **17 `(mk)`** (CHECK de
+    `cobro`, piloto vacío/aplicado/no se extiende, carrito mixto, cupón global
+    y del artista, preferencia con el token del artista sin órdenes, webhook
+    `?grupo=` con token falso y desconectado, `/api/checkout/estado`, saldo de
+    liquidaciones, "Pronto disponible" en la ficha, el piloto vuelve a como
+    estaba).
+  - `tsc` limpio, build OK, lint: 1 aviso previo (`<img>` en admin/liquidaciones).
+- No se probó todavía un pago marketplace real: desde local no se puede (la
+  llave local no descifra el token de Valentina).
+
+### Pendiente
+- **Primera prueba en producción**: meter a Valentina en el piloto
+  (`marketplace_piloto = ["a48e4091-2fc8-481e-863d-58c6a2c43a71"]`), comprar el
+  cassette ($1.100) por URL directa con la compradora de prueba (dinero
+  disponible, no tarjeta). Revisar: cobro en la cuenta TESTUSER…, fee a
+  MuzikChile, orden `pagado`/`marketplace`, stock 9, fila en `pagos_mp`,
+  `/checkout/exito` y que no aparezca en liquidaciones. Si MP rechaza la mezcla
+  app real + cuentas de prueba → sacar a Valentina del piloto y volver al
+  preview `mp-pruebas`.
 - Limpieza final con script que muestra antes de borrar: órdenes de prueba de
   Valentina **y sus 12 órdenes viejas**, filas de `pagos_mp`, stock del cassette
   a 10, Valentina fuera del piloto (la conexión y `es_prueba` se quedan).
+- Tras el primer pago marketplace OK: borrar la rama `mp-pruebas` y sus
+  variables de Preview.
+- **Para la activación general** (`cobro_modelo = 'marketplace'`):
+  - El botón "+" de las tarjetas (`TarjetaProducto`: `/tienda`, ficha del
+    artista, "Más de este artista") **debe avisar antes de mezclar artistas** y
+    mostrar "Pronto disponible"; hoy solo lo frena el checkout (servidor).
+  - Admin: estado de conexión por artista + badge "reconectar"; switch de
+    `cobro_modelo` y del piloto con chequeo previo.
+  - Correos de "reconectar" (Resend, noreply@muzikchile.cl).
 
 ---
 

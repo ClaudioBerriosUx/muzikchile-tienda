@@ -61,6 +61,10 @@ export default function LiquidacionesPage() {
         supabase
           .from("artistas")
           .select("id, nombre, foto_url, ordenes(id, monto_artista, estado, liquidado, created_at)")
+          // Solo lo que entró a la cuenta de MuzikChile se liquida: lo cobrado
+          // en marketplace ya le llegó al artista. Filtra las órdenes
+          // embebidas, no a los artistas.
+          .eq("ordenes.cobro", "centralizado")
           .order("nombre"),
         // Los datos bancarios no se leen de la tabla, van por datos_bancarios().
         supabase.rpc("datos_bancarios"),

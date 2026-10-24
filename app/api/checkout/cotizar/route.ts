@@ -28,7 +28,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: resultado.error, campo: resultado.campo }, { status: 422 });
     }
 
-    const { lineas, subtotal, descuento, total, cupon } = resultado.cotizacion;
+    const { lineas, subtotal, descuento, total, cupon, cobro } = resultado.cotizacion;
     // Solo lo que el checkout necesita mostrar: sin comisiones ni montos del artista.
     return NextResponse.json({
       lineas: lineas.map((l) => ({
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       cupon: cupon
         ? { codigo: cupon.codigo, tipo_descuento: cupon.tipo_descuento, valor: cupon.valor }
         : null,
+      cobro,
     });
   } catch (err) {
     console.error("Error en cotizar:", err);

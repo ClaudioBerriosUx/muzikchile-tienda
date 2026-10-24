@@ -13,6 +13,8 @@ interface Orden {
   comision_monto: number;
   estado: string;
   liquidado?: boolean;
+  /** 'marketplace': lo cobró el artista directo en su cuenta de MP; no se liquida. */
+  cobro: string;
   created_at: string;
   productos?: { nombre: string } | null;
 }
@@ -51,7 +53,7 @@ export default function LiquidacionesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ordenes")
-        .select("id, monto_artista, comision_monto, estado, liquidado, created_at, productos(nombre)")
+        .select("id, monto_artista, comision_monto, estado, liquidado, cobro, created_at, productos(nombre)")
         .eq("artista_id", artista!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -80,7 +82,8 @@ export default function LiquidacionesPage() {
 
   const pendientePago = useMemo(() =>
     ordenes
-      .filter((o) => o.estado === "pagado" && !o.liquidado)
+      // Lo cobrado en marketplace ya le llegó al artista: no queda pendiente.
+      .filter((o) => o.estado === "pagado" && !o.liquidado && o.cobro !== "marketplace")
       .reduce((acc, o) => acc + (o.monto_artista ?? 0), 0),
   [ordenes]);
 
@@ -252,7 +255,12 @@ export default function LiquidacionesPage() {
                         <StatusBadge estado={o.estado} />
                       </td>
                       <td className="px-4 py-3">
-                        {o.liquidado ? (
+                        {o.cobro === "marketplace" ? (
+                          <span className="text-xs px-2 py-0.5 rounded font-medium"
+                            style={{ fontFamily: "var(--font-body)", backgroundColor: "#e0f2fe", color: "#075985" }}>
+                            Cobrado directo en Mercado Pago
+                          </span>
+                        ) : o.liquidado ? (
                           <span className="text-xs px-2 py-0.5 rounded font-medium"
                             style={{ fontFamily: "var(--font-body)", backgroundColor: "#dcfce7", color: "#166534" }}>
                             Pagado

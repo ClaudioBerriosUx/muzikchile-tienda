@@ -17,6 +17,11 @@
  * API:    precio desde la base, cupón validado en el servidor, stock, webhook.
  *         ⚠️ Crea UNA preferencia real en la cuenta de MercadoPago configurada
  *         en app_settings (sin pagar: no mueve plata).
+ * (mk):   cobro marketplace en piloto (20261024211159), solo con --api y contra
+ *         un servidor LOCAL: la conexión de prueba se cifra con la
+ *         MP_TOKENS_KEY de .env.local. Mete al artista de prueba A en
+ *         app_settings.marketplace_piloto unos segundos y deja el valor como
+ *         estaba al terminar (también si el script falla).
  *
  * Sale con código 0 si todos los casos pasan, 1 si alguno falla.
  * ─────────────────────────────────────────────────────────────────────────────
@@ -36,6 +41,7 @@
 import { createClient } from "@supabase/supabase-js";
 // Node 24 importa TypeScript sin compilar (solo quita los tipos).
 import { comisionEfectiva, founderVigente, textoFounder } from "../lib/comision.ts";
+import { cifrar } from "../lib/mp/cifrado.ts";
 
 const URL          = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON_KEY     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -183,6 +189,7 @@ async function limpiar() {
 
   const { data: artistas } = await admin.from("artistas").select("id, user_id").like("slug", `${FAMILIA}%`);
   for (const a of artistas ?? []) {
+    await admin.from("mp_conexiones").delete().eq("artista_id", a.id);
     await admin.from("productos").delete().eq("artista_id", a.id);
     await admin.from("cupones").delete().eq("artista_id", a.id);
     await admin.from("artistas").delete().eq("id", a.id);
@@ -605,6 +612,164 @@ async function api(A, B) {
   }
 }
 
+// ── Marketplace en piloto (mk) ───────────────────────────────────────────────
+
+const get = async (ruta) => {
+  const res = await fetch(`${API}${ruta}`);
+  let data = null;
+  try { data = await res.json(); } catch { /* sin cuerpo */ }
+  return { status: res.status, data };
+};
+
+async function marketplace(A, B, ADMIN) {
+  console.log(`\n── (mk) Marketplace en piloto · ${API} ──`);
+
+  // Base de datos, sin la API.
+  {
+    const g = await crearGrupo(A.artistaId, [{ producto: await crearProducto(A.artistaId, "mk-default"), cantidad: 1 }]);
+    const { data } = await admin.from("ordenes").select("cobro, mp_collector_id").eq("grupo_id", g);
+    const { error } = await admin.from("ordenes").update({ cobro: "otro" }).eq("grupo_id", g);
+    check("(mk-1) ordenes.cobro: por defecto 'centralizado' y no acepta otro valor (CHECK)",
+      data?.every((o) => o.cobro === "centralizado" && o.mp_collector_id === null) && error?.code === "23514",
+      `filas=${JSON.stringify(data)} · ${fmt(error)}`);
+  }
+
+  const { data: fila } = await admin.from("app_settings").select("value").eq("key", "marketplace_piloto").maybeSingle();
+  const pilotoOriginal = fila?.value ?? null;
+  {
+    let lista = null;
+    try { lista = JSON.parse(pilotoOriginal ?? "null"); } catch { /* queda null */ }
+    check("(mk-2) app_settings.marketplace_piloto existe y es una lista JSON de ids", Array.isArray(lista), `valor=${pilotoOriginal}`);
+  }
+
+  // Escenario: A en el piloto con una conexión (tokens falsos, cifrados con la
+  // llave local); B fuera del piloto. Los dos cobran 10%.
+  await admin.from("artistas").update({ comision: 10, es_founder: false, founder_hasta: null }).in("id", [A.artistaId, B.artistaId]);
+  const PA = await crearProducto(A.artistaId, "mk-a", { stock: 10 });
+  const PB = await crearProducto(B.artistaId, "mk-b", { stock: 10 });
+  const cA = await crearCupon("mk-a", { artista_id: A.artistaId, valor: 10 });
+  const cG = await crearCupon("mk-g", { artista_id: null, tipo_descuento: "fijo", valor: 3000 });
+  const mpUserA = 9_000_000_000 + Math.floor(Math.random() * 999_999_999);
+  const conectarA = () => admin.from("mp_conexiones").insert({
+    artista_id: A.artistaId,
+    mp_user_id: mpUserA,
+    nickname: "RLSTEST_VENDEDOR",
+    access_token_cifrado: cifrar("APP_USR-falso-access"),
+    refresh_token_cifrado: cifrar("TG-falso-refresh"),
+    live_mode: false,
+    expires_at: new Date(Date.now() + 180 * 86400000).toISOString(),
+  });
+
+  try {
+    {
+      // Con el piloto como está (sin A): A cobra centralizado.
+      const r = await post("/api/checkout/cotizar", { items: [{ id: PA, cantidad: 1 }] });
+      check("(mk-3) Artista fuera del piloto → cotiza 'centralizado'", r.status === 200 && r.data?.cobro === "centralizado", `status=${r.status} cobro=${r.data?.cobro}`);
+    }
+
+    const { error: conErr } = await conectarA();
+    if (conErr) throw new Error(`Conexión de prueba: ${conErr.message}`);
+    const piloto = JSON.parse(pilotoOriginal ?? "[]");
+    await admin.from("app_settings").update({ value: JSON.stringify([...piloto, A.artistaId]) }).eq("key", "marketplace_piloto");
+
+    {
+      const r = await post("/api/checkout/cotizar", { items: [{ id: PA, cantidad: 2 }] });
+      check("(mk-4) Artista en el piloto → cotiza 'marketplace' con el mismo total", r.status === 200 && r.data?.cobro === "marketplace" && r.data?.total === 20000, `status=${r.status} ${JSON.stringify(r.data)}`);
+    }
+    {
+      const r = await post("/api/checkout/cotizar", { items: [{ id: PB, cantidad: 1 }] });
+      check("(mk-5) El piloto no se extiende a otro artista → B sigue 'centralizado'", r.status === 200 && r.data?.cobro === "centralizado", `status=${r.status} cobro=${r.data?.cobro}`);
+    }
+    {
+      const r = await post("/api/checkout/cotizar", { items: [{ id: PA, cantidad: 1 }, { id: PB, cantidad: 1 }] });
+      check("(mk-6) Carrito con A (piloto) y B → 422 'pedido aparte'", r.status === 422 && /pedido aparte/.test(r.data?.error ?? ""), `status=${r.status} ${r.data?.error}`);
+    }
+    {
+      const r = await post("/api/checkout/cotizar", { items: [{ id: PA, cantidad: 1 }], cupon_codigo: cG.codigo });
+      check("(mk-7) Cupón global en un carrito marketplace → no aplica (422 del cupón)", r.status === 422 && r.data?.campo === "cupon", `status=${r.status} ${r.data?.error}`);
+    }
+    {
+      const r = await post("/api/checkout/cotizar", { items: [{ id: PA, cantidad: 2 }], cupon_codigo: cA.codigo });
+      check("(mk-8) Cupón del propio artista en marketplace → aplica (18.000)", r.status === 200 && r.data?.total === 18000, `status=${r.status} ${JSON.stringify(r.data)}`);
+    }
+    {
+      const r = await post("/api/checkout/cotizar", { items: [{ id: PB, cantidad: 2 }], cupon_codigo: cG.codigo });
+      check("(mk-9) Cupón global en un carrito centralizado → sigue aplicando (17.000)", r.status === 200 && r.data?.total === 17000, `status=${r.status} ${JSON.stringify(r.data)}`);
+    }
+    {
+      // Token del artista falso: MP lo rechaza. Lo que importa es que NO se
+      // cobre con el token de MuzikChile (eso daría 200) y que no queden órdenes.
+      const r = await post("/api/mercadopago/crear-preferencia", {
+        items: [{ id: PA, cantidad: 1 }],
+        comprador: { nombre: "RLS Test", email: `${PREFIJO}-comprador@example.com` },
+      });
+      const { data: ords } = await admin.from("ordenes").select("id").eq("producto_id", PA);
+      check("(mk-10) crear-preferencia en marketplace usa el token del artista (falso → MP lo rechaza, sin órdenes)",
+        r.status !== 200 && (ords ?? []).length === 0, `status=${r.status} ${r.data?.error ?? ""} órdenes=${ords?.length}`);
+    }
+    {
+      // Un grupo marketplace como lo dejaría crear-preferencia.
+      const g = await crearGrupo(A.artistaId, [{ producto: PA, cantidad: 1 }]);
+      await admin.from("ordenes").update({ cobro: "marketplace", mp_collector_id: mpUserA }).eq("grupo_id", g);
+      const res = await fetch(`${API}/api/mercadopago/webhook?grupo=${g}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "payment", data: { id: "123456789" } }),
+      });
+      const [estados, { data: pagos }] = [await estadosDe(g), await admin.from("pagos_mp").select("mp_payment_id").eq("grupo_id", g)];
+      check("(mk-11) Webhook ?grupo= marketplace con el token (falso) del artista → 200 sin confirmar nada",
+        res.status === 200 && estados.every((e) => e === "pendiente") && (pagos ?? []).length === 0, `status=${res.status} estados=${estados}`);
+
+      const e1 = await get(`/api/checkout/estado?ref=${g}`);
+      const e2 = await get(`/api/checkout/estado?ref=${crypto.randomUUID()}`);
+      const e3 = await get("/api/checkout/estado?ref=no-es-uuid");
+      check("(mk-12) /api/checkout/estado: 'pendiente' para el grupo, null si no existe, 400 si no es UUID",
+        e1.data?.estado === "pendiente" && e2.status === 200 && e2.data?.estado === null && e3.status === 400,
+        `grupo=${JSON.stringify(e1.data)} inexistente=${JSON.stringify(e2.data)} inválido=${e3.status}`);
+
+      // Liquidaciones del admin: la copia literal de su select, con el filtro.
+      await admin.from("ordenes").update({ estado: "pagado" }).eq("grupo_id", g);
+      const gc = await crearGrupo(A.artistaId, [{ producto: PA, cantidad: 1 }], "pagado");
+      const { data: liq, error } = await ADMIN.cliente
+        .from("artistas")
+        .select("id, nombre, foto_url, ordenes(id, monto_artista, estado, liquidado, created_at)")
+        .eq("ordenes.cobro", "centralizado")
+        .eq("id", A.artistaId)
+        .single();
+      const grupos = new Set(((await admin.from("ordenes").select("id, grupo_id").in("id", (liq?.ordenes ?? []).map((o) => o.id))).data ?? []).map((o) => o.grupo_id));
+      check("(mk-13) /admin/liquidaciones: la orden marketplace no entra en el saldo; la centralizada sí",
+        !error && grupos.has(gc) && !grupos.has(g), error ? fmt(error) : `grupos=${JSON.stringify([...grupos])}`);
+
+      // Sin conexión, el webhook no puede consultar el pago: pide reintento.
+      await admin.from("mp_conexiones").delete().eq("artista_id", A.artistaId);
+      await admin.from("ordenes").update({ estado: "pendiente" }).eq("grupo_id", g);
+      const res2 = await fetch(`${API}/api/mercadopago/webhook?grupo=${g}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "payment", data: { id: "123456789" } }),
+      });
+      check("(mk-14) Webhook ?grupo= marketplace con el artista desconectado → 500 (MP reintenta), nada confirmado",
+        res2.status === 500 && (await estadosDe(g)).every((e) => e === "pendiente"), `status=${res2.status}`);
+    }
+    {
+      // Desconectado (cobros_activos = false por el trigger): "Pronto disponible".
+      const r = await post("/api/checkout/cotizar", { items: [{ id: PA, cantidad: 1 }] });
+      check("(mk-15) Artista del piloto sin cuenta conectada → 422 'disponibles pronto'", r.status === 422 && /disponibles pronto/.test(r.data?.error ?? ""), `status=${r.status} ${r.data?.error}`);
+    }
+    {
+      // La ficha se pinta en el cliente: lo que se verifica es la prop que le
+      // pasa el servidor (va serializada en el HTML, con comillas escapadas).
+      const html = await fetch(`${API}/producto/${PA}`).then((res) => res.text());
+      const prop = html.match(/directo\\?":(true|false),\\?"disponible\\?":(true|false)/);
+      check("(mk-16) Ficha del producto del piloto sin conexión → cobro { directo: true, disponible: false } ('Pronto disponible')",
+        prop?.[1] === "true" && prop?.[2] === "false", prop ? prop[0] : "la prop cobro no está en el HTML");
+    }
+  } finally {
+    // El piloto vuelve a como estaba, pase lo que pase.
+    await admin.from("app_settings").update({ value: pilotoOriginal ?? "[]" }).eq("key", "marketplace_piloto");
+    const { data: tras } = await admin.from("app_settings").select("value").eq("key", "marketplace_piloto").maybeSingle();
+    check("(mk-17) marketplace_piloto quedó como estaba", tras?.value === (pilotoOriginal ?? "[]"), `antes=${pilotoOriginal} después=${tras?.value}`);
+  }
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -622,6 +787,7 @@ async function main() {
     await fase1(A, B, ADMIN);
     if (FASE2) await fase2(A, B, ADMIN);
     if (API) await api(A, B);
+    if (API) await marketplace(A, B, ADMIN);
   } catch (err) {
     console.error("\nError montando o ejecutando la verificación:");
     console.error(`  ${err.message}`);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { cotizarCarrito, normalizarItems } from "@/lib/checkout/cotizar";
+import { tokenVigente } from "@/lib/mp/conexiones";
 
 interface CompradorBody {
   nombre: string;
@@ -16,6 +17,12 @@ interface CompradorBody {
  * Body: `{ items: [{ id, cantidad }], comprador, cupon_codigo? }`.
  * Precio, stock, cupón y comisión salen de la base (lib/checkout/cotizar.ts);
  * si el cliente manda `precio` o `nombre`, se ignoran.
+ *
+ * Cobro (lib/cobro.ts): en 'centralizado' la preferencia se crea con el token
+ * de MuzikChile, como siempre. En 'marketplace' (un solo artista, garantizado
+ * por cotizar) se crea con el token del artista y la comisión va como
+ * marketplace_fee; la notification_url lleva ?grupo= para que el webhook sepa
+ * con qué token consultar el pago.
  */
 export async function POST(request: Request) {
   try {
@@ -38,7 +45,7 @@ export async function POST(request: Request) {
     if (!resultado.ok) {
       return NextResponse.json({ error: resultado.error, campo: resultado.campo }, { status: 422 });
     }
-    const { lineas, cupon } = resultado.cotizacion;
+    const { lineas, cupon, cobro } = resultado.cotizacion;
 
     // Leer configuración de MercadoPago
     const { data: settingsRaw } = await supabase
@@ -50,7 +57,7 @@ export async function POST(request: Request) {
       (settingsRaw ?? []).map(({ key, value }) => [key, value])
     );
 
-    const access_token = settings.mp_access_token;
+    let access_token = settings.mp_access_token;
     if (!access_token) {
       return NextResponse.json({ error: "MercadoPago no configurado en app_settings" }, { status: 500 });
     }
@@ -59,6 +66,19 @@ export async function POST(request: Request) {
 
     // External reference único para este pedido
     const external_reference = crypto.randomUUID();
+
+    // Marketplace: el pago va a la cuenta del artista, con su token.
+    let directo: { collectorId: number; fee: number } | null = null;
+    if (cobro === "marketplace") {
+      const vendedor = await tokenVigente(supabase, lineas[0].artista_id);
+      if (!vendedor.ok) {
+        console.error("[crear-preferencia] artista sin token para cobrar:", lineas[0].artista_id, vendedor.motivo);
+        return NextResponse.json({ error: "Este artista no puede recibir pagos en este momento. Intenta más tarde." }, { status: 422 });
+      }
+      access_token = vendedor.accessToken;
+      directo = { collectorId: vendedor.mpUserId, fee: lineas.reduce((acc, l) => acc + l.comision_monto, 0) };
+    }
+    const avisos = `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook${directo ? `?grupo=${external_reference}` : ""}`;
 
     // Construir preferencia de MP
     const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
@@ -94,10 +114,12 @@ export async function POST(request: Request) {
         },
         auto_return: "approved",
         external_reference,
+        // La comisión de MuzikChile en marketplace. Si es 0 (founder) se omite.
+        ...(directo && directo.fee > 0 ? { marketplace_fee: directo.fee } : {}),
         // notification_url solo cuando la URL base es HTTPS pública
         // (MP rechaza localhost o HTTP con "policy UNAUTHORIZED")
         ...(process.env.NEXT_PUBLIC_URL?.startsWith("https://")
-          ? { notification_url: `${process.env.NEXT_PUBLIC_URL}/api/mercadopago/webhook` }
+          ? { notification_url: avisos }
           : {}),
       }),
     });
@@ -132,6 +154,8 @@ export async function POST(request: Request) {
       direccion_envio:     comprador.direccion ?? null,
       ciudad_envio:        comprador.ciudad ?? null,
       region_envio:        comprador.region ?? null,
+      // Centralizado: los defaults de la columna ('centralizado', sin collector).
+      ...(directo ? { cobro: "marketplace", mp_collector_id: directo.collectorId } : {}),
     }));
 
     const { error: insertError } = await supabase.from("ordenes").insert(ordenes);

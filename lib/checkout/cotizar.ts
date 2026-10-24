@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { comisionEfectiva, hoyEnChile } from "@/lib/comision";
+import { leerConfigCobro, modoCobro, type ModoCobro } from "@/lib/cobro";
 
 /**
  * Calcula el carrito con los datos de la base: precio, stock, cupón y comisión.
@@ -49,6 +50,11 @@ export interface Cotizacion {
   descuento: number;
   total: number;
   cupon: Pick<Cupon, "id" | "codigo" | "tipo_descuento" | "valor" | "artista_id"> | null;
+  /**
+   * Cómo se cobra el pedido (lib/cobro.ts). En 'marketplace' el carrito es de
+   * un solo artista, que lo cobra con su cuenta de MP.
+   */
+  cobro: ModoCobro;
 }
 
 export type ResultadoCotizacion =
@@ -111,7 +117,7 @@ export async function cotizarCarrito(
 ): Promise<ResultadoCotizacion> {
   const { data: productos, error: prodError } = await supabase
     .from("productos")
-    .select("id, nombre, precio, stock, tipo, estado, imagenes, artista_id, artistas(comision, es_founder, founder_hasta)")
+    .select("id, nombre, precio, stock, tipo, estado, imagenes, artista_id, artistas(nombre, comision, es_founder, founder_hasta, cobros_activos)")
     .in("id", items.map((i) => i.id));
 
   if (prodError) {
@@ -148,6 +154,25 @@ export async function cotizarCarrito(
     });
   }
 
+  // ── Modo de cobro ──
+  // Un artista que cobra con su cuenta de MP (marketplace) va solo en el
+  // pedido: el pago entero va a su cuenta. El resto se mezcla como siempre.
+  const config = await leerConfigCobro(supabase);
+  const directos = base.filter((l) => modoCobro(config, l.artista_id) === "marketplace");
+  const cobro: ModoCobro = directos.length > 0 ? "marketplace" : "centralizado";
+  if (cobro === "marketplace") {
+    const vendedor = porId.get(directos[0].producto_id)!.artistas!;
+    if (base.some((l) => l.artista_id !== directos[0].artista_id)) {
+      return {
+        ok: false,
+        error: `${vendedor.nombre} cobra directo con su cuenta de Mercado Pago: compra sus productos en un pedido aparte.`,
+      };
+    }
+    if (!vendedor.cobros_activos) {
+      return { ok: false, error: `Los productos de ${vendedor.nombre} estarán disponibles pronto.` };
+    }
+  }
+
   // ── Cupón ──
   let cupon: Cupon | null = null;
   if (codigoCupon?.trim()) {
@@ -157,8 +182,11 @@ export async function cotizarCarrito(
   }
 
   // Un cupón de artista descuenta solo los productos de ese artista; uno
-  // global (artista_id null), todo el carrito.
-  const aplica = (l: (typeof base)[number]) => !!cupon && (cupon.artista_id == null || cupon.artista_id === l.artista_id);
+  // global (artista_id null), todo el carrito. En marketplace los globales no
+  // aplican: el descuento saldría de la plata del artista, no de MuzikChile.
+  const aplica = (l: (typeof base)[number]) => !!cupon && (
+    cupon.artista_id == null ? cobro === "centralizado" : cupon.artista_id === l.artista_id
+  );
 
   if (cupon && !base.some(aplica)) {
     return { ok: false, error: "Este cupón no aplica a los productos de tu carrito", campo: "cupon" };
@@ -202,6 +230,7 @@ export async function cotizarCarrito(
       cupon: cupon
         ? { id: cupon.id, codigo: cupon.codigo, tipo_descuento: cupon.tipo_descuento, valor: cupon.valor, artista_id: cupon.artista_id }
         : null,
+      cobro,
     },
   };
 }
