@@ -1796,16 +1796,36 @@ www respondiera 500; ahora es 422 "no puede recibir pagos en este momento".
 `verificar:cobro -- --fase2 --api=local`: **120/120** = 102 originales idénticos
 + 18 `(mk)` (nuevo `mk-18`).
 
+### ✅ Primer pago marketplace exitoso — 2026-10-24 (preview `mp-pruebas`)
+- Preview `muzikchile-tienda-git-mp-pruebas-claudioberriosuxs-projects.vercel.app`
+  con la app del integrador de prueba (client_id 4083103325958872), Deployment
+  Protection desactivada durante la prueba (si no, el webhook rebota con 401).
+- Valentina desconectada en www y reconectada desde el preview (23:06 UTC):
+  mismo vendedor (3787758738), `public_key` nueva, tokens cifrados con la llave
+  de Preview. En www el cassette cotiza `marketplace` y `crear-preferencia`
+  responde **422** "no puede recibir pagos" (arreglo de `tokenVigente`), sin
+  crear órdenes.
+- Compra del cassette con la compradora TESTUSER7269657435267286180 (dinero
+  disponible): **MP #184926629417, $1.100 acreditado**. `/checkout/exito`:
+  "Pedido 7D9F462F · Tu pedido quedó confirmado".
+- Base: orden `pagado` / `marketplace`, `mp_collector_id` 3787758738,
+  `monto_artista` 990 + `comision_monto` 110 (10%, sin founder); `pagos_mp`
+  con el pago 184926629417 por 1.100 (procesado 13 s después de crear la
+  orden); stock 10 → 9; `/api/checkout/estado` → `pagado`. Liquidaciones:
+  saldo por liquidar 0 en admin y panel (la venta cuenta en "total vendido").
+- El webhook consultó el pago con el token del artista: es la única forma de
+  que la orden llegara a `pagado` (la orden es `marketplace` y el token de
+  MuzikChile no ve los pagos del artista: 403 / búsqueda vacía), y además pasó
+  el chequeo de grupo + collector. El log de Vercel no se leyó (sin CLI).
+- **Sin verificar desde acá**: que el `marketplace_fee` de 110 llegó al
+  integrador de prueba (mirar la actividad de esa cuenta en MP).
+
 ### Pendiente
-- **Prueba en el preview `mp-pruebas`** (alias
-  `muzikchile-tienda-git-mp-pruebas-claudioberriosuxs-projects.vercel.app`):
-  desconectar a Valentina en www, reconectarla desde el preview con la app de
-  prueba, quitarle el founder (probar CON comisión) y comprar el cassette con la
-  compradora de prueba. Si el webhook del preview da 401, desactivar Deployment
-  Protection solo durante la prueba. Revisar orden `pagado`/`marketplace`, stock
-  9, `pagos_mp`, `/checkout/exito` y liquidaciones.
-- Estado al 2026-10-24: Valentina **founder** (por el intento C) y **en el
-  piloto**; quitar ambas cosas al terminar.
+- Ver en la cuenta del integrador de prueba el ingreso de $110 (fee).
+- Al terminar: quitar a Valentina del piloto (`[]`), desconectarla desde
+  `/panel/cobros` del preview, limpieza de órdenes (script que muestra antes de
+  borrar), reactivar Deployment Protection, borrar `mp-pruebas` y sus variables
+  de Preview.
 - Limpieza final con script que muestra antes de borrar: órdenes de prueba de
   Valentina **y sus 12 órdenes viejas**, filas de `pagos_mp`, stock del cassette
   a 10, Valentina fuera del piloto (la conexión y `es_prueba` se quedan).
