@@ -59,8 +59,10 @@ export default function AdminDashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("ordenes")
-        .select("artista_id, monto_artista, comision_monto, precio_unitario, artistas(nombre)")
-        .eq("estado", "pagado");
+        .select("artista_id, monto_artista, comision_monto, precio_unitario, artistas!inner(nombre)")
+        .eq("estado", "pagado")
+        // Las métricas no cuentan a los artistas de prueba (artistas.es_prueba).
+        .eq("artistas.es_prueba", false);
       return (data ?? []) as unknown as OrdenChart[];
     },
   });
@@ -71,7 +73,8 @@ export default function AdminDashboard() {
       const { count } = await supabase
         .from("artistas")
         .select("id", { count: "exact", head: true })
-        .eq("tienda_activa", true);
+        .eq("tienda_activa", true)
+        .eq("es_prueba", false);
       return count ?? 0;
     },
   });
@@ -81,8 +84,9 @@ export default function AdminDashboard() {
     queryFn: async () => {
       const { count } = await supabase
         .from("productos")
-        .select("id", { count: "exact", head: true })
-        .eq("estado", "aprobado");
+        .select("id, artistas!inner(es_prueba)", { count: "exact", head: true })
+        .eq("estado", "aprobado")
+        .eq("artistas.es_prueba", false);
       return count ?? 0;
     },
   });
@@ -103,8 +107,9 @@ export default function AdminDashboard() {
     queryFn: async () => {
       const { count } = await supabase
         .from("ordenes")
-        .select("id", { count: "exact", head: true })
-        .gte("created_at", startOfMonth);
+        .select("id, artistas!inner(es_prueba)", { count: "exact", head: true })
+        .gte("created_at", startOfMonth)
+        .eq("artistas.es_prueba", false);
       return count ?? 0;
     },
   });

@@ -27,6 +27,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: titulo,
     description: descripcion,
     alternates: { canonical: `/artista/${artista.slug}` },
+    // Un artista de prueba se abre por URL directa, pero no se indexa.
+    ...(artista.es_prueba ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       title: titulo,
       description: descripcion,

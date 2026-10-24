@@ -35,6 +35,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${titulo} | MuzikChile`,
     description: descripcion,
     alternates: { canonical: `/noticias/${noticia.slug}` },
+    // Nota de un artista de prueba: fuera de los listados y sin indexar.
+    ...(noticia.artistas?.es_prueba ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       title: titulo,
       description: descripcion,

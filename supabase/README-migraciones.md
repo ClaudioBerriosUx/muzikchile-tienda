@@ -73,7 +73,7 @@ npx supabase migration new descripcion_del_cambio
 # 2. Escribir el SQL en el archivo generado
 
 # 3. Aplicarla al proyecto remoto
-npx supabase db push
+npx supabase db push --linked
 
 # 4. Regenerar los tipos y commitear ambos juntos
 npx supabase gen types typescript --linked > lib/supabase/types.ts

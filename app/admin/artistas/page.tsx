@@ -26,6 +26,7 @@ interface Artista {
   founder_hasta: string | null;
   tienda_activa: boolean;
   verificado: boolean;
+  es_prueba: boolean;
 }
 
 export default function ArtistasPage() {
@@ -37,6 +38,7 @@ export default function ArtistasPage() {
   const [founderHasta, setFounderHasta] = useState("");
   const [tiendaActiva, setTiendaActiva] = useState(false);
   const [verificado, setVerificado] = useState(false);
+  const [esPrueba, setEsPrueba] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
   const [invitarOpen, setInvitarOpen] = useState(false);
@@ -49,7 +51,7 @@ export default function ArtistasPage() {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("artistas")
-        .select("id, nombre, slug, foto_url, bio, ciudad, region, comision, es_founder, founder_hasta, tienda_activa, verificado")
+        .select("id, nombre, slug, foto_url, bio, ciudad, region, comision, es_founder, founder_hasta, tienda_activa, verificado, es_prueba")
         .order("nombre");
       if (error) throw error;
       return (data ?? []) as Artista[];
@@ -63,6 +65,7 @@ export default function ArtistasPage() {
       setFounderHasta(seleccionado.founder_hasta ?? "");
       setTiendaActiva(seleccionado.tienda_activa ?? false);
       setVerificado(seleccionado.verificado ?? false);
+      setEsPrueba(seleccionado.es_prueba ?? false);
     }
   }, [seleccionado?.id]);
 
@@ -80,6 +83,7 @@ export default function ArtistasPage() {
         founder_hasta: esFounder && founderHasta ? founderHasta : null,
         tienda_activa: tiendaActiva,
         verificado,
+        es_prueba:     esPrueba,
       })
       .eq("id", seleccionado.id);
     if (error) { toast.error("Error al guardar"); }
@@ -168,6 +172,13 @@ export default function ArtistasPage() {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
+                  {a.es_prueba && (
+                    <span className="text-xs px-1.5 py-0.5 rounded" style={{
+                      fontFamily: "var(--font-body)", backgroundColor: "#e0f2fe", color: "#075985",
+                    }}>
+                      Prueba
+                    </span>
+                  )}
                   <span className="text-xs px-1.5 py-0.5 rounded" style={{
                     fontFamily: "var(--font-body)",
                     backgroundColor: founderVigente(a) ? "#fef9c3" : "#f3f4f6",
@@ -317,6 +328,19 @@ export default function ArtistasPage() {
                   </p>
                 </div>
                 <Switch checked={verificado} onCheckedChange={setVerificado} />
+              </div>
+
+              {/* Artista de prueba */}
+              <div className="flex items-center justify-between py-3 border-t border-[#e8e8e8]">
+                <div>
+                  <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#111111", fontWeight: 600 }}>
+                    Artista de prueba
+                  </p>
+                  <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#666666" }}>
+                    Fuera de la tienda, las noticias, el sitemap y las métricas. Su ficha y productos solo abren por URL directa, sin indexar
+                  </p>
+                </div>
+                <Switch checked={esPrueba} onCheckedChange={setEsPrueba} />
               </div>
 
               <Link

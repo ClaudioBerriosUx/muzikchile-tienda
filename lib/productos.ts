@@ -17,7 +17,7 @@ export const traerProductoPorId = cache(async (id: string) => {
 
   const { data, error } = await supabase
     .from("productos")
-    .select("id, nombre, descripcion, imagenes, precio, artistas(nombre, slug)")
+    .select("id, nombre, descripcion, imagenes, precio, artistas(nombre, slug, es_prueba)")
     .eq("id", id)
     .maybeSingle();
 

@@ -41,6 +41,8 @@ export interface AutorNoticia {
   foto_url: string | null;
   es_editorial: boolean;
   verificado: boolean | null;
+  /** Artista de prueba: sus notas no salen en los listados y van con noindex. */
+  es_prueba: boolean;
 }
 
 export interface NoticiaLista {
@@ -78,13 +80,13 @@ export function origenNoticia(n: { artistas: Pick<AutorNoticia, "es_editorial"> 
 // `!inner` para poder filtrar por `artistas.es_editorial`; no descarta nada,
 // porque `publicaciones.artista_id` es NOT NULL.
 const CAMPOS_LISTA =
-  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, fecha_publicacion, artistas!inner(nombre, slug, foto_url, es_editorial, verificado)";
+  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, fecha_publicacion, artistas!inner(nombre, slug, foto_url, es_editorial, verificado, es_prueba)";
 
 /** Largo del extracto de respaldo, en caracteres. */
 const LARGO_RESUMEN = 160;
 
 const CAMPOS_DETALLE =
-  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, fecha_publicacion, artistas(nombre, slug, foto_url, es_editorial, verificado)";
+  "id, titular, bajada, cuerpo, imagen_url, slug, categoria, fecha_publicacion, artistas(nombre, slug, foto_url, es_editorial, verificado, es_prueba)";
 
 /**
  * La bajada, o un extracto del cuerpo en texto plano si la bajada está vacía
@@ -119,6 +121,8 @@ export async function traerNoticias(
     .eq("estado", "publicada")
     .eq("visibilidad", "publica")
     .eq("tipo", "noticia")
+    // Las notas de un artista de prueba no salen en /noticias ni en la portada.
+    .eq("artistas.es_prueba", false)
     .order("fecha_publicacion", { ascending: false });
 
   if (origen) q = q.eq("artistas.es_editorial", origen === "editorial");

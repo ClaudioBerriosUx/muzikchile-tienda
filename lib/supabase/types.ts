@@ -46,6 +46,7 @@ export type Database = {
           cuenta_bancaria: string | null
           es_editorial: boolean
           es_founder: boolean
+          es_prueba: boolean
           foto_url: string | null
           founder_hasta: string | null
           generos: string[] | null
@@ -82,6 +83,7 @@ export type Database = {
           cuenta_bancaria?: string | null
           es_editorial?: boolean
           es_founder?: boolean
+          es_prueba?: boolean
           foto_url?: string | null
           founder_hasta?: string | null
           generos?: string[] | null
@@ -118,6 +120,7 @@ export type Database = {
           cuenta_bancaria?: string | null
           es_editorial?: boolean
           es_founder?: boolean
+          es_prueba?: boolean
           foto_url?: string | null
           founder_hasta?: string | null
           generos?: string[] | null

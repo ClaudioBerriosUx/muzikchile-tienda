@@ -13,6 +13,7 @@
  *         incrementar_usos_cupon y confirmar_pago (idempotencia, concurrencia,
  *         stock atómico).
  * Fase 2: lectura de `artistas` por columna y cupones sin lectura pública.
+ *         Artistas de prueba (20261024204929): fuera de /tienda y del sitemap.
  * API:    precio desde la base, cupón validado en el servidor, stock, webhook.
  *         ⚠️ Crea UNA preferencia real en la cuenta de MercadoPago configurada
  *         en app_settings (sin pagar: no mueve plata).
@@ -227,7 +228,7 @@ function reglaComision() {
 async function fase1(A, B, ADMIN) {
   console.log("\n── Fase 1 · columnas protegidas ──");
 
-  for (const [campo, valor] of [["comision", 0], ["es_founder", true], ["founder_hasta", "2099-12-31"], ["tienda_activa", true], ["verificado", true], ["cobros_activos", true]]) {
+  for (const [campo, valor] of [["comision", 0], ["es_founder", true], ["founder_hasta", "2099-12-31"], ["tienda_activa", true], ["verificado", true], ["cobros_activos", true], ["es_prueba", true]]) {
     const { error } = await A.cliente.from("artistas").update({ [campo]: valor }).eq("id", A.artistaId);
     check(`(a) Artista cambia su propio ${campo} → rechazado`, error?.code === "42501", fmt(error));
   }
@@ -238,10 +239,10 @@ async function fase1(A, B, ADMIN) {
   }
 
   {
-    const { error } = await ADMIN.cliente.from("artistas").update({ comision: 15, founder_hasta: "2027-12-31" }).eq("id", A.artistaId);
-    const { data } = await admin.from("artistas").select("comision, founder_hasta").eq("id", A.artistaId).single();
-    check("(c) Admin cambia comision y founder_hasta de un artista → permitido", !error && Number(data?.comision) === 15 && data?.founder_hasta === "2027-12-31", fmt(error));
-    await admin.from("artistas").update({ comision: 10, founder_hasta: null }).eq("id", A.artistaId);
+    const { error } = await ADMIN.cliente.from("artistas").update({ comision: 15, founder_hasta: "2027-12-31", es_prueba: true }).eq("id", A.artistaId);
+    const { data } = await admin.from("artistas").select("comision, founder_hasta, es_prueba").eq("id", A.artistaId).single();
+    check("(c) Admin cambia comision, founder_hasta y es_prueba de un artista → permitido", !error && Number(data?.comision) === 15 && data?.founder_hasta === "2027-12-31" && data?.es_prueba === true, fmt(error));
+    await admin.from("artistas").update({ comision: 10, founder_hasta: null, es_prueba: false }).eq("id", A.artistaId);
   }
 
   {
@@ -250,16 +251,17 @@ async function fase1(A, B, ADMIN) {
     const { error } = await N.cliente.from("artistas").insert({
       user_id: N.userId, nombre: "RLS Test nuevo", slug: `${PREFIJO}-nuevo`,
       comision: 0, es_founder: true, founder_hasta: "2099-12-31", tienda_activa: true, verificado: true, cobros_activos: true,
+      es_prueba: true,
     });
     const { data } = await admin
       .from("artistas")
-      .select("comision, es_founder, founder_hasta, tienda_activa, verificado, cobros_activos")
+      .select("comision, es_founder, founder_hasta, tienda_activa, verificado, cobros_activos, es_prueba")
       .eq("user_id", N.userId)
       .maybeSingle();
     const { data: ajuste } = await admin.from("app_settings").select("value").eq("key", "comision_default").maybeSingle();
     const porDefecto = Number(ajuste?.value ?? 10);
     const neutralizado = data && Number(data.comision) === porDefecto && !data.es_founder && data.founder_hasta === null
-      && !data.tienda_activa && !data.verificado && !data.cobros_activos;
+      && !data.tienda_activa && !data.verificado && !data.cobros_activos && !data.es_prueba;
     check(
       `(d) Artista se da de alta como founder/0%/verificado → valores por defecto (comision = comision_default = ${porDefecto})`,
       !error && neutralizado,
@@ -419,10 +421,14 @@ async function fase2(A, B, ADMIN) {
   const pantallas = [
     // Públicas (anon)
     ["anon", "ficha del artista (ArtistaClient)", (c) => c.from("artistas").select("id, nombre, slug, ciudad, region, color_acento, foto_url, bio, bio_completa, redes, verificado, generos").eq("slug", `${PREFIJO}-a`).single()],
-    ["anon", "metadata del artista (lib/artistas)", (c) => c.from("artistas").select("id, nombre, slug, bio, foto_url, seo_titulo, seo_descripcion, es_editorial").eq("slug", `${PREFIJO}-a`).maybeSingle()],
+    ["anon", "metadata del artista (lib/artistas)", (c) => c.from("artistas").select("id, nombre, slug, bio, foto_url, seo_titulo, seo_descripcion, es_editorial, es_prueba").eq("slug", `${PREFIJO}-a`).maybeSingle()],
     ["anon", "ficha de producto (ProductoClient)", (c) => c.from("productos").select("*, artistas(id, nombre, slug, ciudad, foto_url, color_acento, verificado, generos), categorias(id, nombre, slug)").limit(1)],
-    ["anon", "metadata de producto (lib/productos)", (c) => c.from("productos").select("id, nombre, descripcion, imagenes, precio, artistas(nombre, slug)").limit(1)],
-    ["anon", "sitemap", (c) => c.from("artistas").select("slug, created_at").eq("es_editorial", false).limit(1)],
+    ["anon", "metadata de producto (lib/productos)", (c) => c.from("productos").select("id, nombre, descripcion, imagenes, precio, artistas(nombre, slug, es_prueba)").limit(1)],
+    ["anon", "sitemap", (c) => c.from("artistas").select("slug, created_at").eq("es_editorial", false).eq("es_prueba", false).or("tienda_activa.eq.true,verificado.eq.true").limit(1)],
+    ["anon", "sitemap (noticias)", (c) => c.from("publicaciones").select("slug, fecha_publicacion, updated_at, artistas!inner(es_prueba)").eq("estado", "publicada").eq("tipo", "noticia").eq("artistas.es_prueba", false).limit(1)],
+    ["anon", "/tienda", (c) => c.from("productos").select("id, nombre, precio, imagenes, tipo, stock, artista_id, categoria_id, artistas!inner (id, nombre, slug, ciudad, region, color_acento, verificado), categorias (id, nombre, slug, padre_id)").eq("estado", "aprobado").eq("artistas.es_prueba", false).limit(1)],
+    ["anon", "noticias (lib/noticias, listado)", (c) => c.from("publicaciones").select("id, titular, bajada, cuerpo, imagen_url, slug, categoria, fecha_publicacion, artistas!inner(nombre, slug, foto_url, es_editorial, verificado, es_prueba)").eq("estado", "publicada").eq("visibilidad", "publica").eq("tipo", "noticia").eq("artistas.es_prueba", false).limit(1)],
+    ["anon", "noticia (lib/noticias, detalle)", (c) => c.from("publicaciones").select("id, titular, bajada, cuerpo, imagen_url, slug, categoria, fecha_publicacion, artistas(nombre, slug, foto_url, es_editorial, verificado, es_prueba)").limit(1)],
     ["anon", "revalidar noticias", (c) => c.from("publicaciones").select("slug, artistas(slug, es_editorial)").limit(1)],
     // Panel (artista)
     ["artista", "PanelShell: ¿existe mi fila?", (c) => c.from("artistas").select("id").eq("user_id", A.userId).maybeSingle()],
@@ -431,9 +437,11 @@ async function fase2(A, B, ADMIN) {
     ["artista", "/panel/perfil: ¿slug ocupado?", (c) => c.from("artistas").select("id").eq("slug", "slug-que-no-existe").neq("id", A.artistaId).maybeSingle()],
     ["artista", "/panel/liquidaciones: datos bancarios", (c) => c.rpc("datos_bancarios", { p_artista_id: A.artistaId })],
     // Admin
-    ["admin", "/admin (cuenta de tiendas)", (c) => c.from("artistas").select("id", { count: "exact", head: true }).eq("tienda_activa", true)],
-    ["admin", "/admin (ventas)", (c) => c.from("ordenes").select("artista_id, monto_artista, comision_monto, precio_unitario, artistas(nombre)").limit(1)],
-    ["admin", "/admin/artistas", (c) => c.from("artistas").select("id, nombre, slug, foto_url, bio, ciudad, region, comision, es_founder, tienda_activa, verificado").order("nombre").limit(5)],
+    ["admin", "/admin (cuenta de tiendas)", (c) => c.from("artistas").select("id", { count: "exact", head: true }).eq("tienda_activa", true).eq("es_prueba", false)],
+    ["admin", "/admin (ventas)", (c) => c.from("ordenes").select("artista_id, monto_artista, comision_monto, precio_unitario, artistas!inner(nombre)").eq("estado", "pagado").eq("artistas.es_prueba", false).limit(1)],
+    ["admin", "/admin (productos aprobados)", (c) => c.from("productos").select("id, artistas!inner(es_prueba)", { count: "exact", head: true }).eq("estado", "aprobado").eq("artistas.es_prueba", false)],
+    ["admin", "/admin (órdenes del mes)", (c) => c.from("ordenes").select("id, artistas!inner(es_prueba)", { count: "exact", head: true }).gte("created_at", "2026-01-01").eq("artistas.es_prueba", false)],
+    ["admin", "/admin/artistas", (c) => c.from("artistas").select("id, nombre, slug, foto_url, bio, ciudad, region, comision, es_founder, founder_hasta, tienda_activa, verificado, es_prueba").order("nombre").limit(5)],
     ["admin", "/admin/artistas/[id]/editar", (c) => c.from("artistas").select(PERFIL).eq("id", A.artistaId).maybeSingle()],
     ["admin", "/admin/liquidaciones (artistas)", (c) => c.from("artistas").select("id, nombre, foto_url, ordenes(id, monto_artista, estado, liquidado, created_at)").order("nombre").limit(5)],
     ["admin", "/admin/liquidaciones (bancos)", (c) => c.rpc("datos_bancarios")],
@@ -458,6 +466,42 @@ async function fase2(A, B, ADMIN) {
       .eq("id", A.artistaId);
     const { data } = await A.cliente.rpc("datos_bancarios", { p_artista_id: A.artistaId });
     check("(dd) /panel/perfil guarda sus datos bancarios", !error && data?.[0]?.banco === "Banco Nuevo", error ? fmt(error) : JSON.stringify(data?.[0]));
+  }
+
+  console.log("\n── Fase 2 · artistas de prueba ──");
+  {
+    // A queda normal y B pasa a ser de prueba, cada uno con un producto aprobado.
+    const visible = await crearProducto(A.artistaId, "visible");
+    const oculto  = await crearProducto(B.artistaId, "oculto");
+    await admin.from("artistas").update({ es_prueba: true, tienda_activa: true }).eq("id", B.artistaId);
+    await admin.from("artistas").update({ tienda_activa: true }).eq("id", A.artistaId);
+
+    const { data: tienda, error } = await anon
+      .from("productos")
+      .select("id, artistas!inner(id)")
+      .eq("estado", "aprobado")
+      .eq("artistas.es_prueba", false)
+      .in("id", [visible, oculto]);
+    const ids = (tienda ?? []).map((p) => p.id);
+    check("(ee1) /tienda: el producto de un artista de prueba no aparece; el de uno normal sí",
+      !error && ids.includes(visible) && !ids.includes(oculto), error ? fmt(error) : `ids=${JSON.stringify(ids)}`);
+
+    const { data: directo } = await anon.from("productos").select("id, artistas(es_prueba)").eq("id", oculto).maybeSingle();
+    check("(ee2) Su producto sigue abriendo por URL directa y trae es_prueba (para el noindex)",
+      directo?.id === oculto && directo.artistas?.es_prueba === true, JSON.stringify(directo));
+
+    const { data: fichas } = await anon
+      .from("artistas")
+      .select("id")
+      .eq("es_editorial", false)
+      .eq("es_prueba", false)
+      .or("tienda_activa.eq.true,verificado.eq.true")
+      .in("id", [A.artistaId, B.artistaId]);
+    const enSitemap = (fichas ?? []).map((a) => a.id);
+    check("(ee3) Sitemap: la ficha de un artista de prueba no entra; la de uno normal sí",
+      enSitemap.includes(A.artistaId) && !enSitemap.includes(B.artistaId), `ids=${JSON.stringify(enSitemap)}`);
+
+    await admin.from("artistas").update({ es_prueba: false, tienda_activa: false }).in("id", [A.artistaId, B.artistaId]);
   }
 
   console.log("\n── Fase 2 · cupones ──");

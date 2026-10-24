@@ -155,13 +155,17 @@ queries. Los clientes de `lib/supabase/{client,server}.ts` están tipados con
 ```bash
 npx supabase migration new descripcion_del_cambio   # 1. crear
 #                                                     2. escribir el SQL
-npx supabase db push                                # 3. aplicar
+npx supabase db push --linked                       # 3. aplicar (--linked: ver abajo)
 npx supabase gen types typescript --linked > lib/supabase/types.ts   # 4. regenerar
 ```
 
 **El paso 4 no es opcional, y va en el mismo commit que la migración.** Nada de
 tocar el esquema desde el editor SQL del dashboard sin reflejarlo en una
 migración. Ver `supabase/README-migraciones.md`.
+
+`db push` va **siempre con `--linked`**: el CLI avisa (2026-10-24) que en su
+próxima versión apuntará por defecto a la base local. Lo corre Claudio (pide la
+contraseña de la base).
 
 `supabase/migrations/` contiene **solo** archivos `<timestamp>_nombre.sql`:
 cualquier otra cosa ahí hace que el CLI emita un warning de "Skipping migration"
@@ -212,8 +216,14 @@ Lectura de `artistas`: anon y authenticated tienen **grants por columna**, así
 que `select("*")` falla con 42501; nombra las columnas. Los datos bancarios
 (`banco`, `cuenta_bancaria`, `tipo_cuenta`, `rut`) se leen con la RPC
 `datos_bancarios()`. Solo un admin puede cambiar `comision`, `es_founder`,
-`founder_hasta`, `tienda_activa`, `verificado` y `cobros_activos` (trigger). Verificación:
+`founder_hasta`, `tienda_activa`, `verificado`, `cobros_activos` y `es_prueba` (trigger). Verificación:
 `npm run verificar:cobro` y `npm run verificar:mp`.
+
+**Artistas de prueba** (`artistas.es_prueba`, switch en `/admin/artistas`): no
+aparecen en `/tienda`, en las noticias (`traerNoticias`), en el sitemap ni en
+las métricas de `/admin`; su ficha, sus productos y sus notas abren solo por URL
+directa, con `noindex`. **Un listado público nuevo tiene que filtrar
+`es_prueba`** (con `artistas!inner(…)` + `.eq("artistas.es_prueba", false)`).
 
 ### Convenciones de estilo
 
@@ -242,7 +252,7 @@ global en `app/layout.tsx`.
   todo salvo `/panel`, `/admin`, `/api`.
 - `app/sitemap.ts` — home, `/tienda`, `/noticias`, las noticias publicadas y
   las fichas `/artista/[slug]` de artistas con `tienda_activa` o `verificado`.
-  Revalida cada hora.
+  Nunca artistas de prueba (`es_prueba`) ni sus noticias. Revalida cada hora.
 
 Un `Disallow` en robots.txt **no** es un `noindex`: una URL bloqueada puede
 indexarse igual si alguien la enlaza. Por eso las rutas privadas llevan las dos

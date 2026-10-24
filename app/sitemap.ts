@@ -13,7 +13,8 @@ export const revalidate = 3600;
  *
  * Solo entran artistas con `tienda_activa` o `verificado`: los perfiles recién
  * creados (el layout de /panel crea una fila en `artistas` al primer login)
- * están vacíos y no aportan nada al índice.
+ * están vacíos y no aportan nada al índice. Nunca los de prueba (`es_prueba`),
+ * ni sus fichas ni sus noticias.
  *
  * Usa el cliente anon directo en vez de `lib/supabase/server`: no hace falta
  * sesión para leer perfiles públicos, y evitar `cookies()` deja que la ruta se
@@ -52,6 +53,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // artistas: /artista/[slug] les responde 404, así que no pueden ir en el
     // sitemap. Sin este filtro entrarían, porque están marcados verificado=true.
     .eq("es_editorial", false)
+    // Los artistas de prueba solo se abren por URL directa.
+    .eq("es_prueba", false)
     .or("tienda_activa.eq.true,verificado.eq.true")
     .order("created_at", { ascending: false });
 
@@ -80,9 +83,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // no la fecha que se muestra.
   const { data: noticias, error: errNoticias } = await supabase
     .from("publicaciones")
-    .select("slug, fecha_publicacion, updated_at")
+    .select("slug, fecha_publicacion, updated_at, artistas!inner(es_prueba)")
     .eq("estado", "publicada")
     .eq("tipo", "noticia")
+    .eq("artistas.es_prueba", false)
     .order("fecha_publicacion", { ascending: false });
 
   if (errNoticias) {

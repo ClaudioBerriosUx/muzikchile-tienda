@@ -1672,9 +1672,8 @@ cambió; esto solo deja que los artistas conecten su cuenta.
   secreto da 401.
 
 ### Pendiente
-- Probar la conexión real con el vendedor de prueba en producción (única
-  `redirect_uri` registrada en la app real): requiere iniciar sesión en MP, no
-  se automatiza. Las variables ya están cargadas (2026-10-24).
+- ~~Probar la conexión real con el vendedor de prueba en producción~~ ✅
+  2026-10-24 (ver abajo).
 - **Commit 3**: un artista por carrito, "Pronto disponible", preferencia con
   `tokenVigente()` + `marketplace_fee`, webhook que consulta el pago con el
   token del artista, `/checkout/exito` con el estado real.
@@ -1682,6 +1681,59 @@ cambió; esto solo deja que los artistas conecten su cuenta.
   liquidaciones que excluyan órdenes `marketplace`; switch de `cobro_modelo`
   con chequeo previo.
 - Correos de "reconectar" (Resend, noreply@muzikchile.cl).
+
+### Prueba de la conexión real — 2026-10-24
+- En el preview `mp-pruebas` la app de prueba dio HTTP 500 sin diagnosticar (sin
+  log); no se siguió por ahí.
+- **En producción, con la app real, la cuenta de prueba sí conectó**: Valentina
+  Ruz (artista de prueba, cuenta claudio@agencia.sbs) quedó con
+  TESTUSER3381887173034331418 (`mp_user_id` 3787758738, `live_mode` true,
+  vence 2027-04-22, `cobros_activos` true). Tokens cifrados con la llave de
+  Production, distinta de la de `.env.local`: **desde local no se pueden usar**.
+- Decisión: el commit 3 se prueba en producción con un piloto solo para
+  Valentina. La rama `mp-pruebas` y sus variables de Preview se borran recién
+  cuando salga bien el primer pago marketplace en producción.
+- **No borrar la conexión de Valentina**: es la de las pruebas del commit 3.
+
+---
+
+## 🧪 Artistas de prueba: `artistas.es_prueba` (commit 3a) — 2026-10-24
+
+- Migración `20261024204929_artista_es_prueba` ✅ aplicada 2026-10-24 (antes
+  del deploy: el build pre-renderiza `/noticias` contra la base real y sin la
+  columna falla). Columna `es_prueba` (default false), `GRANT SELECT` a anon y
+  authenticated, y el trigger `proteger_columnas_artista` la protege (solo
+  admin; al darse de alta queda en false).
+- Un artista de prueba no aparece en `/tienda`, `/noticias`, "Últimas noticias"
+  de la portada, el sitemap (ficha ni notas) ni en las métricas de `/admin`
+  (ventas, gráfico, tiendas activas, aprobados, órdenes del mes). Su ficha, sus
+  productos y sus notas abren por URL directa con `noindex`.
+- `/admin/artistas`: switch "Artista de prueba" y badge "Prueba".
+- `types.ts` editado a mano (`gen types` sigue dando 403).
+- Verificado: `verificar:cobro -- --fase2` **83/83** (nuevos: artista no puede
+  cambiar su `es_prueba`, alta neutralizada, admin sí; copias `(cc)` de
+  `/tienda`, noticias, sitemap y `/admin`; `(ee1-3)` tienda, URL directa y
+  sitemap con un artista de prueba real). `tsc` limpio, build OK, lint sin
+  regresiones (5 = HEAD en los archivos tocados). `llms.txt` no existe.
+- ⚠️ **`db push` siempre con `--linked`**: el CLI avisa que en la próxima versión
+  apuntará por defecto a la base local. Actualizado en CLAUDE.md y
+  `supabase/README-migraciones.md`.
+
+### Pendiente
+- Tras el deploy: marcar a Valentina como prueba en `/admin/artistas` y revisar
+  en producción `/tienda`, `/sitemap.xml` y el `noindex` del cassette.
+- **Commit 3b** (plan aprobado 2026-10-24): `ordenes.cobro` +
+  `mp_collector_id`, `app_settings.marketplace_piloto`, `lib/cobro.ts`, un
+  artista por carrito (solo con marketplace), cupones globales fuera en líneas
+  marketplace, "Pronto disponible", preferencia con `tokenVigente()` +
+  `marketplace_fee`, webhook con `?grupo=` y token del artista,
+  `/checkout/exito` desde la base, liquidaciones (panel y admin) sin órdenes
+  marketplace. Camino centralizado idéntico.
+- Primera prueba: $1.100 con la compradora de prueba, piloto solo Valentina. Si
+  MP rechaza la mezcla app real + cuentas de prueba → volver al preview.
+- Limpieza final con script que muestra antes de borrar: órdenes de prueba de
+  Valentina **y sus 12 órdenes viejas**, filas de `pagos_mp`, stock del cassette
+  a 10, Valentina fuera del piloto (la conexión y `es_prueba` se quedan).
 
 ---
 

@@ -127,10 +127,12 @@ function HomePageContent() {
         .select(`
           id, nombre, precio, imagenes, tipo, stock,
           artista_id, categoria_id,
-          artistas (id, nombre, slug, ciudad, region, color_acento, verificado),
+          artistas!inner (id, nombre, slug, ciudad, region, color_acento, verificado),
           categorias (id, nombre, slug, padre_id)
         `)
         .eq("estado", "aprobado")
+        // Los productos de un artista de prueba solo se abren por URL directa.
+        .eq("artistas.es_prueba", false)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Producto[];
