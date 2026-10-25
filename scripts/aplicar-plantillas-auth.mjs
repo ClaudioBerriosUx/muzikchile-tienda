@@ -83,14 +83,16 @@ for (const t of TIPOS) {
 // ── Lo que hay ──────────────────────────────────────────────────────────────
 const actual = await api("GET");
 
-// Ajustes de auth que van junto con las plantillas. Las Redirect URLs de
-// tienda. se conservan hasta el redirect de dominio (ver PROGRESS.md): a www
-// solo se le agrega su comodín, sin tocar el resto de la lista.
+// Ajustes de auth que van junto con las plantillas. tienda. es un redirect de
+// dominio desde el 2026-10-25: sus Redirect URLs se sacan. El resto de la lista
+// (p. ej. un localhost agregado a mano) se conserva.
 const WWW = "https://www.muzikchile.cl";
 const listaActual = (actual.uri_allow_list ?? "").split(",").filter(Boolean);
 const AJUSTES = {
   site_url: WWW,
-  uri_allow_list: [...new Set([`${WWW}/**`, ...listaActual])].join(","),
+  uri_allow_list: [...new Set([`${WWW}/**`, ...listaActual])]
+    .filter((u) => !u.startsWith("https://tienda.muzikchile.cl"))
+    .join(","),
   // 24 h: lo que dicen las plantillas ("vence en 24 horas"). Es el máximo.
   mailer_otp_exp: 86400,
 };
