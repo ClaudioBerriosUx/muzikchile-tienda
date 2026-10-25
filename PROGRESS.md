@@ -939,8 +939,8 @@ lanzamiento completados el 11-oct-2026; el sitio es indexable.
   de `ALLOWED_PARENT_ORIGINS` en el reproductor del Channel.
 - Probar `/recuperar` de punta a punta con un correo real (el camino `?code=`
   solo se probó por código; hash y token_hash sí, en local).
-- Confirmar: ~~Site URL de Supabase Auth en www~~ (hecho 2026-10-25), secret `SITE_URL` de
-  `invitar-artista`, Redirect URLs del Supabase del Channel con tv., y el
+- Confirmar: ~~Site URL de Supabase Auth en www~~ (hecho 2026-10-25), ~~secret `SITE_URL` de
+  `invitar-artista`~~ (hecho 2026-10-25), Redirect URLs del Supabase del Channel con tv., y el
   webhook del panel de MercadoPago (si hay uno) en www.
 - Enviar el sitemap de www a Search Console.
 - Edge Functions `sitemap` y `llms` del Channel: actualizadas en el repo pero
@@ -1950,15 +1950,25 @@ www respondiera 500; ahora es 422 "no puede recibir pagos en este momento".
   Corregido con el cambio de arriba; lo confirma la prueba B.
 - SMTP ya era propio: Resend, `noreply@muzikchile.cl`, remitente "MuzikChile",
   30 correos/hora.
+- **Registro público cerrado** (Dashboard). Ningún flujo lo usaba (compradores
+  sin cuenta; altas solo por invitación o service role). Verificado: `signUp`
+  con la clave pública → 422 `signup_disabled`.
+- **Secret `SITE_URL` de `invitar-artista` corregido a
+  `https://www.muzikchile.cl`** (Dashboard → Edge Functions → Secrets; la CLI
+  no tiene permisos para secrets, da 403). Estaba en tienda.: las invitaciones
+  salían con `redirect_to=https://tienda.muzikchile.cl/registro`.
+
+### Prueba A — invitación end-to-end (2026-10-25) ✅
+Con el registro cerrado, a `raices.berrios+invite-20261025@gmail.com`:
+reinvitación con `redirect_to=https://www.muzikchile.cl/registro` → `/registro`
+variante invitación → contraseña creada → `/panel/perfil` sin rebote → logout
+y login con la contraseña nueva. El enlace del primer correo (tienda.) da
+"Este enlace ya no sirve". En la base: rol `artista`, fila en `artistas`
+creada por `PanelShell`, `invited_at` y `email_confirmed_at` puestos. La cuenta
+quedó con `es_prueba = true` (artista `4a9dce45…`, user `4459f16f…`).
 
 ### Pendiente
-- ~~Cerrar el registro público~~ — hecho 2026-10-25 (Dashboard). Ningún flujo
-  lo usaba (compradores sin cuenta; altas solo por invitación o service role).
-  Verificado: `signUp` con la clave pública → 422 `signup_disabled`.
-- Prueba A (invitación) y B (`/recuperar`) end-to-end con correo real.
-- Confirmar el secret `SITE_URL` de `invitar-artista` (si falta, el código cae
-  a tienda.; funciona por el redirect, pero hay que dejarlo en www antes del
-  redirect de dominio).
+- Prueba B (`/recuperar`) end-to-end con la cuenta de la prueba A.
 
 ---
 
