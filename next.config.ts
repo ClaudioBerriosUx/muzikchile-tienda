@@ -12,20 +12,14 @@ const nextConfig: NextConfig = {
    * Lanzamiento: www.muzikchile.cl es el dominio canónico. Hereda las URLs del
    * Channel (que antes vivía en www) y de tienda.muzikchile.cl.
    *
+   * tienda.muzikchile.cl no pasa por acá: desde el 2026-10-25 es un redirect
+   * de dominio en Vercel (308 → www, /api incluido).
+   *
    * /, /noticias y /noticias/:slug no necesitan redirect: los paths del Channel
    * coinciden con los de acá y las noticias migradas conservan el slug.
    */
   async redirects() {
     return [
-      // tienda.muzikchile.cl → www, salvo /api: las preferencias de MercadoPago
-      // creadas antes del cambio tienen la notification_url con el host viejo,
-      // y MP no sigue redirecciones en el POST del webhook.
-      {
-        source: "/:path((?!api/).*)",
-        has: [{ type: "host", value: "tienda.muzikchile.cl" }],
-        destination: "https://www.muzikchile.cl/:path",
-        permanent: true,
-      },
       // La portada vieja de la tienda filtraba con /?categoria=; hoy / es la
       // portada y el catálogo vive en /tienda.
       {

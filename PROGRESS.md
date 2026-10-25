@@ -929,19 +929,13 @@ lanzamiento completados el 11-oct-2026; el sitio es indexable.
 - Pendiente: login real con admin (→ `/admin`) y con credenciales malas, hecho por Claudio.
 
 ### Pendiente
-- **En 2–4 semanas (≈ 25-oct a 8-nov-2026)**: convertir tienda.muzikchile.cl
-  en **redirect de dominio en Vercel** (→ www). Antes no: hoy `/api` de tienda.
-  sigue respondiendo para los webhooks de MercadoPago de preferencias creadas
-  con el host viejo (pagos pendientes, p. ej. en efectivo). Al hacerlo, quitar
-  también las Redirect URLs de `tienda.muzikchile.cl` en Supabase Auth
-  (`uri_allow_list`; hoy quedan junto a `https://www.muzikchile.cl/**`),
-  el redirect por `host` de `next.config.ts` y `tienda.muzikchile.cl`
-  de `ALLOWED_PARENT_ORIGINS` en el reproductor del Channel.
+- ~~Convertir tienda.muzikchile.cl en redirect de dominio en Vercel~~ — hecho
+  2026-10-25, ver "Redirect de dominio: tienda. → www" más abajo.
 - ~~Probar `/recuperar` de punta a punta con un correo real~~ — hecho
   2026-10-25 (ahora con token_hash; ver "Correos de Supabase Auth en español").
 - Confirmar: ~~Site URL de Supabase Auth en www~~ (hecho 2026-10-25), ~~secret `SITE_URL` de
   `invitar-artista`~~ (hecho 2026-10-25), Redirect URLs del Supabase del Channel con tv., y el
-  webhook del panel de MercadoPago (si hay uno) en www.
+  ~~webhook del panel de MercadoPago (si hay uno) en www~~ (hecho 2026-10-25).
 - Enviar el sitemap de www a Search Console.
 - Edge Functions `sitemap` y `llms` del Channel: actualizadas en el repo pero
   se despliegan aparte (`supabase functions deploy sitemap llms`).
@@ -2003,6 +1997,39 @@ a punta.
   invitamos a sumarte a MuzikChile", título "Tu música tiene lugar acá" y
   cuerpo de plataforma (ficha, tienda, noticias), en línea con `/registro`.
   Enlace token_hash sin cambios.
+
+## ↪️ Redirect de dominio: tienda. → www — 2026-10-25
+
+**Chequeo previo (seguro hacerlo hoy):** `ordenes` y `pagos_mp` vacías (las 16
+órdenes eran de prueba, borradas el 24-oct); en la cuenta de MP de MuzikChile,
+0 pagos `pending`/`in_process`/`in_mediation`; los anteriores al 11-oct, todos
+`approved`. La búsqueda de preferencias de MP da 403
+(`PA_UNAUTHORIZED_RESULT_FROM_POLICIES`), así que no se pudo listar las de
+tienda.: si alguien pagara una vieja, su aviso se perdería, pero no hay orden
+que confirmar. Crons, OAuth (`redirect_uri`) y `notification_url` ya usan www.
+
+**Hecho:**
+- Panel de MP (app real): el webhook de modo productivo apuntaba a
+  `tienda.…/api/mercadopago/webhook` y el de prueba a un proyecto viejo; los
+  dos → `https://www.muzikchile.cl/api/mercadopago/webhook` (simulación: 200).
+  Eventos activos: Vinculación de aplicaciones y Pagos (legacy).
+- Vercel: `tienda.muzikchile.cl` → **308 a www** como redirect de dominio.
+  Verificado con curl: ruta y query se conservan (`/producto/abc?x=1`,
+  `/registro?token_hash=…`); `POST /api/mercadopago/webhook` en tienda. → 308;
+  en www responde 200.
+- Código: fuera la regla por `host` de `next.config.ts`; default de
+  `SITE_URL` en `invitar-artista` → www (deploy de la función opcional: el
+  secret ya es www y el correo usa token_hash); CLAUDE.md y `lib/site.ts`.
+
+### Pendiente
+- `scripts/aplicar-plantillas-auth.mjs` ahora deja `uri_allow_list` solo con
+  `https://www.muzikchile.cl/**`: correr el dry-run y aplicar con token.
+- Channel (`muzik-channel`): sacar `https://tienda.muzikchile.cl` de
+  `ALLOWED_PARENT_ORIGINS` (`src/components/VideoPlayer.tsx`) y desplegar.
+- Webhook de MP: manejar `mp-connect` (desvinculación → `reconectar`,
+  confirmado contra MP) y validar `x-signature` (primero solo log).
+- Decidir qué hacer con `muzikchile-tienda.vercel.app`, que sigue sirviendo
+  producción.
 
 ---
 

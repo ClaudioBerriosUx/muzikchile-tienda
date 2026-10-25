@@ -96,11 +96,13 @@ sacaron del Header y el Footer; al crearlas, se vuelven a enlazar.
 
 ### Dominio y redirects
 
-Dominio canónico: **www.muzikchile.cl** (`muzikchile.cl` → www en Vercel). Los
-redirects viven en `next.config.ts`: `tienda.muzikchile.cl` → www salvo `/api`
-(webhooks de MercadoPago con el host viejo), `/?categoria=` → `/tienda`, y las
-rutas del Channel sin equivalente acá → `tv.muzikchile.cl`, donde sigue el
-Channel (reproductor y su admin).
+Dominio canónico: **www.muzikchile.cl**. `muzikchile.cl` y
+`tienda.muzikchile.cl` (desde 2026-10-25, `/api` incluido) redirigen a www
+como redirect de dominio en Vercel, no en el código. Los redirects de
+`next.config.ts` son de rutas: `/?categoria=` → `/tienda`, y las rutas del
+Channel sin equivalente acá → `tv.muzikchile.cl`, donde sigue el Channel
+(reproductor y su admin). El webhook de MP (panel de la app, modo productivo y
+de prueba) apunta a `https://www.muzikchile.cl/api/mercadopago/webhook`.
 
 ### Auth y roles
 

@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : ''
     if (!EMAIL_RE.test(email)) return responder(400, { error: 'Email inválido' })
 
-    const siteUrl = Deno.env.get('SITE_URL') ?? 'https://tienda.muzikchile.cl'
+    const siteUrl = Deno.env.get('SITE_URL') ?? 'https://www.muzikchile.cl'
 
     const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
       redirectTo: `${siteUrl}/registro`,
