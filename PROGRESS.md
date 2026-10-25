@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-10-24
+> Actualizado: 2026-10-25
 > Branch: `main` (lanzamiento mergeado y en producción en www.muzikchile.cl)
 
 ---
@@ -933,11 +933,13 @@ lanzamiento completados el 11-oct-2026; el sitio es indexable.
   en **redirect de dominio en Vercel** (→ www). Antes no: hoy `/api` de tienda.
   sigue respondiendo para los webhooks de MercadoPago de preferencias creadas
   con el host viejo (pagos pendientes, p. ej. en efectivo). Al hacerlo, quitar
-  también el redirect por `host` de `next.config.ts` y `tienda.muzikchile.cl`
+  también las Redirect URLs de `tienda.muzikchile.cl` en Supabase Auth
+  (`uri_allow_list`; hoy quedan junto a `https://www.muzikchile.cl/**`),
+  el redirect por `host` de `next.config.ts` y `tienda.muzikchile.cl`
   de `ALLOWED_PARENT_ORIGINS` en el reproductor del Channel.
 - Probar `/recuperar` de punta a punta con un correo real (el camino `?code=`
   solo se probó por código; hash y token_hash sí, en local).
-- Confirmar: Site URL de Supabase Auth en www, secret `SITE_URL` de
+- Confirmar: ~~Site URL de Supabase Auth en www~~ (hecho 2026-10-25), secret `SITE_URL` de
   `invitar-artista`, Redirect URLs del Supabase del Channel con tv., y el
   webhook del panel de MercadoPago (si hay uno) en www.
 - Enviar el sitemap de www a Search Console.
@@ -1923,6 +1925,38 @@ www respondiera 500; ahora es 422 "no puede recibir pagos en este momento".
   - Admin: estado de conexión por artista + badge "reconectar"; switch de
     `cobro_modelo` y del piloto con chequeo previo.
   - Correos de "reconectar" (Resend, noreply@muzikchile.cl).
+
+## ✉️ Correos de Supabase Auth en español — 2026-10-25
+
+- Plantillas versionadas en `supabase/templates/` (`invite`, `recovery`,
+  `confirmation`, `email_change`, `magic_link`.html) y asuntos en
+  `asuntos.json`. HTML de correo: tablas, estilos inline, paleta `--tema-*`,
+  wordmark Anton → Impact → Arial (sin fuentes web). Todas usan
+  `{{ .ConfirmationURL }}`; el destino lo decide el `redirectTo` del código
+  (invitación → `SITE_URL/registro#…type=invite`, recuperación →
+  `/registro?code=`), así que `/registro` no cambió. Hoy solo se usan
+  invitación y recuperación; las otras tres quedan por si se abren esos flujos.
+- **Aplicadas con `scripts/aplicar-plantillas-auth.mjs`** (Management API,
+  `SUPABASE_ACCESS_TOKEN` personal: el login de la CLI da 403 en este
+  proyecto). Sin `--aplicar` solo hace GET + diff y guarda el "antes" en
+  `supabase/.temp/plantillas-auth/`; con `--aplicar`, PATCH y GET de
+  verificación. 13 campos aplicados y verificados; token revocado.
+- Ajustes aplicados junto con las plantillas: `site_url` tienda. → **www**;
+  `uri_allow_list` + `https://www.muzikchile.cl/**` (las de tienda. siguen
+  hasta el redirect de dominio); `mailer_otp_exp` 3600 → **86400** (24 h, vale
+  para todos los enlaces, también recuperación).
+- **Hallazgo**: www no estaba en las Redirect URLs, así que `/recuperar` desde
+  www caía al `site_url` (portada de tienda. → www) en vez de `/registro`.
+  Corregido con el cambio de arriba; lo confirma la prueba B.
+- SMTP ya era propio: Resend, `noreply@muzikchile.cl`, remitente "MuzikChile",
+  30 correos/hora.
+
+### Pendiente
+- Cerrar el registro público (`disable_signup`): ningún flujo lo usa.
+- Prueba A (invitación) y B (`/recuperar`) end-to-end con correo real.
+- Confirmar el secret `SITE_URL` de `invitar-artista` (si falta, el código cae
+  a tienda.; funciona por el redirect, pero hay que dejarlo en www antes del
+  redirect de dominio).
 
 ---
 

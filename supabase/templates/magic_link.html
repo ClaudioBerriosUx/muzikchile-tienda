@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es-CL" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="supported-color-schemes" content="dark">
+<title>Entra a tu panel</title>
+</head>
+<body style="margin:0; padding:0; background-color:#111111;" bgcolor="#111111">
+<div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#111111;">Entra a tu panel sin contraseña.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#111111" style="background-color:#111111;">
+  <tr>
+    <td align="center" style="padding:32px 12px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+        <!-- Marca -->
+        <tr>
+          <td style="padding:0 4px 20px 4px; font-family:Anton, Impact, 'Arial Narrow', Arial, Helvetica, sans-serif; font-size:26px; line-height:30px; font-weight:normal; letter-spacing:1px; color:#EDEDED;">
+            MUZIK<span style="color:#F0919A;">CHILE</span>
+          </td>
+        </tr>
+        <!-- Tarjeta -->
+        <tr>
+          <td bgcolor="#161616" style="background-color:#161616; border:1px solid #2A2A2A; border-top:4px solid #B02F3C; border-radius:6px; padding:36px 32px 28px 32px;">
+            <p style="margin:0 0 8px 0; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:16px; font-weight:bold; letter-spacing:2px; text-transform:uppercase; color:#F0919A;">Acceso artistas</p>
+            <h1 style="margin:0 0 20px 0; font-family:'Oswald', 'Arial Narrow', Arial, Helvetica, sans-serif; font-size:28px; line-height:34px; font-weight:bold; text-transform:uppercase; color:#EDEDED;">Entra a tu panel</h1>
+            <p style="margin:0 0 16px 0; font-family:Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#EDEDED;">Hola:</p><p style="margin:0 0 16px 0; font-family:Arial, Helvetica, sans-serif; font-size:16px; line-height:24px; color:#EDEDED;">Usa este botón para entrar a MuzikChile con <strong style="color:#EDEDED;">{{ .Email }}</strong>, sin contraseña:</p>
+            <!-- Botón -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px 0;">
+              <tr>
+                <td align="center" bgcolor="#B02F3C" style="background-color:#B02F3C; border-radius:4px;">
+                  <a href="{{ .ConfirmationURL }}" target="_blank" style="display:inline-block; padding:14px 28px; font-family:Arial, Helvetica, sans-serif; font-size:15px; line-height:20px; font-weight:bold; letter-spacing:1px; text-transform:uppercase; color:#FFFFFF; text-decoration:none; border-radius:4px;">Entrar a MuzikChile</a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:0 0 12px 0; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:20px; color:#A8A8A8;">Por seguridad, el enlace sirve una sola vez y vence en 24 horas.</p>
+            <!-- Enlace de respaldo -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:8px; border-top:1px solid #2A2A2A;">
+              <tr>
+                <td style="padding-top:16px;">
+                  <p style="margin:0 0 12px 0; font-family:Arial, Helvetica, sans-serif; font-size:13px; line-height:20px; color:#A8A8A8;">¿El botón no funciona? Copia y pega este enlace en tu navegador:</p>
+                  <p style="margin:0; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:18px; word-break:break-all;"><a href="{{ .ConfirmationURL }}" target="_blank" style="color:#F0919A; text-decoration:underline;">{{ .ConfirmationURL }}</a></p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <!-- Pie -->
+        <tr>
+          <td style="padding:20px 4px 0 4px; font-family:Arial, Helvetica, sans-serif; font-size:12px; line-height:18px; color:#7A7A7A;">
+            Si no pediste entrar, ignora este correo: nadie puede usar el enlace sin acceso a tu bandeja. No respondas a este correo: si necesitas ayuda, escríbenos a <a href="mailto:hola@muzikchile.cl" style="color:#A8A8A8; text-decoration:underline;">hola@muzikchile.cl</a>.<br><br>
+            <a href="https://www.muzikchile.cl" target="_blank" style="color:#A8A8A8; text-decoration:none;">MuzikChile</a> · Música independiente chilena
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
