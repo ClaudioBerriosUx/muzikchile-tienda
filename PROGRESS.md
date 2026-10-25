@@ -2024,8 +2024,8 @@ que confirmar. Crons, OAuth (`redirect_uri`) y `notification_url` ya usan www.
 ### Pendiente
 - `scripts/aplicar-plantillas-auth.mjs` ahora deja `uri_allow_list` solo con
   `https://www.muzikchile.cl/**`: correr el dry-run y aplicar con token.
-- Channel (`muzik-channel`): sacar `https://tienda.muzikchile.cl` de
-  `ALLOWED_PARENT_ORIGINS` (`src/components/VideoPlayer.tsx`) y desplegar.
+- Channel (`muzik-channel`): `https://tienda.muzikchile.cl` ya salió de
+  `ALLOWED_PARENT_ORIGINS` (commit `8c45b8e`); falta push y deploy.
 - Webhook de MP: manejar `mp-connect` (desvinculación → `reconectar`,
   confirmado contra MP) y validar `x-signature` (primero solo log).
 - Decidir qué hacer con `muzikchile-tienda.vercel.app`, que sigue sirviendo
