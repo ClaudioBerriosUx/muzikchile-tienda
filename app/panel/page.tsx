@@ -13,14 +13,6 @@ interface Artista {
   slug: string;
 }
 
-interface Orden {
-  id: string;
-  monto_artista: number;
-  estado: string;
-  created_at: string;
-  nombre_comprador?: string;
-  productos?: { nombre: string } | null;
-}
 
 function MetricCard({
   label,
@@ -127,16 +119,18 @@ export default function DashboardPage() {
     enabled: !!artista?.id,
   });
 
-  const { data: ultimasOrdenes = [] } = useQuery<Orden[]>({
+  // Sin cast: el tipo sale del select, así una columna mal escrita no compila.
+  const { data: ultimasOrdenes = [] } = useQuery({
     queryKey: ["panel-ultimas-ordenes", artista?.id],
     queryFn: async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("ordenes")
-        .select("id, monto_artista, estado, created_at, nombre_comprador, productos(nombre)")
+        .select("id, monto_artista, estado, created_at, comprador_nombre, productos(nombre)")
         .eq("artista_id", artista!.id)
         .order("created_at", { ascending: false })
         .limit(5);
-      return (data ?? []) as unknown as Orden[];
+      if (error) throw error;
+      return data;
     },
     enabled: !!artista?.id,
   });
@@ -266,12 +260,10 @@ export default function DashboardPage() {
                     style={{ borderTop: i > 0 ? "1px solid #e8e8e8" : undefined }}
                   >
                     <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
-                      {Array.isArray(orden.productos)
-                        ? orden.productos[0]?.nombre
-                        : (orden.productos as { nombre: string } | null)?.nombre ?? "—"}
+                      {orden.productos?.nombre ?? "—"}
                     </td>
                     <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
-                      {orden.nombre_comprador ?? "—"}
+                      {orden.comprador_nombre || "—"}
                     </td>
                     <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#111111", fontWeight: 600 }}>
                       {formatCLP(orden.monto_artista)}
