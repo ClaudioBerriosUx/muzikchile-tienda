@@ -43,3 +43,6 @@ next-env.d.ts
 .vercel
 .env*
 
+
+# La plantilla sí se versiona: solo nombres de variables, sin valores.
+!.env.example
