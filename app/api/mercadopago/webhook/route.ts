@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import type { Database } from "@/lib/supabase/types";
 import { clienteServicio, procesarDesvinculacion, tokenVigente } from "@/lib/mp/conexiones";
+import { revisarFirma } from "@/lib/mp/firma";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,9 @@ const UUID = /^[0-9a-f-]{36}$/i;
  *
  * Desvinculación (mp-connect, application.deauthorized): procesarDesvinculacion
  * confirma con MP antes de pasar la conexión del artista a 'reconectar'.
+ *
+ * Firma (x-signature): fase 1, se revisa y se anota ("[webhook] firma:") en
+ * todos los avisos, pero no se rechaza ninguno. Ver lib/mp/firma.ts.
  */
 export async function POST(req: NextRequest) {
   const ok = () => NextResponse.json({ ok: true });
@@ -45,6 +49,16 @@ export async function POST(req: NextRequest) {
 
     const topic      = body.topic ?? body.type ?? params.get("topic") ?? params.get("type");
     const resourceId = body.data?.id ?? params.get("data.id") ?? body.id ?? params.get("id");
+
+    // Firma, fase 1: solo se anota, no cambia lo que se hace con el aviso.
+    const firma = revisarFirma({
+      xSignature: req.headers.get("x-signature"),
+      xRequestId: req.headers.get("x-request-id"),
+      query:      params,
+      body,
+      secretos:   process.env.MP_WEBHOOK_SECRET,
+    });
+    console.log("[webhook] firma:", JSON.stringify(firma));
 
     // Vinculación de aplicaciones: un artista desvinculó la app desde MP. Es
     // raro, así que el aviso va entero al log (no trae secretos).

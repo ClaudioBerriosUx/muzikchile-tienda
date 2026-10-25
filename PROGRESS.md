@@ -2062,7 +2062,36 @@ que confirmar. Crons, OAuth (`redirect_uri`) y `notification_url` ya usan www.
     con "Desvinculada desde Mercado Pago" → reconectar desde `/panel/cobros`.
   - Opcional antes: (a17) contra localhost con `MP_CLIENT_ID`/`MP_CLIENT_SECRET`
     de la app de prueba (4083103325958872) en `.env.local`.
-- Validar `x-signature` del webhook (primero solo log, después exigirla).
+
+### Webhook: firma `x-signature`, fase 1 (solo log) — 2026-10-25
+- `lib/mp/firma.ts` → `revisarFirma`: valida con `WebhookSignatureValidator`
+  del SDK `mercadopago` (HMAC-SHA256 de `id:<data.id>;request-id:<x-request-id>;ts:<ts>;`,
+  data.id de la query en minúsculas, pares ausentes omitidos, comparación en
+  tiempo constante). El webhook anota `[webhook] firma: {…}` en cada aviso y
+  **no rechaza nada**: `resultado` (valida / invalida / sin_firma / malformada /
+  sin_secret / error), `aviso` (webhook / ipn / mp-connect), `tipo`, `cobro`
+  (por `?grupo=`), `id_desde`, `clave` (posición), `desfase_s`, `request_id`.
+  Nunca la clave ni los hashes. Tolerancia del ts: solo se mide (MP lo manda
+  en segundos o en ms según el ejemplo; se detecta por tamaño).
+- `MP_WEBHOOK_SECRET`: Vercel, Production, Sensitive; una o varias claves
+  separadas por coma. `.env.example` está en `.gitignore` (`.env*`): la
+  variable queda documentada en CLAUDE.md.
+- `npm run verificar:firma` 15/15 (sin red; firmas armadas con node:crypto,
+  no con el SDK). `verificar:mp` (a18): firma buena, mala o ausente → misma
+  respuesta. Local 36/36.
+
+### Pendiente (firma)
+- Cargar `MP_WEBHOOK_SECRET` en Vercel (Production) + Redeploy; confirmar si
+  modo de prueba y productivo usan la misma clave.
+- "Simular notificación" (Pagos y Vinculación, modo productivo y de prueba) →
+  revisar las líneas `[webhook] firma:` en los logs de Vercel: se espera
+  `valida`.
+- Con pagos reales (centralizado y marketplace): ver si `notification_url` e
+  IPN vienen firmados y con qué clave (`cobro` en el log).
+- **Fase 2** (rechazar lo no válido) solo cuando todos los avisos procesados
+  salgan `valida`; decidir aparte qué hacer con el IPN si llega `sin_firma`,
+  y fijar la tolerancia del ts según los `desfase_s` reales (¿un reintento
+  trae ts nuevo?).
 
 ---
 

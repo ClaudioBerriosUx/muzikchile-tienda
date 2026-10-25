@@ -30,6 +30,9 @@ Copia `.env.example` → `.env.local`:
 - `MP_TOKENS_KEY` — llave AES-256 (32 bytes base64) que cifra los tokens de los
   artistas; si cambia, todas las cuentas tienen que reconectarse
 - `CRON_SECRET` — lo manda Vercel al cron `/api/cron/mp-renovar` (`vercel.json`)
+- `MP_WEBHOOK_SECRET` — clave secreta de los webhooks de MP (una o varias separadas
+  por coma). Solo en Production. Nunca va al log: `lib/mp/firma.ts` anota solo
+  qué clave coincidió, por posición.
 
 ## Arquitectura general
 
@@ -202,6 +205,10 @@ escrito en el código.
   no se cree), compara monto y moneda, y llama a `confirmar_pago()`: órdenes a
   `pagado`, stock y cupón, **una sola vez por pago** (lock en `pagos_mp`).
   Devuelve 500 ante errores temporales para que MP reintente.
+  La firma (`x-signature`) se revisa en cada aviso con `revisarFirma`
+  (`lib/mp/firma.ts`) y se anota como `[webhook] firma:` — **fase 1: no se
+  rechaza nada**. La firma no cubre el body: lo que trae el body se sigue
+  confirmando contra la API de MP.
   Un pago `refunded` o `charged_back` llama a `revertir_pago()`: órdenes a
   `reembolsado`, stock no despachado de vuelta y uso del cupón −1, **una sola
   vez por pago** (lock en `pagos_mp.revertido_at`). Es el mismo camino venga

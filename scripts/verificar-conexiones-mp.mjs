@@ -15,7 +15,7 @@
  *            (redirect a auth.mercadopago.cl con PKCE y cookie httpOnly) y el
  *            callback con state falso, sin cookie, con la sesión de otro
  *            usuario y con un código falso; cron sin secreto; avisos mp-connect
- *            (desvinculación) en el webhook.
+ *            (desvinculación) y firma (fase 1: no rechaza) en el webhook.
  *
  * La conexión real (autorizar en MP con una cuenta de prueba) no se puede
  * automatizar: requiere iniciar sesión en Mercado Pago. Ver PROGRESS.md.
@@ -25,7 +25,7 @@
  * el `finally` (mismo esquema que verificar-rls-publicaciones.mjs).
  */
 
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 // Node 24 importa TypeScript sin compilar (solo quita los tipos).
@@ -345,6 +345,25 @@ async function api(A, B) {
     check("(a16) Desvinculación sin user_id o con uno no numérico → 200, sigue 'conectado'",
       r1.status === 200 && r2.status === 200 && (await estadoA())?.estado === "conectado", `sin=${r1.status} raro=${r2.status}`);
   }
+  {
+    // Firma, fase 1: el resultado solo va al log. Un pago inexistente (MP
+    // responde 404) se contesta 200 con firma buena, mala o sin firma.
+    const ts = Date.now();
+    const manifest = `id:1;request-id:${PREFIJO};ts:${ts};`;
+    const v1 = (clave) => createHmac("sha256", clave).update(manifest).digest("hex");
+    const enviar = (xSignature) =>
+      fetch(`${API}/api/mercadopago/webhook?data.id=1&type=payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-request-id": PREFIJO, ...(xSignature ? { "x-signature": xSignature } : {}) },
+        body: JSON.stringify({ type: "payment", data: { id: "1" } }),
+      });
+    const buena = await enviar(`ts=${ts},v1=${v1(process.env.MP_WEBHOOK_SECRET || "clave-local")}`);
+    const mala = await enviar(`ts=${ts},v1=${v1("otra-clave")}`);
+    const sin = await enviar(null);
+    check("(a18) Firma buena, mala o ausente → misma respuesta (fase 1 no rechaza)",
+      [buena, mala, sin].every((r) => r.status === 200), `buena=${buena.status} mala=${mala.status} sin=${sin.status}`);
+  }
+
   if (!API_LOCAL) {
     // Los tokens falsos van cifrados con la MP_TOKENS_KEY de .env.local: un
     // deploy con otra llave no los descifra y, con razón, no toca la conexión
