@@ -2080,12 +2080,17 @@ que confirmar. Crons, OAuth (`redirect_uri`) y `notification_url` ya usan www.
   no con el SDK). `verificar:mp` (a18): firma buena, mala o ausente → misma
   respuesta. Local 36/36.
 
+- `MP_WEBHOOK_SECRET` cargada en Vercel (Production, Sensitive) + Redeploy.
+  **La clave secreta es la misma en modo de prueba y productivo**: una sola.
+- **Simulación de Pagos, modo productivo (2026-10-25 20:36)** → `valida`,
+  `aviso: webhook`, `id_desde: query`, `clave: 0`, `desfase_s: 1`; el pago
+  falso 123456 da 404 en MP (esperado). Confirma el texto firmado del SDK.
+- El simulador de MP **no ofrece "Vinculación de aplicaciones"**: la firma de
+  `mp-connect` (y los campos de su body) queda para el primer artista real.
+
 ### Pendiente (firma)
-- Cargar `MP_WEBHOOK_SECRET` en Vercel (Production) + Redeploy; confirmar si
-  modo de prueba y productivo usan la misma clave.
-- "Simular notificación" (Pagos y Vinculación, modo productivo y de prueba) →
-  revisar las líneas `[webhook] firma:` en los logs de Vercel: se espera
-  `valida`.
+- Con el primer artista real: ver la línea `[webhook] firma:` del aviso
+  `mp-connect` (y `[webhook] mp-connect:` con el body).
 - Con pagos reales (centralizado y marketplace): ver si `notification_url` e
   IPN vienen firmados y con qué clave (`cobro` en el log).
 - **Fase 2** (rechazar lo no válido) solo cuando todos los avisos procesados
