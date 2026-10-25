@@ -19,6 +19,8 @@
  *         en app_settings (sin pagar: no mueve plata).
  * (rb):   reembolsos y contracargos: revertir_pago() (20261024232633) y, con
  *         --api, los permisos de /api/admin/mp/reembolsar.
+ * (rn):   /api/admin/mp/renovar (solo con --api, servidor LOCAL): permisos,
+ *         lock tomado y un refresh_token falso que MP rechaza → 'reconectar'.
  * (mk):   cobro marketplace en piloto (20261024211159), solo con --api y contra
  *         un servidor LOCAL: la conexión de prueba se cifra con la
  *         MP_TOKENS_KEY de .env.local. Mete al artista de prueba A en
@@ -725,6 +727,84 @@ async function reembolsos(A, B, ADMIN) {
   }
 }
 
+// ── Renovación del token (rn) ────────────────────────────────────────────────
+
+async function renovacion(A, B, ADMIN) {
+  console.log(`\n── (rn) /api/admin/mp/renovar · ${API} ──`);
+  const [cookieAdmin, cookieArtista] = [await cookieDe(ADMIN), await cookieDe(A)];
+  const renovar = async (body, cookie) => {
+    const res = await fetch(`${API}/api/admin/mp/renovar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(cookie ? { cookie } : {}) },
+      body: JSON.stringify(body),
+    });
+    const texto = await res.text();
+    let data = null;
+    try { data = JSON.parse(texto); } catch { /* sin cuerpo */ }
+    return { status: res.status, data, texto };
+  };
+
+  await admin.from("mp_conexiones").delete().eq("artista_id", B.artistaId);
+  {
+    const r = await renovar({ artista_id: B.artistaId });
+    check("(rn-1) Sin sesión → 401", r.status === 401, `status=${r.status}`);
+  }
+  {
+    const r = await renovar({ artista_id: B.artistaId }, cookieArtista);
+    check("(rn-2) Con sesión de artista → 403", r.status === 403, `status=${r.status}`);
+  }
+  {
+    const r1 = await renovar({ artista_id: "no-es-uuid" }, cookieAdmin);
+    const r2 = await renovar({ artista_id: B.artistaId }, cookieAdmin);
+    check("(rn-3) Admin: artista_id inválido → 400; artista sin conexión → 404", r1.status === 400 && r2.status === 404, `inválido=${r1.status} sin conexión=${r2.status}`);
+  }
+
+  // Conexión de B con tokens falsos (llave local).
+  const { error: conErr } = await admin.from("mp_conexiones").insert({
+    artista_id: B.artistaId,
+    mp_user_id: 9_000_000_000 + Math.floor(Math.random() * 999_999_999),
+    nickname: "RLSTEST_VENDEDOR_B",
+    access_token_cifrado: cifrar("APP_USR-falso-access-b"),
+    refresh_token_cifrado: cifrar("TG-falso-refresh-b"),
+    live_mode: false,
+    expires_at: new Date(Date.now() + 180 * 86400000).toISOString(),
+    refrescando_hasta: new Date(Date.now() + 5 * 60000).toISOString(),
+  });
+  if (conErr) throw new Error(`Conexión de prueba B: ${conErr.message}`);
+  {
+    const r = await renovar({ artista_id: B.artistaId }, cookieAdmin);
+    const { data: c } = await admin.from("mp_conexiones").select("estado, refrescado_at, ultimo_error").eq("artista_id", B.artistaId).single();
+    check("(rn-4) Lock tomado por otra renovación → 'ocupado', la conexión no se toca",
+      r.status === 200 && r.data?.resultado === "ocupado" && c?.estado === "conectado" && c.refrescado_at === null && c.ultimo_error === null,
+      `status=${r.status} ${r.texto}`);
+  }
+  {
+    await admin.from("mp_conexiones").update({ refrescando_hasta: null }).eq("artista_id", B.artistaId);
+    const r = await renovar({ artista_id: B.artistaId }, cookieAdmin);
+    const { data: c } = await admin.from("mp_conexiones").select("estado, ultimo_error, refrescando_hasta").eq("artista_id", B.artistaId).single();
+    const activos = await cobrosActivosDe(B.artistaId);
+    if (process.env.MP_CLIENT_SECRET) {
+      check("(rn-5) refresh_token que MP rechaza → 'reconectar': estado 'reconectar', ultimo_error, cobros_activos apagado, lock libre",
+        r.status === 200 && r.data?.resultado === "reconectar" && r.data?.despues?.estado === "reconectar"
+          && c?.estado === "reconectar" && !!c.ultimo_error && c.refrescando_hasta === null && activos === false,
+        `status=${r.status} ${r.texto}`);
+    } else {
+      // .env.local sin MP_CLIENT_SECRET (vive solo en Vercel): el canje no llega
+      // a MP. Un error de configuración no es culpa de la cuenta del artista.
+      check("(rn-5) Sin MP_CLIENT_SECRET en el servidor → 'reintentar': el artista sigue conectado, ultimo_error lo dice, lock libre",
+        r.status === 200 && r.data?.resultado === "reintentar" && c?.estado === "conectado"
+          && /MP_CLIENT_SECRET/.test(c.ultimo_error ?? "") && c.refrescando_hasta === null && activos === true,
+        `status=${r.status} ${r.texto}`);
+    }
+    check("(rn-6) La respuesta nunca trae tokens (ni en claro ni cifrados)",
+      !/APP_USR|TG-|falso|v1\.[\w-]+\./.test(r.texto) && r.data?.access_token_cambio !== undefined,
+      r.texto.slice(0, 200));
+  }
+}
+
+const cobrosActivosDe = async (artistaId) =>
+  (await admin.from("artistas").select("cobros_activos").eq("id", artistaId).single()).data?.cobros_activos;
+
 // ── Marketplace en piloto (mk) ───────────────────────────────────────────────
 
 /** Cifra con una llave distinta de MP_TOKENS_KEY (como un token conectado desde otro entorno). */
@@ -925,6 +1005,7 @@ async function main() {
     if (FASE2) await fase2(A, B, ADMIN);
     if (API) await api(A, B);
     if (API) await marketplace(A, B, ADMIN);
+    if (API) await renovacion(A, B, ADMIN);
   } catch (err) {
     console.error("\nError montando o ejecutando la verificación:");
     console.error(`  ${err.message}`);

@@ -1864,9 +1864,31 @@ www respondiera 500; ahora es 422 "no puede recibir pagos en este momento".
   el webhook solo cancela órdenes `pendiente` y una orden `pagado` no se
   revertiría.
 
+### Limpieza de las pruebas — 2026-10-24
+- Valentina fuera del piloto: `marketplace_piloto` `[…Valentina]` → `[]` (www
+  cotiza el cassette `centralizado`).
+- Borradas sus 16 órdenes (12 viejas, la del 21-10, los 3 intentos en www y la
+  pagada del preview) y la fila de `pagos_mp` del pago 184926629417; stock del
+  cassette 9 → 10. La conexión del preview y `es_prueba` se quedan (para la
+  prueba de renovación). `(api-10)` sigue pasando sin la orden cancelada.
+
+### Renovación forzada desde el admin — 2026-10-24
+- `POST /api/admin/mp/renovar` `{ artista_id }`: solo admin; llama a
+  `renovarConexion()` (el mismo camino que el cron y `tokenVigente`) y
+  devuelve resultado + conexión antes/después (estado, `expires_at`,
+  `refrescado_at`, `ultimo_error`) y si cada token cambió (por hash). Nunca
+  devuelve tokens.
+- Verificado (`--fase2 --api=local`): **136/136** = 102 originales idénticos +
+  18 `(mk)` + 10 `(rb)` + 6 `(rn)` (401 / 403 / 400 / 404, lock tomado →
+  `ocupado` sin tocar nada, la respuesta no trae tokens). `.env.local` no tiene
+  `MP_CLIENT_SECRET` (solo Vercel): en local el canje no llega a MP y el
+  resultado correcto es `reintentar` sin marcar `reconectar` (`rn-5` verifica
+  esa rama; con secreto verifica la de MP rechazando el refresh).
+
 ### Pendiente
-- Probar la **renovación del token** antes de borrar `mp-pruebas` (necesita la
-  conexión de Valentina hecha desde el preview).
+- **Probar la renovación real** en el preview (dos veces seguidas: la segunda
+  prueba que se guardó el refresh_token rotado). Después: desconectar a
+  Valentina, borrar `mp-pruebas` y sus variables de Preview.
 - Al terminar: quitar a Valentina del piloto (`[]`), desconectarla desde
   `/panel/cobros` del preview, limpieza de órdenes (script que muestra antes de
   borrar), reactivar Deployment Protection, borrar `mp-pruebas` y sus variables
