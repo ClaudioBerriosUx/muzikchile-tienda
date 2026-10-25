@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
 import type { Database } from "@/lib/supabase/types";
-import { tokenVigente } from "@/lib/mp/conexiones";
+import { clienteServicio, procesarDesvinculacion, tokenVigente } from "@/lib/mp/conexiones";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +30,9 @@ const UUID = /^[0-9a-f-]{36}$/i;
  * reembolso: la ruta /api/admin/mp/reembolsar, el panel de MP del artista o el
  * de MuzikChile; lo que manda es el estado del pago en MP. Un reembolso
  * parcial deja el pago en 'approved': no se revierte nada, queda en el log.
+ *
+ * Desvinculación (mp-connect, application.deauthorized): procesarDesvinculacion
+ * confirma con MP antes de pasar la conexión del artista a 'reconectar'.
  */
 export async function POST(req: NextRequest) {
   const ok = () => NextResponse.json({ ok: true });
@@ -42,6 +45,19 @@ export async function POST(req: NextRequest) {
 
     const topic      = body.topic ?? body.type ?? params.get("topic") ?? params.get("type");
     const resourceId = body.data?.id ?? params.get("data.id") ?? body.id ?? params.get("id");
+
+    // Vinculación de aplicaciones: un artista desvinculó la app desde MP. Es
+    // raro, así que el aviso va entero al log (no trae secretos).
+    if (topic === "mp-connect") {
+      console.log("[webhook] mp-connect:", JSON.stringify(body));
+      if (body.action !== "application.deauthorized") return ok();
+      const mpUserId = Number(body.user_id);
+      if (!Number.isSafeInteger(mpUserId) || mpUserId <= 0) return ok();
+
+      const resultado = await procesarDesvinculacion(clienteServicio(), mpUserId);
+      console.log("[webhook] mp-connect desvinculación:", mpUserId, resultado);
+      return resultado === "reintentar" ? reintentar() : ok();
+    }
 
     if (!resourceId || (topic !== "payment" && topic !== "payment.updated")) {
       return ok();

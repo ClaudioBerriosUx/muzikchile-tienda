@@ -2028,12 +2028,34 @@ que confirmar. Crons, OAuth (`redirect_uri`) y `notification_url` ya usan www.
 - Tras el deploy: curl de tienda. → 308 con ruta y query, `/api` incluido; www y
   su webhook 200.
 
+- **`muzikchile-tienda.vercel.app`: cerrado, se acepta el duplicado.** La regla
+  de `next.config.ts` (`d08ee93`, host exacto, sin `/api`) está desplegada pero
+  en Vercel no actúa (`/` sigue en 200; en local con ese `Host` sí redirige);
+  la causa no se encontró. Se deja: no molesta, y cada página pública declara
+  el canonical a www.
+
+### Webhook: desvinculación de la app (`mp-connect`) — 2026-10-25
+- El webhook atiende `type: "mp-connect"`. `application.authorized` → 200 sin
+  hacer nada (la vinculación la hace nuestro OAuth); `application.deauthorized`
+  → `procesarDesvinculacion(user_id)`: busca la conexión `conectado` con ese
+  `mp_user_id`, consulta `/users/me` con su token y, si MP lo rechaza (401/403),
+  `renovarConexion`: renovado → era un token vencido; rechazada → `reconectar`
+  con `ultimo_error = "Desvinculada desde Mercado Pago"` y `cobros_activos` se
+  apaga (trigger). MP caído o lock ocupado → 500 para que reintente. Un aviso
+  falso con un token vigente no toca nada. El body del aviso va entero al log.
+- `npm run verificar:mp -- --api=…`: casos (a14)–(a17). En local 35/35; el
+  (a17) cae en la rama "sin `MP_CLIENT_SECRET`" (500, sin tocar la conexión),
+  porque `.env.local` no lo tiene.
+
 ### Pendiente
-- Webhook de MP: manejar `mp-connect` (desvinculación → `reconectar`,
-  confirmado contra MP) y validar `x-signature` (primero solo log).
-- `muzikchile-tienda.vercel.app` → 308 a www en `next.config.ts` (`d08ee93`;
-  host exacto, sin `/api`; los previews no se tocan). Verificar con curl tras
-  el deploy.
+- Tras el deploy: `npm run verificar:mp -- --api=https://www.muzikchile.cl`
+  para ver el (a17) completo (→ `reconectar`), y "Simular notificación" de
+  Vinculación de aplicaciones en el panel de MP: confirmar en los logs de
+  Vercel qué campos trae el aviso (`user_id`).
+- **Con el primer artista real conectado**: probar la desvinculación de verdad
+  (desvincular la app desde su cuenta MP → `reconectar` → reconectar desde
+  `/panel/cobros`).
+- Validar `x-signature` del webhook (primero solo log, después exigirla).
 
 ---
 

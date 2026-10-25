@@ -217,6 +217,10 @@ MuzikChile) o `marketplace` (cada artista cobra con su cuenta y MuzikChile
 recibe `marketplace_fee`). Cada artista conecta su cuenta en `/panel/cobros`
 (OAuth con PKCE vía `auth.mercadopago.cl`, `lib/mp/`). `artistas.cobros_activos`
 lo mantiene un trigger sobre `mp_conexiones`; nunca lo escribas a mano.
+Si el artista desvincula la app desde MP, llega al webhook un aviso
+`mp-connect` (`application.deauthorized`); `procesarDesvinculacion`
+(`lib/mp/conexiones.ts`) no lo cree: consulta `/users/me` con su token y solo
+si MP rechaza el token y también la renovación deja la conexión en `reconectar`.
 
 **Piloto**: `app_settings.marketplace_piloto` (lista JSON de `artista_id`) pone
 en marketplace a esos artistas aunque `cobro_modelo` siga en `centralizado`. La

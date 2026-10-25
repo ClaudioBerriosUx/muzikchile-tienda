@@ -128,6 +128,65 @@ export async function renovarConexion(servicio: Servicio, conexion: Conexion): P
   }
 }
 
+export type ResultadoDesvinculacion =
+  | "sin_conexion"   // ninguna conexión activa con ese user_id de MP
+  | "no_confirmada"  // MP sigue aceptando el token: el aviso no se cree
+  | "renovada"       // el token solo había vencido; la renovación salió bien
+  | "reconectar"     // MP rechazó token y renovación: quedó en 'reconectar'
+  | "sin_token"      // no se pudo descifrar (otra MP_TOKENS_KEY): no se toca
+  | "reintentar";    // MP no respondió u otra renovación en curso
+
+/**
+ * Aviso mp-connect `application.deauthorized`: el artista desvinculó la app
+ * desde su cuenta de MP. El aviso no se cree (puede ser falso o viejo): se
+ * pregunta a MP con el token del artista. Si MP lo rechaza, se intenta renovar
+ * (puede ser solo un token vencido); si también rechaza la renovación,
+ * renovarConexion deja la conexión en 'reconectar' y el trigger apaga
+ * cobros_activos.
+ */
+export async function procesarDesvinculacion(servicio: Servicio, mpUserId: number): Promise<ResultadoDesvinculacion> {
+  const { data: conexion, error } = await servicio
+    .from("mp_conexiones")
+    .select("*")
+    .eq("mp_user_id", mpUserId)
+    .eq("estado", "conectado")
+    .maybeSingle();
+  if (error) throw error;
+  if (!conexion) return "sin_conexion";
+
+  let accessToken: string;
+  try {
+    accessToken = descifrar(conexion.access_token_cifrado);
+  } catch {
+    console.error("[mp] desvinculación: el token no se pudo descifrar (¿otra MP_TOKENS_KEY?):", conexion.artista_id);
+    return "sin_token";
+  }
+
+  try {
+    await obtenerUsuario(accessToken);
+    console.error("[mp] desvinculación no confirmada: MP sigue aceptando el token de", conexion.artista_id);
+    return "no_confirmada";
+  } catch (err) {
+    if (!(err instanceof ErrorMP) || err.reintentable) return "reintentar";
+    if (err.status !== 401 && err.status !== 403) {
+      console.error("[mp] desvinculación: respuesta inesperada de MP, no se toca la conexión:", conexion.artista_id, err.status);
+      return "no_confirmada";
+    }
+  }
+
+  const r = await renovarConexion(servicio, conexion);
+  if (r === "renovado") return "renovada";
+  if (r === "reconectar") {
+    await servicio
+      .from("mp_conexiones")
+      .update({ ultimo_error: "Desvinculada desde Mercado Pago" })
+      .eq("artista_id", conexion.artista_id)
+      .eq("estado", "reconectar");
+    return "reconectar";
+  }
+  return "reintentar";
+}
+
 /**
  * Token del artista listo para usar (renovado si está por vencer). Lo usará
  * crear-preferencia en el modelo marketplace.

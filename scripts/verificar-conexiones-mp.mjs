@@ -14,7 +14,8 @@
  * API:       /api/mp/conexion, /api/mp/desconectar, el inicio del OAuth
  *            (redirect a auth.mercadopago.cl con PKCE y cookie httpOnly) y el
  *            callback con state falso, sin cookie, con la sesión de otro
- *            usuario y con un código falso; cron sin secreto.
+ *            usuario y con un código falso; cron sin secreto; avisos mp-connect
+ *            (desvinculación) en el webhook.
  *
  * La conexión real (autorizar en MP con una cuenta de prueba) no se puede
  * automatizar: requiere iniciar sesión en Mercado Pago. Ver PROGRESS.md.
@@ -313,6 +314,42 @@ async function api(A, B) {
   {
     const r = await pedir("/api/cron/mp-renovar");
     check("(a13) Cron sin CRON_SECRET → 401", r.status === 401, `status=${r.status}`);
+  }
+
+  // Desvinculación (mp-connect). A queda con una conexión de tokens falsos: MP
+  // los rechaza, igual que los de una app desvinculada.
+  const avisar = (body) =>
+    fetch(`${API}/api/mercadopago/webhook`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const estadoA = async () =>
+    (await admin.from("mp_conexiones").select("estado, ultimo_error").eq("artista_id", A.artistaId).maybeSingle()).data;
+  const idConexionA = mpId();
+  await admin.from("mp_conexiones").insert(filaConexion(A.artistaId, idConexionA));
+  {
+    const r = await avisar({ type: "mp-connect", action: "application.deauthorized", user_id: mpId() });
+    check("(a14) Desvinculación de un user_id sin conexión → 200, no toca la de A",
+      r.status === 200 && (await estadoA())?.estado === "conectado", `status=${r.status}`);
+  }
+  {
+    const r = await avisar({ type: "mp-connect", action: "application.authorized", user_id: idConexionA });
+    check("(a15) Vinculación (authorized) → 200, sigue 'conectado'", r.status === 200 && (await estadoA())?.estado === "conectado", `status=${r.status}`);
+  }
+  {
+    const r1 = await avisar({ type: "mp-connect", action: "application.deauthorized" });
+    const r2 = await avisar({ type: "mp-connect", action: "application.deauthorized", user_id: "1 or 1=1" });
+    check("(a16) Desvinculación sin user_id o con uno no numérico → 200, sigue 'conectado'",
+      r1.status === 200 && r2.status === 200 && (await estadoA())?.estado === "conectado", `sin=${r1.status} raro=${r2.status}`);
+  }
+  {
+    const r = await avisar({ type: "mp-connect", action: "application.deauthorized", user_id: idConexionA });
+    const e = await estadoA();
+    const activos = await cobrosActivos(A.artistaId);
+    // Con MP_CLIENT_SECRET en el servidor, MP rechaza token y renovación →
+    // 'reconectar'. Sin él, la renovación no se puede intentar → 500 (que MP
+    // reintente) y la conexión no se toca.
+    const conSecreto = r.status === 200 && e?.estado === "reconectar" && e.ultimo_error === "Desvinculada desde Mercado Pago" && activos === false;
+    const sinSecreto = r.status === 500 && e?.estado === "conectado";
+    check("(a17) Desvinculación real (MP rechaza el token) → 'reconectar' y cobros_activos apagado", conSecreto || sinSecreto,
+      `status=${r.status} estado=${e?.estado} ultimo_error=${e?.ultimo_error} cobros_activos=${activos}${sinSecreto ? " (servidor sin MP_CLIENT_SECRET)" : ""}`);
   }
 }
 
