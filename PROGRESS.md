@@ -1999,6 +1999,11 @@ no sirve".
 **Cerrado**: correos de Auth en español, invitación y `/recuperar` de punta
 a punta.
 
+- Ajuste de la invitación (2026-10-25, aplicado y verificado): asunto "Te
+  invitamos a sumarte a MuzikChile", título "Tu música tiene lugar acá" y
+  cuerpo de plataforma (ficha, tienda, noticias), en línea con `/registro`.
+  Enlace token_hash sin cambios.
+
 ---
 
 ## 🚧 En progreso / bugs conocidos
