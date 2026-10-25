@@ -2021,15 +2021,19 @@ que confirmar. Crons, OAuth (`redirect_uri`) y `notification_url` ya usan www.
   `SITE_URL` en `invitar-artista` → www (deploy de la función opcional: el
   secret ya es www y el correo usa token_hash); CLAUDE.md y `lib/site.ts`.
 
+- Supabase Redirect URLs: solo `https://www.muzikchile.cl/**` (aplicado con el
+  script).
+- Channel: `tienda.` fuera de `ALLOWED_PARENT_ORIGINS` (`8c45b8e`), desplegado
+  (el bundle de tv. ya no la menciona).
+- Tras el deploy: curl de tienda. → 308 con ruta y query, `/api` incluido; www y
+  su webhook 200.
+
 ### Pendiente
-- `scripts/aplicar-plantillas-auth.mjs` ahora deja `uri_allow_list` solo con
-  `https://www.muzikchile.cl/**`: correr el dry-run y aplicar con token.
-- Channel (`muzik-channel`): `https://tienda.muzikchile.cl` ya salió de
-  `ALLOWED_PARENT_ORIGINS` (commit `8c45b8e`); falta push y deploy.
 - Webhook de MP: manejar `mp-connect` (desvinculación → `reconectar`,
   confirmado contra MP) y validar `x-signature` (primero solo log).
-- Decidir qué hacer con `muzikchile-tienda.vercel.app`, que sigue sirviendo
-  producción.
+- `muzikchile-tienda.vercel.app` → 308 a www en `next.config.ts` (`d08ee93`;
+  host exacto, sin `/api`; los previews no se tocan). Verificar con curl tras
+  el deploy.
 
 ---
 
