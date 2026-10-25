@@ -937,8 +937,8 @@ lanzamiento completados el 11-oct-2026; el sitio es indexable.
   (`uri_allow_list`; hoy quedan junto a `https://www.muzikchile.cl/**`),
   el redirect por `host` de `next.config.ts` y `tienda.muzikchile.cl`
   de `ALLOWED_PARENT_ORIGINS` en el reproductor del Channel.
-- Probar `/recuperar` de punta a punta con un correo real (el camino `?code=`
-  solo se probó por código; hash y token_hash sí, en local).
+- ~~Probar `/recuperar` de punta a punta con un correo real~~ — hecho
+  2026-10-25 (ahora con token_hash; ver "Correos de Supabase Auth en español").
 - Confirmar: ~~Site URL de Supabase Auth en www~~ (hecho 2026-10-25), ~~secret `SITE_URL` de
   `invitar-artista`~~ (hecho 2026-10-25), Redirect URLs del Supabase del Channel con tv., y el
   webhook del panel de MercadoPago (si hay uno) en www.
@@ -1985,9 +1985,19 @@ no ejecutan el JS de `/registro`. Verificado antes de aplicar:
 token otra vez → `otp_expired`. En local: enlace → formulario de recuperación,
 recargar → sigue válido, token usado → "Este enlace ya no sirve".
 
-### Pendiente
-- Aplicar `invite` y `recovery` con el script (token nuevo) y repetir la
-  prueba B abriendo el enlace desde la app de Gmail del celular.
+### Prueba B — recuperación con token_hash (2026-10-25) ✅
+Plantillas `invite` y `recovery` aplicadas con el script. Enlace pedido en
+`/recuperar` y abierto **fuera del navegador donde se pidió** → formulario de
+recuperación → contraseña creada → `/panel/perfil` (~21:29 UTC; la base
+registra el login a las 21:29:49). El mismo enlace otra vez → "Este enlace ya
+no sirve".
+- La recarga tras verificar no se probó en producción, solo en local (ver
+  arriba). El login con la contraseña nueva tampoco se confirmó en esta prueba.
+- `recovery_sent_at` no se pudo leer: la API de admin no lo devuelve y no hay
+  SQL directo. El envío se ve en Dashboard → Authentication → Logs.
+
+**Cerrado**: correos de Auth en español, invitación y `/recuperar` de punta
+a punta.
 
 ---
 
