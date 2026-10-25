@@ -102,17 +102,31 @@ function RegistroContent() {
         return;
       }
 
-      // Caso 3: token_hash en query string. Si el enlace trae `type`, se usa
-      // ese; si no, se prueban todos.
+      // Caso 3: token_hash en query string (es lo que mandan las plantillas de
+      // invitación y recuperación). Si el enlace trae `type`, se usa ese; si
+      // no, se prueban todos.
+      const tipoUrl = TIPOS_TOKEN.find((t) => t === searchParams.get("type"));
       const token_hash = searchParams.get("token_hash") ?? searchParams.get("token");
       if (token_hash) {
-        const tipoUrl = TIPOS_TOKEN.find((t) => t === searchParams.get("type"));
         for (const type of tipoUrl ? [tipoUrl] : TIPOS_TOKEN) {
           const { error } = await supabase.auth.verifyOtp({ token_hash, type });
-          if (!error) { setEstado("valido"); return; }
+          if (!error) {
+            // El token ya se usó: se saca de la URL para que recargar no lo
+            // intente de nuevo. `type` se queda para el caso 4.
+            router.replace(`/registro?type=${type}`);
+            setEstado("valido");
+            return;
+          }
         }
         setEstado("invalido");
         return;
+      }
+
+      // Caso 4: recarga después del caso 3. Queda solo `?type=` y la sesión
+      // que dejó el verifyOtp.
+      if (tipoUrl) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) { setEstado("valido"); return; }
       }
 
       setEstado("invalido");
@@ -162,8 +176,8 @@ function RegistroContent() {
         <div className="flex flex-col gap-3">
           <Titulo>Este enlace ya no sirve</Titulo>
           <Bajada>
-            Los enlaces vencen y se pueden usar una sola vez. También dejan de funcionar si se abren en
-            un navegador distinto al que los pidió. Pide uno nuevo y te lo mandamos al tiro.
+            Los enlaces vencen a las 24 horas y se pueden usar una sola vez. Pide uno nuevo y te lo
+            mandamos al tiro.
           </Bajada>
         </div>
         <div className="flex flex-col items-stretch gap-3.5">
