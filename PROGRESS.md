@@ -1845,11 +1845,28 @@ www respondiera 500; ahora es 422 "no puede recibir pagos en este momento".
   y la ruta: 401 / 403 / 400 / 404 / 422). Build OK.
 - `gen types --linked` vuelve a funcionar: tipos generados = los editados.
 
+### Prueba de reembolso en el preview — 2026-10-24
+- **API de refunds con el token del vendedor** (`/api/admin/mp/reembolsar` en el
+  preview): MP respondió **401, código 7 "Unauthorized use of live
+  credentials"** (la ruta devolvió 502). No es el 404 de ALIADAS: el pago existe
+  para el token del vendedor, pero MP no permite refunds por API con usuarios
+  de prueba conectados por OAuth. **La API de refunds queda por validar con la
+  primera compra real.**
+- Plan (b), devolución desde el panel de MP del vendedor: **MP la rechaza**,
+  incluso después de cargarle saldo disponible al vendedor de prueba. El pago
+  sigue aprobado (el aviso reenviado a mano al webhook → 200 sin efectos).
+- **Prueba cerrada en sandbox.** La lógica de reversión queda validada por
+  `(rb-1..rb-6)`. Se valida con la **primera compra real**: la API de refunds,
+  que llegue el aviso `refunded` y revierta la orden, y qué pasa con el
+  `marketplace_fee` (¿se le descuenta al integrador?).
+- A mirar en esa primera devolución real: si MP informa el pago como
+  `cancelled` en vez de `refunded` (p. ej. con el dinero aún "a liberar"), hoy
+  el webhook solo cancela órdenes `pendiente` y una orden `pagado` no se
+  revertiría.
+
 ### Pendiente
-- **Probar el reembolso real** de la compra 184926629417 en el preview (en
-  ALIADAS la API de refunds dio 404; hipótesis: se pidió con el token del
-  integrador, no con el del vendedor) y la **renovación del token**, antes de
-  borrar `mp-pruebas`.
+- Probar la **renovación del token** antes de borrar `mp-pruebas` (necesita la
+  conexión de Valentina hecha desde el preview).
 - Al terminar: quitar a Valentina del piloto (`[]`), desconectarla desde
   `/panel/cobros` del preview, limpieza de órdenes (script que muestra antes de
   borrar), reactivar Deployment Protection, borrar `mp-pruebas` y sus variables
