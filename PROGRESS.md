@@ -1967,8 +1967,27 @@ y login con la contraseña nueva. El enlace del primer correo (tienda.) da
 creada por `PanelShell`, `invited_at` y `email_confirmed_at` puestos. La cuenta
 quedó con `es_prueba = true` (artista `4a9dce45…`, user `4459f16f…`).
 
+### Prueba B, primer intento: falla por PKCE (2026-10-25)
+El botón del correo, abierto desde Gmail, se abrió en otra ventana → "Este
+enlace ya no sirve": el `code_verifier` de PKCE vive en el navegador que pidió
+el enlace. Es lo que pasaría siempre en el celular (la app de Gmail abre su
+navegador interno).
+
+**Cambio: invitación y recuperación con `token_hash`.** Las dos plantillas
+enlazan a `{{ .SiteURL }}/registro?token_hash={{ .TokenHash }}&type=<tipo>` y
+`/registro` canjea con `verifyOtp` (caso 3, ya existía): no necesita verifier,
+sirve en cualquier navegador. El `redirectTo` de `/recuperar` y de
+`invitar-artista` ya no decide el enlace. Se verifica **en el cliente y no en
+un GET del servidor** (`/auth/confirm`) a propósito: los escáneres de enlaces
+(Outlook Safe Links, filtros corporativos) hacen GET y consumirían el token;
+no ejecutan el JS de `/registro`. Verificado antes de aplicar:
+`admin.generateLink` + `verifyOtp` desde un cliente sin sesión → OK, y el mismo
+token otra vez → `otp_expired`. En local: enlace → formulario de recuperación,
+recargar → sigue válido, token usado → "Este enlace ya no sirve".
+
 ### Pendiente
-- Prueba B (`/recuperar`) end-to-end con la cuenta de la prueba A.
+- Aplicar `invite` y `recovery` con el script (token nuevo) y repetir la
+  prueba B abriendo el enlace desde la app de Gmail del celular.
 
 ---
 
