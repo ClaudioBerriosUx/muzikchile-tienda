@@ -70,11 +70,14 @@ const clavesAsunto = (t) => `mailer_subjects_${t}`;
 const clavesPlantilla = (t) => `mailer_templates_${t}_content`;
 
 // ── Lo que queremos ─────────────────────────────────────────────────────────
-const asuntos = JSON.parse(readFileSync(join(DIR, "asuntos.json"), "utf8"));
+// Siempre LF: en Windows git puede dejar las plantillas en CRLF, y eso las haría
+// distintas de lo aplicado sin que haya un cambio real.
+const leer = (archivo) => readFileSync(join(DIR, archivo), "utf8").replace(/\r\n/g, "\n");
+const asuntos = JSON.parse(leer("asuntos.json"));
 const deseado = {};
 for (const t of TIPOS) {
   deseado[clavesAsunto(t)] = asuntos[t];
-  deseado[clavesPlantilla(t)] = readFileSync(join(DIR, `${t}.html`), "utf8");
+  deseado[clavesPlantilla(t)] = leer(`${t}.html`);
 }
 
 // ── Lo que hay ──────────────────────────────────────────────────────────────

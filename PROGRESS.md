@@ -1952,7 +1952,9 @@ www respondiera 500; ahora es 422 "no puede recibir pagos en este momento".
   30 correos/hora.
 
 ### Pendiente
-- Cerrar el registro público (`disable_signup`): ningún flujo lo usa.
+- ~~Cerrar el registro público~~ — hecho 2026-10-25 (Dashboard). Ningún flujo
+  lo usaba (compradores sin cuenta; altas solo por invitación o service role).
+  Verificado: `signUp` con la clave pública → 422 `signup_disabled`.
 - Prueba A (invitación) y B (`/recuperar`) end-to-end con correo real.
 - Confirmar el secret `SITE_URL` de `invitar-artista` (si falta, el código cae
   a tienda.; funciona por el redirect, pero hay que dejarlo en www antes del
