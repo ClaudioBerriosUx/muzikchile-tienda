@@ -20,6 +20,15 @@ const nextConfig: NextConfig = {
    */
   async redirects() {
     return [
+      // El alias de producción de Vercel sirve el sitio completo: → www. Host
+      // exacto, para no tocar los previews (*.vercel.app), y sin /api, por si
+      // el cron o MP llegan por este host (un 308 en un POST no se sigue).
+      {
+        source: "/:path((?!api/).*)",
+        has: [{ type: "host", value: "muzikchile-tienda.vercel.app" }],
+        destination: "https://www.muzikchile.cl/:path",
+        permanent: true,
+      },
       // La portada vieja de la tienda filtraba con /?categoria=; hoy / es la
       // portada y el catálogo vive en /tienda.
       {
