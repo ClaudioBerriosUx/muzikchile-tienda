@@ -42,6 +42,11 @@ if (!URL || !ANON_KEY || !SERVICE_KEY || !process.env.MP_TOKENS_KEY) {
 }
 
 const API = process.argv.find((a) => a.startsWith("--api="))?.slice("--api=".length).replace(/\/$/, "");
+// Contra localhost el servidor usa este mismo .env.local (misma MP_TOKENS_KEY y
+// MP_CLIENT_ID); contra un deploy, las variables de Vercel.
+const API_LOCAL = !!API && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(API);
+/** App de MP del marketplace en producción. */
+const CLIENT_ID_PRODUCCION = "5838765500898605";
 
 const FAMILIA = "rlstest-";
 const PREFIJO = `${FAMILIA}${Date.now()}`;
@@ -269,7 +274,8 @@ async function api(A, B) {
   {
     const ok = rA.status >= 300 && rA.status < 400
       && loc.origin === "https://auth.mercadopago.cl" && loc.pathname === "/authorization"
-      && loc.searchParams.get("client_id") === "5838765500898605"
+      // En local puede ser la app de prueba de MP (la que diga .env.local).
+      && loc.searchParams.get("client_id") === (API_LOCAL ? process.env.MP_CLIENT_ID : CLIENT_ID_PRODUCCION)
       && loc.searchParams.get("response_type") === "code"
       && loc.searchParams.get("code_challenge_method") === "S256"
       && (loc.searchParams.get("code_challenge") ?? "").length === 43
@@ -339,7 +345,13 @@ async function api(A, B) {
     check("(a16) Desvinculación sin user_id o con uno no numérico → 200, sigue 'conectado'",
       r1.status === 200 && r2.status === 200 && (await estadoA())?.estado === "conectado", `sin=${r1.status} raro=${r2.status}`);
   }
-  {
+  if (!API_LOCAL) {
+    // Los tokens falsos van cifrados con la MP_TOKENS_KEY de .env.local: un
+    // deploy con otra llave no los descifra y, con razón, no toca la conexión
+    // ('sin_token'). El webhook no dice el resultado (revelaría qué user_id
+    // tiene conexión), así que desde acá no se puede distinguir.
+    console.log("  – (a17) no aplica contra un deploy: los tokens de prueba van cifrados con la llave local. Correr contra localhost.");
+  } else {
     const r = await avisar({ type: "mp-connect", action: "application.deauthorized", user_id: idConexionA });
     const e = await estadoA();
     const activos = await cobrosActivos(A.artistaId);

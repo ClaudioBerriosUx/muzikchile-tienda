@@ -2045,16 +2045,23 @@ que confirmar. Crons, OAuth (`redirect_uri`) y `notification_url` ya usan www.
   falso con un token vigente no toca nada. El body del aviso va entero al log.
 - `npm run verificar:mp -- --api=…`: casos (a14)–(a17). En local 35/35; el
   (a17) cae en la rama "sin `MP_CLIENT_SECRET`" (500, sin tocar la conexión),
-  porque `.env.local` no lo tiene.
+  porque `.env.local` no lo tiene. Contra producción **34/34**: el (a17) no
+  aplica (los tokens de prueba van cifrados con la `MP_TOKENS_KEY` local y el
+  deploy no los descifra → `sin_token`, no toca nada), así que el script lo
+  salta fuera de localhost. (a6) en local compara con el `MP_CLIENT_ID` de
+  `.env.local` (puede ser la app de prueba); contra un deploy, con el de
+  producción.
 
 ### Pendiente
-- Tras el deploy: `npm run verificar:mp -- --api=https://www.muzikchile.cl`
-  para ver el (a17) completo (→ `reconectar`), y "Simular notificación" de
-  Vinculación de aplicaciones en el panel de MP: confirmar en los logs de
-  Vercel qué campos trae el aviso (`user_id`).
-- **Con el primer artista real conectado**: probar la desvinculación de verdad
-  (desvincular la app desde su cuenta MP → `reconectar` → reconectar desde
-  `/panel/cobros`).
+- **Con el primer artista real conectado** (el camino completo hasta
+  `reconectar` no se probó de punta a punta):
+  - "Simular notificación" de Vinculación de aplicaciones en el panel de MP y
+    confirmar en los logs de Vercel qué campos trae el aviso (`user_id`;
+    la línea `[webhook] mp-connect:` trae el body entero).
+  - Desvinculación real: desvincular la app desde su cuenta MP → `reconectar`
+    con "Desvinculada desde Mercado Pago" → reconectar desde `/panel/cobros`.
+  - Opcional antes: (a17) contra localhost con `MP_CLIENT_ID`/`MP_CLIENT_SECRET`
+    de la app de prueba (4083103325958872) en `.env.local`.
 - Validar `x-signature` del webhook (primero solo log, después exigirla).
 
 ---
