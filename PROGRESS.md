@@ -1885,10 +1885,28 @@ www respondiera 500; ahora es 422 "no puede recibir pagos en este momento".
   resultado correcto es `reintentar` sin marcar `reconectar` (`rn-5` verifica
   esa rama; con secreto verifica la de MP rechazando el refresh).
 
+- ✅ **Renovación real en el preview, dos veces seguidas** (2026-10-25 00:33
+  UTC): las dos `renovado`, con `access_token_cambio` y `refresh_token_cambio`
+  en true y sin `ultimo_error`. La 1ª llevó `expires_at` de 2027-04-22 23:06 a
+  2027-04-23 00:33:17; la 2ª, **con el refresh_token rotado que guardó la 1ª**,
+  a 00:33:19. Confirmado en la base (`refrescado_at` 00:33:19, lock libre). Con
+  usuarios de prueba OAuth, MP sí deja renovar (a diferencia del reembolso por
+  API).
+
+### Cierre de las pruebas — 2026-10-25
+- Valentina desconectada (fila de `mp_conexiones` borrada; `cobros_activos`
+  true → false por el trigger). Sigue `es_prueba`, fuera del piloto
+  (`marketplace_piloto = []`), sin órdenes. `cobro_modelo` = `centralizado`.
+- Rama `mp-pruebas` borrada (local y origin).
+
 ### Pendiente
-- **Probar la renovación real** en el preview (dos veces seguidas: la segunda
-  prueba que se guardó el refresh_token rotado). Después: desconectar a
-  Valentina, borrar `mp-pruebas` y sus variables de Preview.
+- **Vercel**: borrar las variables de Preview de la rama `mp-pruebas`
+  (`MP_CLIENT_ID`, `MP_CLIENT_SECRET`, `MP_TOKENS_KEY`, `NEXT_PUBLIC_URL`) y
+  confirmar la Deployment Protection activa.
+- Con la **primera compra real**: validar la API de refunds, el aviso
+  `refunded` y el efecto sobre el `marketplace_fee` (ver arriba).
+- Activación general: ver los pendientes del commit 3b (botón "+" de las
+  tarjetas, admin con estado de conexión y switches, correos de reconectar).
 - Al terminar: quitar a Valentina del piloto (`[]`), desconectarla desde
   `/panel/cobros` del preview, limpieza de órdenes (script que muestra antes de
   borrar), reactivar Deployment Protection, borrar `mp-pruebas` y sus variables
