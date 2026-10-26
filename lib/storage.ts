@@ -77,3 +77,48 @@ export async function borrarImagenDePublicacion(
     return false;
   }
 }
+
+/**
+ * Comprobantes de liquidación: bucket `comprobantes`, PRIVADO (muestra datos
+ * bancarios). Ver la migración `20261025230000_bucket_comprobantes_privado`.
+ * `liquidaciones.comprobante_url` guarda la ruta dentro del bucket, nunca una
+ * URL pública.
+ */
+const BUCKET_COMPROBANTES = "comprobantes";
+const SEGUNDOS_URL_FIRMADA = 60;
+
+/** Ruta del comprobante: `{artistas.id}/<timestamp>-<nombre-limpio>`. */
+export function rutaComprobante(artistaId: string, archivo: File): string {
+  const limpio = archivo.name
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^A-Za-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(-80) || "comprobante";
+  return `${artistaId}/${Date.now()}-${limpio}`;
+}
+
+export async function subirComprobante(supabase: SupabaseClient, ruta: string, archivo: File) {
+  return supabase.storage
+    .from(BUCKET_COMPROBANTES)
+    .upload(ruta, archivo, { cacheControl: "60", upsert: false });
+}
+
+/**
+ * Abre el comprobante en una pestaña nueva con una URL firmada de 60 s. La
+ * pestaña se abre antes del await: abrirla después del await la bloquean los
+ * navegadores como popup. Lanza si las políticas no dejan leerlo.
+ */
+export async function abrirComprobante(supabase: SupabaseClient, ruta: string) {
+  const pestana = window.open("", "_blank");
+  if (pestana) pestana.opener = null;
+  const { data, error } = await supabase.storage
+    .from(BUCKET_COMPROBANTES)
+    .createSignedUrl(ruta, SEGUNDOS_URL_FIRMADA);
+  if (error || !data?.signedUrl) {
+    pestana?.close();
+    throw error ?? new Error("No se pudo firmar la URL del comprobante");
+  }
+  if (pestana) pestana.location.href = data.signedUrl;
+  else window.location.href = data.signedUrl;
+}

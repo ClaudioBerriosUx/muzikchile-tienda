@@ -1,6 +1,6 @@
 /**
  * Verificación end-to-end de las políticas de `storage.objects` en los buckets
- * `artistas`, `productos` y `noticias`.
+ * `artistas`, `productos`, `noticias` y `comprobantes`.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * CÓMO CORRERLO
@@ -40,6 +40,7 @@
  *   productos/{artistas.id}/…          imágenes de productos
  *   productos/{artistas.id}/publicaciones/…
  *   noticias/…                         notas editoriales (solo admin, raíz plana)
+ *   comprobantes/{artistas.id}/…       comprobantes de liquidación (PRIVADO)
  *
  * El bucket `noticias` además limita tamaño (5 MB) y tipo (JPG, PNG, WEBP) en
  * el propio bucket: esos casos se prueban con el admin, para que el rechazo
@@ -216,6 +217,7 @@ async function limpiar() {
   } catch { /* sin editorial no hay nada que barrer ahí */ }
   // `noticias` es plano: los archivos de prueba viven en la raíz.
   carpetas.add(`${BUCKET_NOTICIAS}|`);
+  for (const a of artistasTest ?? []) carpetas.add(`comprobantes|${a.id}`);
 
   for (const c of carpetas) {
     const [bucket, carpeta] = c.split("|");
@@ -239,7 +241,7 @@ async function limpiar() {
 // ── Casos ────────────────────────────────────────────────────────────────────
 
 async function main() {
-  console.log("Verificación de RLS · storage (buckets artistas, productos y noticias)");
+  console.log("Verificación de RLS · storage (buckets artistas, productos, noticias y comprobantes)");
   console.log(`Proyecto: ${URL}`);
   console.log(`Prefijo de datos de prueba: ${PREFIJO}\n`);
 
@@ -271,6 +273,8 @@ async function main() {
       notGrande:  `${PREFIJO}-grande.jpg`,
       notSvg:     `${PREFIJO}-tipo.svg`,
       notHtml:    `${PREFIJO}-tipo.html`,
+      compA:      `${A.artistaId}/${FAMILIA}comprobante.pdf`,
+      compArt:    `${A.artistaId}/${FAMILIA}comprobante-artista.pdf`,
     };
 
     // Cliente sin sesión: lo que puede hacer cualquiera con la anon key pública.
@@ -489,6 +493,57 @@ async function main() {
           ? `rechazo: ${msg(svg.error)} / ${msg(html.error)}`
           : `Se creó: ${[cSvg !== null && "SVG", cHtml !== null && "HTML"].filter(Boolean).join(", ")}`
       );
+    }
+
+    // ── Bucket `comprobantes` (migración 20261025230000): PRIVADO ─────────────
+    const pdf = (t) => new Blob([t], { type: "application/pdf" });
+
+    // (q) El bucket existe y es privado.
+    {
+      const { data, error } = await admin.storage.getBucket("comprobantes");
+      check("(q) Bucket comprobantes existe y es privado", data?.public === false, data ? `public=${data.public}` : msg(error));
+    }
+
+    // (r) El admin sube un comprobante a la carpeta de A.
+    {
+      const { error } = await ADM.cliente.storage
+        .from("comprobantes")
+        .upload(R.compA, pdf("comprobante-A"), { contentType: "application/pdf" });
+      const c = await leer("comprobantes", R.compA);
+      check("(r) Admin sube un comprobante → permitido", c === "comprobante-A", c === "comprobante-A" ? null : `No quedó (${msg(error)})`);
+    }
+
+    // (s) Sin URL pública: la de getPublicUrl no sirve en un bucket privado.
+    {
+      const { data: { publicUrl } } = anon.storage.from("comprobantes").getPublicUrl(R.compA);
+      const res = await fetch(publicUrl);
+      check("(s) URL pública del comprobante → no entrega el archivo", !res.ok, `HTTP ${res.status}`);
+    }
+
+    // (t) A firma y lee su propio comprobante (lo que hace /panel/liquidaciones).
+    {
+      const { data, error } = await A.cliente.storage.from("comprobantes").createSignedUrl(R.compA, 60);
+      const texto = data?.signedUrl ? await (await fetch(data.signedUrl)).text() : null;
+      check("(t) A abre su comprobante con URL firmada → permitido", texto === "comprobante-A", texto === null ? msg(error) : `"${texto}"`);
+    }
+
+    // (u) B y el anónimo NO pueden firmar ni descargar el comprobante de A.
+    {
+      const fb = await B.cliente.storage.from("comprobantes").createSignedUrl(R.compA, 60);
+      const db = await B.cliente.storage.from("comprobantes").download(R.compA);
+      const fa = await anon.storage.from("comprobantes").createSignedUrl(R.compA, 60);
+      const ok = !fb.data?.signedUrl && !db.data && !fa.data?.signedUrl;
+      check("(u) B o anónimo firman/descargan el comprobante de A → rechazado", ok,
+        ok ? null : `B firma=${!!fb.data?.signedUrl} B descarga=${!!db.data} anon firma=${!!fa.data?.signedUrl}`);
+    }
+
+    // (v) Un artista NO puede subir comprobantes, ni en su propia carpeta.
+    {
+      const { error } = await A.cliente.storage
+        .from("comprobantes")
+        .upload(R.compArt, pdf("falso"), { contentType: "application/pdf" });
+      const c = await leer("comprobantes", R.compArt);
+      check("(v) Artista sube un comprobante → rechazado", c === null, c === null ? null : `Se creó (${msg(error)})`);
     }
   } catch (err) {
     console.error("\nError montando o ejecutando la verificación:");

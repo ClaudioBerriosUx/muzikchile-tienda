@@ -263,7 +263,10 @@ Tailwind v4 (breaking changes desde v3 — leer `node_modules/next/dist/docs/` a
 - Color marca: `#e8003d` | Fondo: `#f8f7f5`
 - Inline styles y Tailwind coexisten intencionalmente
 - **Paleta del rediseño**: tokens `--tema-*` en `app/globals.css` (Tailwind: `bg-tema-fondo`, `text-tema-azul-texto`…). Hoy los usan `/login`, `/recuperar` y `/registro` (piezas en `components/acceso/`), la tienda, el header público, y desde 2026-10-21 la portada, `/noticias`, `/contacto` y `/privacidad` (fondos, tarjetas, bordes y grises; los rojos de marca de `C` siguen). En estilos inline se usan vía `TEMA` de `lib/portada.ts` (`TEMA.fondo`, `TEMA.texto3`…), no con `C.negro`/`C.gris*`. Texto chico rojo/azul sobre oscuro va en las variantes `-texto` (AA), nunca en `tema-rojo`/`tema-azul`.
-- Imágenes en Supabase Storage; host whitelisted en `next.config.ts`
+- Imágenes en Supabase Storage; host whitelisted en `next.config.ts`. Los
+  buckets `artistas`, `productos` y `noticias` son públicos; **`comprobantes`
+  es privado** (datos bancarios): se guarda la ruta y se abre con URL firmada
+  (`abrirComprobante` en `lib/storage.ts`), nunca con `getPublicUrl`
 - `export const dynamic = 'force-dynamic'` necesario en páginas con `useSearchParams` o para evitar SSG en Vercel
 
 ### SEO

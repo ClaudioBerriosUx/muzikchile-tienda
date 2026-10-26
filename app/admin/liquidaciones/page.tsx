@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { createClient } from "@/lib/supabase/client";
 import { formatCLP } from "@/lib/constants";
+import { abrirComprobante, rutaComprobante, subirComprobante } from "@/lib/storage";
 
 interface OrdenLiq {
   id: string;
@@ -138,16 +139,14 @@ export default function LiquidacionesPage() {
     if (!artistaPagar) return;
     setPagando(true);
     try {
+      // Bucket privado: se guarda la ruta, no una URL (ver lib/storage.ts).
       let comprobanteUrl: string | null = null;
 
       if (archivo) {
-        const path = `${artistaPagar.id}/${Date.now()}-${archivo.name}`;
-        const { error: uploadErr } = await supabase.storage
-          .from("comprobantes")
-          .upload(path, archivo, { cacheControl: "3600", upsert: false });
+        const ruta = rutaComprobante(artistaPagar.id, archivo);
+        const { error: uploadErr } = await subirComprobante(supabase, ruta, archivo);
         if (uploadErr) throw uploadErr;
-        const { data: { publicUrl } } = supabase.storage.from("comprobantes").getPublicUrl(path);
-        comprobanteUrl = publicUrl;
+        comprobanteUrl = ruta;
       }
 
       const ordenIds = (artistaPagar.ordenes ?? [])
@@ -306,9 +305,14 @@ export default function LiquidacionesPage() {
                   </td>
                   <td className="px-4 py-3">
                     {l.comprobante_url ? (
-                      <a href={l.comprobante_url} target="_blank" rel="noopener noreferrer" className="text-xs underline" style={{ color: "#3b82f6" }}>
+                      <button
+                        type="button"
+                        onClick={() => abrirComprobante(supabase, l.comprobante_url!).catch(() => toast.error("No se pudo abrir el comprobante"))}
+                        className="text-xs underline"
+                        style={{ color: "#3b82f6" }}
+                      >
                         Ver archivo
-                      </a>
+                      </button>
                     ) : l.numero_comprobante ? (
                       <span className="text-xs font-mono" style={{ color: "#666666" }}>
                         {l.numero_comprobante}
@@ -363,7 +367,7 @@ export default function LiquidacionesPage() {
                 <span style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#666666" }}>
                   {archivo ? archivo.name : "Seleccionar archivo"}
                 </span>
-                <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => setArchivo(e.target.files?.[0] ?? null)} />
+                <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => setArchivo(e.target.files?.[0] ?? null)} />
               </label>
             </div>
             <div>

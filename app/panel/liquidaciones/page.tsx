@@ -5,6 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { DollarSign, Clock, CheckCircle, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { formatCLP } from "@/lib/constants";
+import { abrirComprobante } from "@/lib/storage";
+import { toast } from "sonner";
 import StatusBadge from "@/components/ui/StatusBadge";
 
 interface Orden {
@@ -191,10 +193,12 @@ export default function LiquidacionesPage() {
                     </td>
                     <td className="px-4 py-3">
                       {l.comprobante_url ? (
-                        <a href={l.comprobante_url} target="_blank" rel="noopener noreferrer"
+                        // Bucket privado: URL firmada al hacer clic (lib/storage.ts).
+                        <button type="button"
+                          onClick={() => abrirComprobante(supabase, l.comprobante_url!).catch(() => toast.error("No se pudo abrir el comprobante"))}
                           className="text-xs underline" style={{ color: "#3b82f6" }}>
                           Ver comprobante
-                        </a>
+                        </button>
                       ) : l.numero_comprobante ? (
                         <span className="text-xs font-mono" style={{ color: "#666666" }}>{l.numero_comprobante}</span>
                       ) : "—"}
