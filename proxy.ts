@@ -47,7 +47,8 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
+  // /api/miniatura son imágenes (sin extensión en la URL): no necesitan sesión.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/miniatura/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

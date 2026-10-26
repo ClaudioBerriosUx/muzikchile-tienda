@@ -125,11 +125,15 @@ export function idYoutube(url: string | null | undefined): string | null {
   return m ? m[1] : null;
 }
 
-/** Portada de máxima calidad; si no existe, el <img> cae a hqdefault. */
+/**
+ * Miniatura desde nuestro dominio (app/api/miniatura/[id]): el navegador nunca
+ * le pide nada a YouTube. La ruta intenta maxresdefault y cae a hqdefault.
+ */
 export function thumbYoutube(id: string): string {
-  return `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
+  return `/api/miniatura/${id}`;
 }
 
+/** Respaldo del <img> si la primera falla: hqdefault, que siempre existe. */
 export function thumbYoutubeFallback(id: string): string {
-  return `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+  return `/api/miniatura/${id}?hq=1`;
 }

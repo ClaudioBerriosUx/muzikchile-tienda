@@ -295,6 +295,8 @@ reabre ("Preferencias de cookies").
   aviso con "Cargar" / "Permitir siempre" y no hace ninguna request.
 - Si cambia lo que se pide, sube `VERSION_CONSENTIMIENTO`: el banner vuelve a
   aparecer.
+- Las miniaturas de YouTube se sirven desde `/api/miniatura/[id]`
+  (`thumbYoutube` en `lib/portada.ts`): nunca un `<img>` a `img.youtube.com`.
 
 ### SEO
 
