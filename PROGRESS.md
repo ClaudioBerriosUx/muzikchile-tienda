@@ -2098,7 +2098,7 @@ que confirmar. Crons, OAuth (`redirect_uri`) y `notification_url` ya usan www.
   y fijar la tolerancia del ts según los `desfase_s` reales (¿un reintento
   trae ts nuevo?).
 
-## ⚖️ Privacidad y legal — 2026-10-25 (en curso)
+## ⚖️ Privacidad y legal — 2026-10-25
 
 Auditoría de datos personales (inventario en la conversación del 2026-10-25) y
 camino a publicar `/privacidad` reescrita, `/terminos` y `/terminos-artistas`.
@@ -2116,31 +2116,39 @@ camino a publicar `/privacidad` reescrita, `/terminos` y `/terminos-artistas`.
 - Titular para los textos: **Claudio Berrios, persona natural** (RUT y
   domicilio pendientes; después, una SpA).
 
+**Hecho después (2026-10-25)**
+- Restricción del artista a órdenes pagadas **activa**: la primera
+  "aplicación" no había corrido; se aplicó desde el SQL Editor con su insert en
+  `schema_migrations` (`verificar:cobro --fase2` 94/94). Quitado el duplicado
+  `admin_full_access_ordenes` (`75b70bf`).
+- Retención (B): `78b29e7` + caso de comprobantes `9727248`
+  (`verificar:retencion` 15/15 con el cron; en producción, simulación en 0).
+- Channel: GA apagado cuando /tv va incrustado (`2e46c71`) y fuentes locales
+  con @fontsource en vez de Google Fonts (`aaa0c24`).
+- Miniaturas de YouTube desde `/api/miniatura/[id]` (`ca1ae5f`).
+- **`/privacidad` v1.0** (25-oct-2026): responsable Claudio Berrios (persona
+  natural) + hola@muzikchile.cl; DPA nombrados: Supabase y Resend.
+
 **Pendiente**
-- **⚠️ La restricción del artista a órdenes pagadas no está activa**: con la
-  migración aplicada, `verificar:cobro` (d2) sigue fallando (44/45): un
-  artista nuevo ve sus órdenes pendientes. Falta revisar `pg_policies` de
-  `ordenes` y `schema_migrations` en el SQL Editor (la CLI da 403).
 - **Pasar Vercel a Pro antes de que el primer artista real active su
   tienda**: Hobby no permite uso comercial según sus términos, y el DPA de
-  Vercel (necesario para la política de privacidad) solo cubre Pro/Enterprise.
+  Vercel solo cubre Pro/Enterprise.
+- **Política v1.1**: RUT y domicilio del responsable; Vercel entre los DPA (al
+  pasar a Pro); si Supabase pasa a Pro, logs de 1 a 7 días.
+- Revisión de abogado: "30 días corridos" para responder y la base de licitud
+  (interés legítimo) de la señal de la portada.
 - Firmar el DPA de Supabase (dashboard → documentos legales, PandaDoc; revisar
-  si la contraparte es Supabase Pte. Ltd.). Resend: DPA ya vigente.
-- Retención (B), diseño aprobado: `baja_at` / `datos_eliminados_at`,
-  `aplicar_retencion()`, cron `/api/cron/retencion`, botón de baja en el
-  admin, `verificar:retencion`. Productos de artistas dados de baja: ocultos;
-  usuario de Auth: se borra.
-- GA del Channel apagado cuando tv. va incrustado en la portada (la excepción
-  del reproductor queda solo para YouTube).
-- Miniaturas de YouTube servidas desde nuestro dominio.
-- Publicar `/privacidad` (v1.0) junto con la retención; después `/terminos`,
-  `/terminos-artistas`, aviso de retracto y aceptación en el checkout,
-  aceptación de términos de artistas (fecha y versión) y enlaces del footer.
-- Datos que faltan: RUT y domicilio, región de Resend, plazo legal de
-  respuesta (30 días corridos, a confirmar con abogado), costo y plazos de
-  despacho. Plazos decididos: comprobantes 6 años, correos de contacto 2 años
-  (limpieza manual en el proveedor de correo), GA 2 meses (lo configura
-  Claudio), logs: Vercel 1 h (Hobby) / 1 día (Pro), Supabase Free 1 día.
+  si la contraparte es Supabase Pte. Ltd.).
+- Configurar la retención de GA en 2 meses (lo hace Claudio) y limpiar a mano
+  los correos de contacto de más de 2 años.
+- Regenerar `lib/supabase/types.ts` con la CLI cuando tenga permisos (hoy
+  editado a mano por `baja_at`, `datos_eliminados_at` y las dos RPC).
+- Quitar los 5 duplicados de políticas restantes (artistas ×2, categorias,
+  cupones, productos) y comparar `pg_policies` con el repo (consulta
+  `comparar-politicas.sql`).
+- `/terminos`, `/terminos-artistas`, aviso de retracto y aceptación en el
+  checkout, aceptación de términos de artistas (fecha y versión) y enlaces del
+  footer. Falta: costo y plazos de despacho.
 
 ---
 
