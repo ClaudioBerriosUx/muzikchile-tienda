@@ -106,10 +106,32 @@ function filaConexion(artistaId, mpUserId, estado, actualizada) {
 }
 const mpId = () => 9_000_000_000 + Math.floor(Math.random() * 999_999_999);
 
+/** Liquidación con un comprobante real en el bucket privado `comprobantes`. */
+async function crearLiquidacion(artistaId, sufijo, fecha) {
+  const ruta = `${artistaId}/${PREFIJO}-${sufijo}.pdf`;
+  const { error: upErr } = await admin.storage
+    .from("comprobantes")
+    .upload(ruta, new Blob([`comprobante ${sufijo}`], { type: "application/pdf" }), { contentType: "application/pdf" });
+  if (upErr) throw new Error(`Comprobante ${sufijo}: ${upErr.message}`);
+  const { data, error } = await admin
+    .from("liquidaciones")
+    .insert({ artista_id: artistaId, monto: 900, fecha_transferencia: fecha.slice(0, 10), comprobante_url: ruta, numero_comprobante: `${PREFIJO}-${sufijo}` })
+    .select("id")
+    .single();
+  if (error) throw new Error(`Liquidación ${sufijo}: ${error.message}`);
+  return { id: data.id, ruta };
+}
+
+const existeComprobante = async (ruta) => !(await admin.storage.from("comprobantes").download(ruta)).error;
+
 async function limpiar() {
   console.log("\nLimpiando datos de prueba...");
   const { data: artistas } = await admin.from("artistas").select("id").like("slug", `${FAMILIA}%`);
   for (const a of artistas ?? []) {
+    const { data: archivos } = await admin.storage.from("comprobantes").list(a.id, { limit: 100 });
+    const rutas = (archivos ?? []).filter((f) => f.name.startsWith(FAMILIA)).map((f) => `${a.id}/${f.name}`);
+    if (rutas.length) await admin.storage.from("comprobantes").remove(rutas);
+    await admin.from("liquidaciones").delete().eq("artista_id", a.id);
     await admin.from("ordenes").delete().eq("artista_id", a.id);
     await admin.from("productos").delete().eq("artista_id", a.id);
     await admin.from("mp_conexiones").delete().eq("artista_id", a.id);
@@ -128,7 +150,8 @@ function soloDePrueba(sim, esperado) {
   if (sim.conexiones_borradas !== esperado.conexiones) ajenos.push(`conexiones: ${sim.conexiones_borradas} (de prueba: ${esperado.conexiones})`);
   const otrosArtistas = sim.artistas.filter((a) => !esperado.artistas.includes(a.artista_id));
   if (otrosArtistas.length) ajenos.push(`cuentas: ${otrosArtistas.length} que no son de prueba`);
-  if (sim.comprobantes.length) ajenos.push(`comprobantes: ${sim.comprobantes.length}`);
+  const otrosComprobantes = sim.comprobantes.filter((c) => !esperado.comprobantes.includes(c.liquidacion_id));
+  if (otrosComprobantes.length) ajenos.push(`comprobantes: ${otrosComprobantes.length} que no son de prueba`);
   return ajenos;
 }
 
@@ -151,6 +174,9 @@ async function main() {
 
     await admin.from("artistas").update({ baja_at: haceDias(30) }).eq("id", bajaReciente.artistaId);
     await admin.from("artistas").update({ baja_at: haceDias(400) }).eq("id", bajaVencida.artistaId);
+
+    const liqVieja = await crearLiquidacion(vigente.artistaId, "comprobante-viejo", new Date(Date.now() - 7 * 365 * 86400000).toISOString());
+    const liqNueva = await crearLiquidacion(vigente.artistaId, "comprobante-nuevo", haceDias(10));
 
     console.log("\n── Permisos ──");
     {
@@ -189,12 +215,14 @@ async function main() {
     }
 
     console.log("\n── Simulación ──");
-    const esperado = { ordenes: 1, conexiones: 1, artistas: [bajaVencida.artistaId] };
+    const esperado = { ordenes: 1, conexiones: 1, artistas: [bajaVencida.artistaId], comprobantes: [liqVieja.id] };
     const { data: sim, error: simErr } = await admin.rpc("aplicar_retencion", { p_simular: true });
     if (simErr) throw new Error(`Simulación: ${fmt(simErr)}`);
     {
       const ok = sim.simulado === true && sim.artistas.some((a) => a.artista_id === bajaVencida.artistaId && a.user_id === bajaVencida.userId)
-        && !sim.artistas.some((a) => a.artista_id === bajaReciente.artistaId);
+        && !sim.artistas.some((a) => a.artista_id === bajaReciente.artistaId)
+        && sim.comprobantes.some((c) => c.liquidacion_id === liqVieja.id && c.ruta === liqVieja.ruta)
+        && !sim.comprobantes.some((c) => c.liquidacion_id === liqNueva.id);
       const { data: o } = await admin.from("ordenes").select("comprador_email").eq("id", ordenVieja).single();
       check("(r6) Simular cuenta lo vencido (y no la baja reciente) sin cambiar nada", ok && o?.comprador_email?.startsWith(PREFIJO),
         JSON.stringify({ ordenes: sim.ordenes_anonimizadas, conexiones: sim.conexiones_borradas, cuentas: sim.artistas.length, comprobantes: sim.comprobantes.length }));
@@ -245,6 +273,21 @@ async function main() {
     {
       const rev = await ADM.cliente.rpc("dar_de_baja_artista", { p_artista_id: bajaVencida.artistaId, p_revertir: true });
       check("(r14) Revertir una baja con los datos ya eliminados → rechazado", !!rev.error, fmt(rev.error));
+    }
+    {
+      const { data: lv } = await admin.from("liquidaciones").select("comprobante_url, numero_comprobante, monto").eq("id", liqVieja.id).single();
+      const { data: ln } = await admin.from("liquidaciones").select("comprobante_url").eq("id", liqNueva.id).single();
+      const archivoViejo = await existeComprobante(liqVieja.ruta);
+      const archivoNuevo = await existeComprobante(liqNueva.ruta);
+      const detalle = JSON.stringify({ vieja: { url: lv?.comprobante_url, archivo: archivoViejo }, nueva: { url: ln?.comprobante_url, archivo: archivoNuevo } });
+      if (API && process.env.CRON_SECRET) {
+        check("(r15) Comprobante de hace 7 años: archivo borrado y comprobante_url limpia (la liquidación queda); el de hace 10 días intacto",
+          !archivoViejo && lv?.comprobante_url === null && lv.monto === 900 && archivoNuevo && ln?.comprobante_url === liqNueva.ruta, detalle);
+      } else {
+        // Sin el cron, la función SQL solo lista: no puede ni debe tocar los archivos.
+        check("(r15) Sin el cron, los comprobantes siguen intactos (SQL solo los lista)",
+          archivoViejo && lv?.comprobante_url === liqVieja.ruta && archivoNuevo, detalle);
+      }
     }
   } catch (err) {
     console.error("\nError montando o ejecutando la verificación:");
