@@ -2098,6 +2098,50 @@ que confirmar. Crons, OAuth (`redirect_uri`) y `notification_url` ya usan www.
   y fijar la tolerancia del ts según los `desfase_s` reales (¿un reintento
   trae ts nuevo?).
 
+## ⚖️ Privacidad y legal — 2026-10-25 (en curso)
+
+Auditoría de datos personales (inventario en la conversación del 2026-10-25) y
+camino a publicar `/privacidad` reescrita, `/terminos` y `/terminos-artistas`.
+
+**Hecho**
+- Bugs: `3a1912d` (panel: `nombre_comprador` → `comprador_nombre`), `2e372e3`
+  (`/admin/ordenes`: comprador, email y grupo mal nombrados), `766a176`
+  (bucket `comprobantes` privado + URLs firmadas; `verificar:rls-storage`
+  22/22).
+- Consentimiento: `14ac60c` (banner; GA y embeds de noticias solo con
+  permiso), `1fb43c1` (la señal de tv. de la portada carga directo, por
+  decisión), `49b314f` (tarjeta flotante compacta).
+- `5dc0d43`: popup del boletín oculto (sin herramienta de envío ni baja).
+- `2dba004`: `/panel/despacho` + migración `artista_solo_ordenes_pagadas`.
+- Titular para los textos: **Claudio Berrios, persona natural** (RUT y
+  domicilio pendientes; después, una SpA).
+
+**Pendiente**
+- **⚠️ La restricción del artista a órdenes pagadas no está activa**: con la
+  migración aplicada, `verificar:cobro` (d2) sigue fallando (44/45): un
+  artista nuevo ve sus órdenes pendientes. Falta revisar `pg_policies` de
+  `ordenes` y `schema_migrations` en el SQL Editor (la CLI da 403).
+- **Pasar Vercel a Pro antes de que el primer artista real active su
+  tienda**: Hobby no permite uso comercial según sus términos, y el DPA de
+  Vercel (necesario para la política de privacidad) solo cubre Pro/Enterprise.
+- Firmar el DPA de Supabase (dashboard → documentos legales, PandaDoc; revisar
+  si la contraparte es Supabase Pte. Ltd.). Resend: DPA ya vigente.
+- Retención (B), diseño aprobado: `baja_at` / `datos_eliminados_at`,
+  `aplicar_retencion()`, cron `/api/cron/retencion`, botón de baja en el
+  admin, `verificar:retencion`. Productos de artistas dados de baja: ocultos;
+  usuario de Auth: se borra.
+- GA del Channel apagado cuando tv. va incrustado en la portada (la excepción
+  del reproductor queda solo para YouTube).
+- Miniaturas de YouTube servidas desde nuestro dominio.
+- Publicar `/privacidad` (v1.0) junto con la retención; después `/terminos`,
+  `/terminos-artistas`, aviso de retracto y aceptación en el checkout,
+  aceptación de términos de artistas (fecha y versión) y enlaces del footer.
+- Datos que faltan: RUT y domicilio, región de Resend, plazo legal de
+  respuesta (30 días corridos, a confirmar con abogado), costo y plazos de
+  despacho. Plazos decididos: comprobantes 6 años, correos de contacto 2 años
+  (limpieza manual en el proveedor de correo), GA 2 meses (lo configura
+  Claudio), logs: Vercel 1 h (Hobby) / 1 día (Pro), Supabase Free 1 día.
+
 ---
 
 ## 🚧 En progreso / bugs conocidos
