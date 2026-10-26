@@ -152,6 +152,16 @@ modo sandbox/prod, flag `cobro_modelo`, `comision_default`), `liquidaciones`,
 `pagos_mp` (pagos de MP ya procesados) y `mp_conexiones` (cuenta de MP de cada
 artista, tokens cifrados). Las dos últimas: RLS sin políticas, solo service role.
 
+**Retención** (plazos de la política de privacidad): cron diario
+`/api/cron/retencion` → `aplicar_retencion()` (solo service role). Órdenes de
+más de 6 años se anonimizan; `mp_conexiones` en `reconectar` 90 días se borran;
+cuentas con `artistas.baja_at` de más de 1 año pierden RUT, banco, perfil, foto
+y usuario de Auth (queda el nombre, con `datos_eliminados_at`). La baja la marca
+el admin con `dar_de_baja_artista()` (tienda apagada, productos `pausado`,
+reversible mientras no se eliminen los datos). Un producto `pausado` no se
+muestra ni se vende: todo listado público exige `estado = 'aprobado'`.
+Verificación: `npm run verificar:retencion`.
+
 **La fuente de verdad del esquema es `lib/supabase/types.ts`** (generado), no los
 queries. Los clientes de `lib/supabase/{client,server}.ts` están tipados con
 `Database`, así que una columna inexistente es error de compilación.

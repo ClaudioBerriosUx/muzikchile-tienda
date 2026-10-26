@@ -14,6 +14,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { REGIONES_CHILE, BANCOS_CHILE } from "@/lib/constants";
 import ColorPicker from "@/components/ui/ColorPicker";
+import BajaCuentaArtista from "@/components/admin/BajaCuentaArtista";
 
 const TIPOS_CUENTA = ["Cuenta Corriente", "Cuenta Vista", "Cuenta de Ahorro", "Cuenta RUT"];
 
@@ -459,6 +460,9 @@ export default function AdminEditarArtistaPage() {
           </button>
         </div>
       </form>
+
+      {/* Fuera del formulario: no se guarda con "Guardar cambios". */}
+      <BajaCuentaArtista artistaId={id} />
     </div>
   );
 }

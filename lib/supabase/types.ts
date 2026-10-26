@@ -35,6 +35,7 @@ export type Database = {
       artistas: {
         Row: {
           auth_provider: string | null
+          baja_at: string | null
           banco: string | null
           bio: string | null
           bio_completa: string | null
@@ -44,6 +45,7 @@ export type Database = {
           comision: number
           created_at: string
           cuenta_bancaria: string | null
+          datos_eliminados_at: string | null
           es_editorial: boolean
           es_founder: boolean
           es_prueba: boolean
@@ -72,6 +74,7 @@ export type Database = {
         }
         Insert: {
           auth_provider?: string | null
+          baja_at?: string | null
           banco?: string | null
           bio?: string | null
           bio_completa?: string | null
@@ -81,6 +84,7 @@ export type Database = {
           comision?: number
           created_at?: string
           cuenta_bancaria?: string | null
+          datos_eliminados_at?: string | null
           es_editorial?: boolean
           es_founder?: boolean
           es_prueba?: boolean
@@ -109,6 +113,7 @@ export type Database = {
         }
         Update: {
           auth_provider?: string | null
+          baja_at?: string | null
           banco?: string | null
           bio?: string | null
           bio_completa?: string | null
@@ -118,6 +123,7 @@ export type Database = {
           comision?: number
           created_at?: string
           cuenta_bancaria?: string | null
+          datos_eliminados_at?: string | null
           es_editorial?: boolean
           es_founder?: boolean
           es_prueba?: boolean
@@ -657,9 +663,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      aplicar_retencion: { Args: { p_simular?: boolean }; Returns: Json }
       comision_por_defecto: { Args: never; Returns: number }
       confirmar_pago: {
         Args: { p_grupo_id: string; p_monto: number; p_payment_id: string }
+        Returns: string
+      }
+      dar_de_baja_artista: {
+        Args: { p_artista_id: string; p_revertir?: boolean }
         Returns: string
       }
       datos_bancarios: {

@@ -16,7 +16,8 @@
     "verificar:sanitizacion": "node scripts/verificar-sanitizacion.mjs",
     "verificar:cobro": "node --env-file=.env.local scripts/verificar-seguridad-cobro.mjs",
     "verificar:mp": "node --env-file=.env.local scripts/verificar-conexiones-mp.mjs",
-    "verificar:firma": "node scripts/verificar-firma-mp.mjs"
+    "verificar:firma": "node scripts/verificar-firma-mp.mjs",
+    "verificar:retencion": "node --env-file=.env.local scripts/verificar-retencion.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
