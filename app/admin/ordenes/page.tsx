@@ -6,26 +6,20 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatCLP } from "@/lib/constants";
 
-interface Orden {
-  id: string;
-  nombre_comprador?: string;
-  email_comprador?: string;
-  precio_unitario: number;
-  cantidad: number;
-  monto_artista: number;
-  comision_monto: number;
-  estado: string;
-  mp_preference_id?: string;
-  external_reference?: string;
-  created_at: string;
-  direccion_envio?: string;
-  ciudad_envio?: string;
-  region_envio?: string;
-  artista_id?: string;
-  producto_id?: string;
-  artistas: { nombre: string } | { nombre: string }[] | null;
-  productos: { nombre: string } | { nombre: string }[] | null;
+/**
+ * El tipo sale del select (sin cast): así una columna mal escrita no compila.
+ * La interfaz a mano que había antes usaba nombre_comprador, email_comprador
+ * y external_reference, que no existen; la tabla mostraba "—" siempre.
+ */
+async function traerOrdenes(supabase: ReturnType<typeof createClient>) {
+  const { data, error } = await supabase
+    .from("ordenes")
+    .select("*, artistas(nombre), productos(nombre)")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data;
 }
+type Orden = Awaited<ReturnType<typeof traerOrdenes>>[number];
 
 // 'reembolsado' lo pone el webhook (revertir_pago) cuando MP informa un pago
 // reembolsado o con contracargo.
@@ -54,16 +48,9 @@ export default function OrdenesPage() {
   const [nuevoEstado,   setNuevoEstado]   = useState("");
   const [actualizando,  setActualizando]  = useState(false);
 
-  const { data: ordenes = [] } = useQuery<Orden[]>({
+  const { data: ordenes = [] } = useQuery({
     queryKey: ["admin-ordenes"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("ordenes")
-        .select("*, artistas(nombre), productos(nombre)")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as Orden[];
-    },
+    queryFn: () => traerOrdenes(supabase),
   });
 
   const filtradas = useMemo(() => {
@@ -73,7 +60,8 @@ export default function OrdenesPage() {
       const q = busqueda.toLowerCase();
       lista = lista.filter(
         (o) =>
-          o.nombre_comprador?.toLowerCase().includes(q) ||
+          o.comprador_nombre.toLowerCase().includes(q) ||
+          o.comprador_email.toLowerCase().includes(q) ||
           nombre(o.artistas).toLowerCase().includes(q)
       );
     }
@@ -165,10 +153,10 @@ export default function OrdenesPage() {
                     onMouseLeave={(e) => { if (!activa) e.currentTarget.style.backgroundColor = ""; }}
                   >
                     <td className="px-4 py-3 font-mono text-xs text-[#999]">
-                      {o.external_reference?.slice(0, 8).toUpperCase() ?? o.id.slice(0, 8).toUpperCase()}
+                      {(o.grupo_id ?? o.id).slice(0, 8).toUpperCase()}
                     </td>
                     <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#111111" }}>
-                      {o.nombre_comprador ?? "—"}
+                      {o.comprador_nombre || "—"}
                     </td>
                     <td className="px-4 py-3" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                       {nombre(o.artistas)}
@@ -215,9 +203,9 @@ export default function OrdenesPage() {
             </div>
 
             {[
-              ["ID", seleccionada.external_reference?.slice(0, 8).toUpperCase() ?? seleccionada.id.slice(0, 8).toUpperCase()],
-              ["Comprador", seleccionada.nombre_comprador ?? "—"],
-              ["Email", seleccionada.email_comprador ?? "—"],
+              ["ID", (seleccionada.grupo_id ?? seleccionada.id).slice(0, 8).toUpperCase()],
+              ["Comprador", seleccionada.comprador_nombre || "—"],
+              ["Email", seleccionada.comprador_email || "—"],
               ["Artista", nombre(seleccionada.artistas)],
               ["Producto", nombre(seleccionada.productos)],
               ["Precio unit.", formatCLP(seleccionada.precio_unitario)],
