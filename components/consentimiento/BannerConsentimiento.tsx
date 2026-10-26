@@ -65,8 +65,8 @@ export default function BannerConsentimiento() {
           </h2>
           <p className="text-sm text-tema-texto-2" style={{ maxWidth: "75ch" }}>
             Usamos lo necesario para que el sitio funcione (tu sesión y el carrito). Con tu permiso,
-            también medimos visitas con Google Analytics y cargamos contenido de terceros: la señal de
-            MuzikChile TV y los videos de YouTube, Spotify e Instagram, que pueden guardar sus propias
+            también medimos visitas con Google Analytics y cargamos los videos y publicaciones de
+            YouTube, Spotify e Instagram que aparecen en las noticias, que pueden guardar sus propias
             cookies. Más detalle en la{" "}
             <Link href="/privacidad#cookies" className="text-tema-azul-texto underline">
               política de privacidad
@@ -95,7 +95,7 @@ export default function BannerConsentimiento() {
             <Opcion
               id="consent-contenido"
               titulo="Contenido de terceros"
-              texto="Señal de MuzikChile TV (YouTube y Google Analytics), videos de YouTube, Spotify e Instagram en las noticias."
+              texto="Videos y publicaciones de YouTube, Spotify e Instagram en las noticias."
               marcada={contenido}
               alCambiar={setContenido}
             />

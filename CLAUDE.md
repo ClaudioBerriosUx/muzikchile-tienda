@@ -271,13 +271,15 @@ Tailwind v4 (breaking changes desde v3 — leer `node_modules/next/dist/docs/` a
 
 ### Consentimiento (cookies y terceros)
 
-**Nada de terceros sin permiso.** `lib/consentimiento.ts` guarda la elección
+**Nada de terceros sin permiso**, salvo la señal de tv. del hero de la portada,
+que carga directo por decisión del 2026-10-25 (tv. trae YouTube y su propio
+GA; la política de privacidad lo informa). `lib/consentimiento.ts` guarda la elección
 (`muzik_consentimiento` en localStorage: `analitica`, `contenido`, versión y
 fecha) y `BannerConsentimiento` la pide en el layout público; el footer la
 reabre ("Preferencias de cookies").
 - Google Analytics solo carga con `analitica` (`components/Analitica.tsx` →
   `AnaliticaConsentida`).
-- Todo iframe o script de un tercero (tv., YouTube, Spotify, Instagram…) va
+- Todo iframe o script de un tercero (YouTube, Spotify, Instagram…) va
   dentro de `<ContenidoTercero proveedor="…">`: sin `contenido` muestra un
   aviso con "Cargar" / "Permitir siempre" y no hace ninguna request.
 - Si cambia lo que se pide, sube `VERSION_CONSENTIMIENTO`: el banner vuelve a

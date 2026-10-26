@@ -1,13 +1,15 @@
 import { useSyncExternalStore } from "react";
 
 /**
- * Consentimiento de cookies y contenido de terceros. Nada de terceros se carga
- * sin permiso:
+ * Consentimiento de cookies y contenido de terceros:
  *   - `analitica`: Google Analytics (components/Analitica.tsx).
- *   - `contenido`: la señal de MuzikChile TV del hero (tv. carga YouTube y su
- *     propio Google Analytics) y los embeds de YouTube, Spotify e Instagram de
- *     las noticias (components/consentimiento/ContenidoTercero.tsx).
+ *   - `contenido`: los embeds de YouTube, Spotify e Instagram de las noticias
+ *     (components/consentimiento/ContenidoTercero.tsx).
  * Lo necesario (sesión, carrito, aviso del boletín) no pide permiso.
+ *
+ * Excepción decidida el 2026-10-25: la señal de MuzikChile TV del hero carga
+ * directo, sin consentimiento, aunque tv. trae YouTube y su propio Google
+ * Analytics. La política de privacidad tiene que decirlo.
  *
  * Se guarda en localStorage (`muzik_consentimiento`) con versión y fecha. Si
  * cambia lo que se pide (otra categoría, otro tercero), se sube la versión y

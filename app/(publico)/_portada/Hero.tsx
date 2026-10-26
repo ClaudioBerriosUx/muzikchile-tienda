@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { Maximize2, Pause } from "lucide-react";
 import { C, F, MARCA, TEMA } from "@/lib/portada";
 import { useSenal } from "./SenalProvider";
-import ContenidoTercero from "@/components/consentimiento/ContenidoTercero";
 import {
   MODO_INTERRUPCION,
   MSG_READY,
@@ -175,25 +174,21 @@ export default function Hero() {
           style={{ borderColor: TEMA.borde, backgroundColor: TEMA.fondo }}
         >
           <div className="relative w-full" style={{ aspectRatio: "16 / 9" }}>
-            {/* tv. carga YouTube y su propio Google Analytics: sin permiso de
-                contenido de terceros, no se monta (lib/consentimiento.ts). */}
-            <ContenidoTercero
-              proveedor="MuzikChile TV (con YouTube y Google Analytics)"
-              detalle="La señal en vivo de MuzikChile TV se reproduce desde YouTube."
-              className="absolute inset-0 rounded-none border-0"
-            >
-              <iframe
-                ref={iframeRef}
-                // El src es fijo: la pausa va por postMessage, así que el
-                // reproductor nunca se descarga ni se recarga.
-                src={SRC_SEÑAL}
-                title="Señal en vivo de MuzikChile TV"
-                className="absolute inset-0 w-full h-full"
-                style={{ border: 0 }}
-                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
-                allowFullScreen
-              />
-            </ContenidoTercero>
+            {/* Carga directo, sin pasar por el consentimiento (decisión del
+                2026-10-25): es la señal propia de MuzikChile. Ojo: tv. carga
+                YouTube y su propio Google Analytics; la política de privacidad
+                lo informa. */}
+            <iframe
+              ref={iframeRef}
+              // El src es fijo: la pausa va por postMessage, así que el
+              // reproductor nunca se descarga ni se recarga.
+              src={SRC_SEÑAL}
+              title="Señal en vivo de MuzikChile TV"
+              className="absolute inset-0 w-full h-full"
+              style={{ border: 0 }}
+              allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+              allowFullScreen
+            />
 
             {/* Semitransparente, no opaco: ahora el reproductor sigue montado y
                 se ve el cuadro congelado detrás. Taparlo del todo haría parecer
