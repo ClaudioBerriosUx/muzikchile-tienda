@@ -988,6 +988,46 @@ async function marketplace(A, B, ADMIN) {
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 
+// ── Despacho: el artista solo lee sus órdenes pagadas ────────────────────────
+// (migración 20261026010000_artista_solo_ordenes_pagadas, /panel/despacho)
+
+async function despacho(A, B) {
+  console.log("\n── Despacho: qué órdenes lee el artista ──");
+  const prod = await crearProducto(A.artistaId, "despacho");
+  const gPagado = await crearGrupo(A.artistaId, [{ producto: prod, cantidad: 1 }], "pagado");
+  const gPend = await crearGrupo(A.artistaId, [{ producto: prod, cantidad: 1 }], "pendiente");
+  const gCanc = await crearGrupo(A.artistaId, [{ producto: prod, cantidad: 1 }], "cancelado");
+  await admin.from("ordenes").update({ direccion_envio: "Calle Falsa 123", ciudad_envio: "Valparaíso", region_envio: "Valparaíso" }).eq("grupo_id", gPagado);
+
+  const DESPACHO = "id, grupo_id, estado, created_at, cantidad, comprador_nombre, comprador_email, direccion_envio, ciudad_envio, region_envio, productos(nombre)";
+  {
+    const { data, error } = await A.cliente.from("ordenes").select(DESPACHO).eq("grupo_id", gPagado);
+    const o = data?.[0];
+    check("(d1) A lee su orden pagada con nombre, email y dirección", !error && o?.comprador_email?.startsWith(PREFIJO) && o?.direccion_envio === "Calle Falsa 123",
+      error ? fmt(error) : `filas=${data?.length}`);
+  }
+  {
+    const { data, error } = await A.cliente.from("ordenes").select("id, comprador_email").in("grupo_id", [gPend, gCanc]);
+    check("(d2) A NO ve sus órdenes pendientes ni canceladas", !error && (data ?? []).length === 0, error ? fmt(error) : `filas=${data?.length}`);
+  }
+  {
+    const { data, error } = await B.cliente.from("ordenes").select("id").in("grupo_id", [gPagado, gPend, gCanc]);
+    check("(d3) B NO ve ninguna orden de A", !error && (data ?? []).length === 0, error ? fmt(error) : `filas=${data?.length}`);
+  }
+  {
+    const { data, error } = await A.cliente.from("ordenes").select(DESPACHO).eq("artista_id", A.artistaId).in("estado", ["pagado", "enviado"]);
+    // fase1 deja otras órdenes pagadas de A: se mira solo este pedido.
+    const grupos = new Set((data ?? []).map((o) => o.grupo_id));
+    check("(d4) La consulta de /panel/despacho corre y trae el pedido pagado", !error && grupos.has(gPagado) && !grupos.has(gPend) && !grupos.has(gCanc),
+      error ? fmt(error) : `filas=${data?.length}`);
+  }
+  {
+    await admin.from("ordenes").update({ estado: "enviado" }).eq("grupo_id", gPagado);
+    const { data } = await A.cliente.from("ordenes").select("id").eq("grupo_id", gPagado);
+    check("(d5) Marcada como enviada, A la sigue viendo", (data ?? []).length === 1, `filas=${data?.length}`);
+  }
+}
+
 async function main() {
   console.log("Verificación · seguridad del cobro");
   console.log(`Proyecto: ${URL}`);
@@ -1001,6 +1041,7 @@ async function main() {
 
     reglaComision();
     await fase1(A, B, ADMIN);
+    await despacho(A, B);
     await reembolsos(A, B, ADMIN);
     if (FASE2) await fase2(A, B, ADMIN);
     if (API) await api(A, B);

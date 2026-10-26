@@ -91,6 +91,7 @@ Header y Footer. No importes `<Header/>` a mano en una página.
 | `/login`, `/registro`, `/recuperar` | público | Auth (registro = set-password tras invitación o recuperación) |
 | `/panel/**` | rol: `artista` | Dashboard del artista |
 | `/panel/cobros` | rol: `artista` | Conectar/desconectar su cuenta de Mercado Pago (marketplace) |
+| `/panel/despacho` | rol: `artista` | Pedidos pagados/enviados con nombre, email y dirección del comprador. RLS (`artista_lee_sus_ordenes_pagadas`): el artista solo lee órdenes pagado/enviado/entregado/reembolsado |
 | `/admin/**` | rol: `admin` | Panel de administración |
 
 `/contacto` es una página simple con `CORREO_CONTACTO` (`lib/site.ts`).
