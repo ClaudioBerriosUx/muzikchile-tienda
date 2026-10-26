@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import Logo from "./Logo";
+import BotonPreferenciasCookies from "@/components/consentimiento/BotonPreferenciasCookies";
 import { NAV_LINKS, ACCESO_ARTISTAS_HREF, TIENDA_VISIBLE } from "./nav-links";
 import { C, F, TEMA } from "@/lib/portada";
 import { PATHS_MARCA as PATHS } from "./iconos-marca";
@@ -136,6 +137,10 @@ export default function Footer() {
                 </Link>
               </li>
             ))}
+            <li>
+              {/* Vuelve a abrir el banner de consentimiento (lib/consentimiento.ts). */}
+              <BotonPreferenciasCookies className="hover:text-white transition-colors text-left" style={linkStyle} />
+            </li>
           </ul>
         </div>
 

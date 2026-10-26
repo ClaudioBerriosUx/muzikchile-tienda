@@ -1,6 +1,7 @@
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import Analitica from "@/components/Analitica";
+import BannerConsentimiento from "@/components/consentimiento/BannerConsentimiento";
 
 /**
  * Layout del sitio público. Header y Footer se montan una sola vez acá en vez
@@ -17,6 +18,8 @@ import Analitica from "@/components/Analitica";
  *
  * Google Analytics se monta acá y no en el layout raíz, para que la etiqueta
  * no aparezca en el HTML de /panel ni /admin. Ver components/Analitica.tsx.
+ * Solo se carga con consentimiento: BannerConsentimiento lo pide
+ * (lib/consentimiento.ts).
  */
 export default function PublicoLayout({
   children,
@@ -29,6 +32,7 @@ export default function PublicoLayout({
       <div className="flex-1">{children}</div>
       <Footer />
       <Analitica />
+      <BannerConsentimiento />
     </div>
   );
 }

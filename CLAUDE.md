@@ -269,6 +269,20 @@ Tailwind v4 (breaking changes desde v3 — leer `node_modules/next/dist/docs/` a
   (`abrirComprobante` en `lib/storage.ts`), nunca con `getPublicUrl`
 - `export const dynamic = 'force-dynamic'` necesario en páginas con `useSearchParams` o para evitar SSG en Vercel
 
+### Consentimiento (cookies y terceros)
+
+**Nada de terceros sin permiso.** `lib/consentimiento.ts` guarda la elección
+(`muzik_consentimiento` en localStorage: `analitica`, `contenido`, versión y
+fecha) y `BannerConsentimiento` la pide en el layout público; el footer la
+reabre ("Preferencias de cookies").
+- Google Analytics solo carga con `analitica` (`components/Analitica.tsx` →
+  `AnaliticaConsentida`).
+- Todo iframe o script de un tercero (tv., YouTube, Spotify, Instagram…) va
+  dentro de `<ContenidoTercero proveedor="…">`: sin `contenido` muestra un
+  aviso con "Cargar" / "Permitir siempre" y no hace ninguna request.
+- Si cambia lo que se pide, sube `VERSION_CONSENTIMIENTO`: el banner vuelve a
+  aparecer.
+
 ### SEO
 
 El sitio es **indexable desde el lanzamiento (2026-10-11)**. No hay noindex

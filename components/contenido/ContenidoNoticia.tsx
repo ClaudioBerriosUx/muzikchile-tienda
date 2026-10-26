@@ -9,6 +9,7 @@ import {
   type Embed,
 } from "@/lib/embeds";
 import EmbedInstagram from "./EmbedInstagram";
+import ContenidoTercero from "@/components/consentimiento/ContenidoTercero";
 
 /**
  * Renderiza el cuerpo de una noticia: HTML rico + embeds.
@@ -16,7 +17,8 @@ import EmbedInstagram from "./EmbedInstagram";
  * Es un Server Component. La sanitización corre acá, en el servidor, antes de
  * que el HTML llegue al navegador. YouTube y Spotify son iframes puros, así que
  * no hace falta JS de cliente; Instagram es una isla cliente (`EmbedInstagram`)
- * solo por la carga diferida al hacer clic.
+ * solo por la carga diferida al hacer clic. Los tres van dentro de
+ * `ContenidoTercero`: sin permiso de contenido de terceros no se montan.
  *
  * ORDEN DE OPERACIONES (importa):
  *   1. Si el cuerpo es texto plano, se escapa y se envuelve en párrafos.
@@ -54,15 +56,17 @@ function MarcoResponsivo({
 function EmbedYoutube({ id }: { id: string }) {
   return (
     <MarcoResponsivo>
-      <iframe
-        src={urlYoutube(id)}
-        title="Video de YouTube"
-        className="absolute inset-0 w-full h-full"
-        style={{ border: 0 }}
-        allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-        loading="lazy"
-      />
+      <ContenidoTercero proveedor="YouTube" detalle="Video de YouTube." className="absolute inset-0 rounded-none border-0">
+        <iframe
+          src={urlYoutube(id)}
+          title="Video de YouTube"
+          className="absolute inset-0 w-full h-full"
+          style={{ border: 0 }}
+          allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          loading="lazy"
+        />
+      </ContenidoTercero>
     </MarcoResponsivo>
   );
 }
@@ -72,14 +76,21 @@ function EmbedSpotify({ valor }: { valor: string }) {
   const esCorto = valor.startsWith("track/") || valor.startsWith("episode/");
   return (
     <div className="my-8 rounded-lg overflow-hidden border" style={{ borderColor: TEMA.borde }}>
-      <iframe
-        src={urlSpotify(valor)}
-        title="Reproductor de Spotify"
-        className="w-full"
-        style={{ border: 0, height: esCorto ? "152px" : "352px" }}
-        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-        loading="lazy"
-      />
+      <ContenidoTercero
+        proveedor="Spotify"
+        detalle="Reproductor de Spotify."
+        className="rounded-none border-0"
+        style={{ height: esCorto ? "152px" : "352px" }}
+      >
+        <iframe
+          src={urlSpotify(valor)}
+          title="Reproductor de Spotify"
+          className="w-full"
+          style={{ border: 0, height: esCorto ? "152px" : "352px" }}
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy"
+        />
+      </ContenidoTercero>
     </div>
   );
 }
@@ -138,7 +149,17 @@ function EmbedEnlace({ tipo, url }: { tipo: string; url: string }) {
 function RenderEmbed({ embed }: { embed: Embed }) {
   if (embed.tipo === "youtube") return <EmbedYoutube id={embed.valor} />;
   if (embed.tipo === "spotify") return <EmbedSpotify valor={embed.valor} />;
-  if (embed.tipo === "instagram") return <EmbedInstagram valor={embed.valor} />;
+  if (embed.tipo === "instagram")
+    return (
+      <ContenidoTercero
+        proveedor="Instagram (Meta)"
+        detalle="Publicación de Instagram."
+        className="my-8 mx-auto w-full max-w-[540px]"
+        style={{ minHeight: "240px" }}
+      >
+        <EmbedInstagram valor={embed.valor} />
+      </ContenidoTercero>
+    );
   return <EmbedEnlace tipo={embed.tipo} url={embed.valor} />;
 }
 

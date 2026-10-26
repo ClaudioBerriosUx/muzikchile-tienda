@@ -1,4 +1,4 @@
-import Script from "next/script";
+import AnaliticaConsentida from "./consentimiento/AnaliticaConsentida";
 
 /**
  * Google Analytics 4 (gtag.js). Es el MISMO ID que mide tv.muzikchile.cl
@@ -16,6 +16,11 @@ import Script from "next/script";
  * cuenta la medición mejorada de GA4 ("cambios de página según el historial
  * del navegador"), la misma que usa el Channel, que también es SPA. No hay
  * page_view manual.
+ *
+ * Consentimiento: la etiqueta solo se carga si la persona aceptó la categoría
+ * `analitica` (lib/consentimiento.ts); eso lo decide AnaliticaConsentida en el
+ * cliente. Si después la retira, se apaga con `muzik-ga-off` (lo lee revisar())
+ * y se borran las cookies _ga.
  */
 
 /** Rutas que NO se miden (prefijos). Algunas viven en (publico) y cargan la etiqueta. */
@@ -48,10 +53,11 @@ export default function Analitica() {
   var privadas = ${JSON.stringify(RUTAS_PRIVADAS)};
   function revisar() {
     var p = location.pathname;
-    window["ga-disable-" + id] = privadas.some(function (r) {
+    window["ga-disable-" + id] = window["muzik-ga-off"] === true || privadas.some(function (r) {
       return p === r || p.indexOf(r + "/") === 0;
     });
   }
+  window["muzik-ga-revisar"] = revisar;
   ["pushState", "replaceState"].forEach(function (m) {
     var original = history[m];
     history[m] = function () {
@@ -69,15 +75,5 @@ export default function Analitica() {
 })();
 `;
 
-  return (
-    <>
-      <Script id="ga-init" strategy="afterInteractive">
-        {init}
-      </Script>
-      <Script
-        src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
-        strategy="afterInteractive"
-      />
-    </>
-  );
+  return <AnaliticaConsentida gaId={gaId} init={init} />;
 }
