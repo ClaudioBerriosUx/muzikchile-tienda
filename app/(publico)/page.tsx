@@ -7,7 +7,6 @@ import UltimasNoticias from "./_portada/UltimasNoticias";
 import Bienvenida from "./_portada/Bienvenida";
 import { traerCifrasChannel } from "@/lib/cifras-channel";
 import GrainOverlay from "@/components/ui/GrainOverlay";
-import PopupSuscripcion from "@/components/ui/PopupSuscripcion";
 
 /**
  * ISR cada 5 minutos, por "Últimas noticias" (ver `app/(publico)/noticias`).
@@ -85,12 +84,12 @@ export default async function PortadaPage() {
       <GrainOverlay />
 
       {/*
-        Popup del boletín. Solo en la portada: es la puerta de entrada y la
-        única página donde interrumpir se justifica. Decide solo si aparece
-        (15s o 30% de scroll, con cooldown en localStorage), así que montarlo
-        no implica que se vea.
+        Popup del boletín: OCULTO desde el 2026-10-25. No hay herramienta de
+        envío ni forma de darse de baja, así que no se recogen correos (y la
+        política de privacidad no lo incluye). Para reactivarlo: volver a
+        montar <PopupSuscripcion /> acá (solo en la portada; decide solo si
+        aparece) y sumarlo a /privacidad con su herramienta de envío y la baja.
       */}
-      <PopupSuscripcion />
     </div>
   );
 }
