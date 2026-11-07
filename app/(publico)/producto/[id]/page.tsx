@@ -3,12 +3,17 @@ import { notFound } from "next/navigation";
 import { traerProductoPorId } from "@/lib/productos";
 import ProductoClient, { type CobroProducto } from "./ProductoClient";
 import { leerConfigCobro, modoCobro } from "@/lib/cobro";
+import { leerConfigVentas } from "@/lib/ventas";
 import { clienteServicio } from "@/lib/mp/conexiones";
 import { BASE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  /** ?compra=controlada: muestra el botón con las ventas cerradas. Cobrar lo decide crear-preferencia. */
+  searchParams: Promise<{ compra?: string }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -45,8 +50,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ProductoPage({ params }: Props) {
+export default async function ProductoPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const { compra } = await searchParams;
 
   /**
    * Comprobación server-side de existencia. Sin esto, un id inventado devolvía
@@ -58,20 +64,25 @@ export default async function ProductoPage({ params }: Props) {
   if (!producto) notFound();
 
   const artista = { id: producto.artista_id, cobro: producto.artistas?.cobro ?? "centralizado" };
-  return <ProductoClient id={id} cobro={await cobroDelProducto(artista, !!producto.artistas?.cobros_activos)} />;
+  return <ProductoClient id={id} cobro={await cobroDelProducto(artista, !!producto.artistas?.cobros_activos, compra === "controlada")} />;
 }
 
 /**
  * Cómo cobra el artista del producto (lib/cobro.ts). Solo decide qué muestra
  * el botón: el que manda es cotizar, en el servidor. Si la configuración no se
- * puede leer, se muestra como centralizado y el checkout dirá lo que corresponda.
+ * puede leer, se muestra cerrado: el freno de ventas falla hacia no vender.
  */
-async function cobroDelProducto(artista: { id: string; cobro: string }, cobrosActivos: boolean): Promise<CobroProducto> {
+async function cobroDelProducto(artista: { id: string; cobro: string }, cobrosActivos: boolean, compraControlada: boolean): Promise<CobroProducto> {
   try {
-    const config = await leerConfigCobro(clienteServicio());
-    return { directo: modoCobro(config, artista) === "marketplace", disponible: cobrosActivos };
+    const servicio = clienteServicio();
+    const [config, ventas] = await Promise.all([leerConfigCobro(servicio), leerConfigVentas(servicio)]);
+    return {
+      directo: modoCobro(config, artista) === "marketplace",
+      disponible: cobrosActivos,
+      cerrada: !ventas.abiertas && !compraControlada,
+    };
   } catch (err) {
     console.error("[producto] no se pudo leer el modo de cobro:", err instanceof Error ? err.message : err);
-    return { directo: false, disponible: true };
+    return { directo: false, disponible: true, cerrada: true };
   }
 }

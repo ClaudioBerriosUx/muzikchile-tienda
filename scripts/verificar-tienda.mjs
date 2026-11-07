@@ -7,7 +7,8 @@
  *   npm run verificar:tienda
  *   npm run verificar:tienda -- --api=http://localhost:3000
  *                         → + cómo cobra una tienda (cotizar, ficha, /api/mp/conexion)
- *                           y las rutas del panel y del admin (/api/panel/tienda, /api/admin/tiendas).
+ *                           las rutas del panel y del admin (/api/panel/tienda, /api/admin/tiendas)
+ *                           y el freno de ventas.
  *                           El servidor parte con `npm run dev:pruebas`.
  *
  * Lee `.env.pruebas`. La base tiene que tener aplicada la migración
@@ -670,6 +671,71 @@ async function bandejaDelAdmin(ADMIN, ARTISTA) {
   }
 }
 
+// ── Freno de ventas (--api) ──────────────────────────────────────────────────
+
+async function frenoDeVentas() {
+  console.log(`\n── Freno de ventas · ${API} ──`);
+  const LLAVES = ["ventas_abiertas", "ventas_correos_autorizados"];
+  const { data: originales } = await admin.from("app_settings").select("key, value").in("key", LLAVES);
+  const poner = async (abiertas, correos) => {
+    await admin.from("app_settings").upsert([
+      { key: "ventas_abiertas", value: abiertas },
+      { key: "ventas_correos_autorizados", value: correos },
+    ], { onConflict: "key" });
+  };
+
+  const H = await crearUsuario("h", "artista");
+  const P = await sembrarProducto(H.artistaId, "aprobado");
+  const AUTORIZADO = `${PREFIJO}-yo@example.com`;
+  const pagar = async (correo) => {
+    const res = await fetch(`${API}/api/mercadopago/crear-preferencia`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: [{ id: P, cantidad: 1 }], comprador: { nombre: "Prueba", email: correo } }),
+    });
+    return { status: res.status, data: await res.json().catch(() => null) };
+  };
+  const ordenes = async () => (await admin.from("ordenes").select("id", { count: "exact", head: true }).eq("producto_id", P)).count;
+  const cerradaEn = async (query = "") => {
+    const html = await fetch(`${API}/producto/${P}${query}`).then((r) => r.text());
+    return html.match(/cerrada\\?":(true|false)/)?.[1] ?? "sin prop";
+  };
+
+  try {
+    await poner("false", JSON.stringify([AUTORIZADO]));
+    {
+      const r = await pagar(`${PREFIJO}-otro@example.com`);
+      check("(v1) Cerradas: un comprador cualquiera → 403, sin órdenes", r.status === 403 && r.data?.ventas_cerradas === true && (await ordenes()) === 0, JSON.stringify(r));
+      const r2 = await pagar(AUTORIZADO.toUpperCase() + " ");
+      check("(v2) Cerradas: el correo autorizado pasa el freno, aunque venga en mayúsculas y con espacios", r2.status !== 403 && !r2.data?.ventas_cerradas, JSON.stringify(r2));
+      await admin.from("ordenes").delete().eq("producto_id", P);
+      check("(v3) Cerradas: la ficha muestra 'Pronto disponible'", (await cerradaEn()) === "true", await cerradaEn());
+      check("(v4) Cerradas: ?compra=controlada muestra el botón", (await cerradaEn("?compra=controlada")) === "false", await cerradaEn("?compra=controlada"));
+      const c = await fetch(`${API}/api/checkout/cotizar`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: [{ id: P, cantidad: 1 }] }) });
+      check("(v5) Cerradas: cotizar sigue respondiendo, para la compra controlada", c.status === 200, `status=${c.status}`);
+    }
+    {
+      await poner("TRUE", "[]");
+      check("(v6) Un valor mal escrito no abre las ventas", (await pagar(AUTORIZADO)).status === 403);
+      await poner("false", "no es json");
+      check("(v7) Una lista mal escrita no autoriza a nadie", (await pagar(AUTORIZADO)).status === 403);
+      await admin.from("app_settings").delete().in("key", LLAVES);
+      check("(v8) Sin las filas, las ventas quedan cerradas", (await pagar(AUTORIZADO)).status === 403 && (await cerradaEn()) === "true");
+    }
+    {
+      await poner("true", "[]");
+      const r = await pagar(`${PREFIJO}-otro@example.com`);
+      check("(v9) Abiertas: un comprador cualquiera pasa el freno", r.status !== 403 && !r.data?.ventas_cerradas, JSON.stringify(r));
+      await admin.from("ordenes").delete().eq("producto_id", P);
+      check("(v10) Abiertas: la ficha no queda cerrada", (await cerradaEn()) === "false", await cerradaEn());
+    }
+  } finally {
+    await admin.from("app_settings").delete().in("key", LLAVES);
+    if (originales?.length) await admin.from("app_settings").insert(originales);
+    await admin.from("ordenes").delete().eq("producto_id", P);
+  }
+}
+
 // ── Principal ────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -684,6 +750,7 @@ async function main() {
       await cobroPorArtista(ADMIN);
       await rutasDelPanel();
       await bandejaDelAdmin(ADMIN, B);
+      await frenoDeVentas();
     }
     else console.log("\n── Cómo cobra una tienda: sin --api no se prueba ──");
   } finally {

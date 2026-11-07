@@ -90,10 +90,12 @@ function Stock({ stock, digital }: { stock: number; digital: boolean }) {
  * Cómo cobra el artista (lib/cobro.ts), calculado en el servidor.
  * `directo`: cobra con su cuenta de MP y va solo en el pedido.
  * `disponible`: tiene la cuenta conectada (cobros_activos); si no, "Pronto disponible".
+ * `cerrada`: las ventas siguen cerradas (lib/ventas.ts); también "Pronto disponible".
  */
 export interface CobroProducto {
   directo: boolean;
   disponible: boolean;
+  cerrada: boolean;
 }
 
 export default function ProductoClient({ id, cobro }: { id: string; cobro: CobroProducto }) {
@@ -162,7 +164,7 @@ export default function ProductoClient({ id, cobro }: { id: string; cobro: Cobro
   const imagenes   = producto.imagenes ?? [];
   const imagenActiva = imagenes[imagenIdx] ?? null;
   const sinStock   = producto.stock === 0;
-  const pronto     = cobro.directo && !cobro.disponible;
+  const pronto     = cobro.cerrada || (cobro.directo && !cobro.disponible);
   const digital    = producto.tipo === "digital";
   const zonas      = producto.zonas_envio ?? [];
 

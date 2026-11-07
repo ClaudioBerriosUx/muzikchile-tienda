@@ -243,6 +243,14 @@ escrito en el código.
   reembolso parcial no revierte nada (queda en el log). `reembolsado` no se
   elige a mano en `/admin/ordenes`.
 
+### Freno de ventas (piloto)
+
+Con `app_settings.ventas_abiertas` distinto de `'true'`, nadie compra: `crear-preferencia`
+responde 403 antes de crear nada, y la ficha muestra "Pronto disponible". La regla es
+**`lib/ventas.ts`** y falla cerrado. La excepción es `ventas_correos_autorizados` (lista
+JSON) con `/producto/[id]?compra=controlada`. No abrirlas hasta tener `/terminos`, el aviso
+de retracto en el checkout y el correo de confirmación de compra.
+
 ### Marketplace de Mercado Pago (en construcción)
 
 Flag `app_settings.cobro_modelo`: `centralizado` (hoy, todo entra a la cuenta de

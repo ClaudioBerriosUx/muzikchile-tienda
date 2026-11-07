@@ -36,3 +36,8 @@ INSERT INTO public.categorias (nombre, slug, orden) VALUES
   ('Merch',   'merch',   1),
   ('Digital', 'digital', 2)
 ON CONFLICT (slug) DO NOTHING;
+
+-- A diferencia de producción, acá las ventas quedan abiertas: verificar:cobro
+-- crea preferencias. verificar:tienda prueba el freno y deja esto como estaba.
+INSERT INTO public.app_settings (key, value) VALUES ('ventas_abiertas', 'true')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;

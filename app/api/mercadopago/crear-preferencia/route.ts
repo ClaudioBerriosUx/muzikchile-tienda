@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { cotizarCarrito, normalizarItems } from "@/lib/checkout/cotizar";
 import { tokenVigente } from "@/lib/mp/conexiones";
+import { leerConfigVentas, MENSAJE_VENTAS_CERRADAS, puedeComprar } from "@/lib/ventas";
 
 interface CompradorBody {
   nombre: string;
@@ -39,6 +40,15 @@ export async function POST(request: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+
+    // Freno del piloto, antes de crear nada: sin esto no hay preferencia ni órdenes.
+    const ventas = await leerConfigVentas(supabase).catch((err) => {
+      console.error(err instanceof Error ? err.message : err);
+      return null;
+    });
+    if (!ventas || !puedeComprar(ventas, comprador.email)) {
+      return NextResponse.json({ error: MENSAJE_VENTAS_CERRADAS, ventas_cerradas: true }, { status: 403 });
+    }
 
     const codigo = typeof body?.cupon_codigo === "string" ? body.cupon_codigo : null;
     const resultado = await cotizarCarrito(supabase, items, codigo);
