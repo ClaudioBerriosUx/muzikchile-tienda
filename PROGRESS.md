@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-10-25
+> Actualizado: 2026-11-07
 > Branch: `main` (lanzamiento mergeado y en producción en www.muzikchile.cl)
 
 ---
@@ -2149,6 +2149,34 @@ camino a publicar `/privacidad` reescrita, `/terminos` y `/terminos-artistas`.
 - `/terminos`, `/terminos-artistas`, aviso de retracto y aceptación en el
   checkout, aceptación de términos de artistas (fecha y versión) y enlaces del
   footer. Falta: costo y plazos de despacho.
+
+---
+
+## 🏪 Activación de tienda — 2026-11-07
+
+Diseño aprobado por Claudio (ver la conversación del 2026-11-07): tabla `tiendas`
+(no_activa / solicitada / devuelta / activa / suspendida), `terminos_artistas`
+(solo agregar filas) y `artistas.cobro` por artista, no el `cobro_modelo` global.
+Despacho por tienda, con copia en `ordenes` y sin comisión sobre el envío.
+Decisiones: artistas actuales en `no_activa`; aprobar no publica, pero en la misma
+transacción los borradores pasan a `en_revision`; identidad de MP declarada y
+revisada al aprobar; menú sin tienda: Dashboard, Publicaciones, Perfil, Mi tienda,
+Mis productos.
+
+**Commit 1 (hecho, sin aplicar):** migración `20261107153047`. Se cierra el agujero
+por el que un artista podía aprobar sus productos o cambiar el precio de uno
+aprobado desde el navegador, `productos.estado` pasa a tener CHECK y existe
+`borrador`. Banco local en memoria (PGlite) con las políticas de
+`schema_baseline.sql`: antes 17/26, después 26/26.
+
+**Pendiente**
+- Comparar `pg_policies` en vivo (lo corre Claudio: la CLI da 403) y aplicar con
+  `db push`. Regenerar `schema_baseline.sql`, atrasado desde el 2026-10-22.
+- **Base de pruebas**: regla nueva, las pruebas que escriben van en local o preview.
+  `.env.local` apunta a producción y no hay Docker, así que falta dónde correr
+  `verificar:rls-productos` (lee `.env.pruebas`, se niega a correr en producción).
+  Los demás `verificar:*` que escriben no tienen ese freno.
+- Commits 2 a 10 del plan de activación.
 
 ---
 

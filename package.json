@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "verificar:rls": "node --env-file=.env.local scripts/verificar-rls-publicaciones.mjs",
+    "verificar:rls-productos": "node --env-file=.env.pruebas scripts/verificar-rls-productos.mjs",
     "verificar:rls-storage": "node --env-file=.env.local scripts/verificar-rls-storage.mjs",
     "verificar:invitar": "node --env-file=.env.local scripts/verificar-invitar-artista.mjs",
     "verificar:sanitizacion": "node scripts/verificar-sanitizacion.mjs",

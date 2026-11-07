@@ -146,7 +146,7 @@ automáticamente y crea el registro en `artistas`.
 
 ### Esquema de base de datos
 
-Tablas: `artistas`, `productos` (estados: `en_revision` → `aprobado`), `ordenes`,
+Tablas: `artistas`, `productos` (estados: `borrador` → `en_revision` → `aprobado` | `rechazado`; `pausado` por baja; el artista solo escribe `borrador` y `en_revision`), `ordenes`,
 `categorias`, `cupones`, `user_roles`, `app_settings` (tokens de MercadoPago y
 modo sandbox/prod, flag `cobro_modelo`, `comision_default`), `liquidaciones`,
 `pagos_mp` (pagos de MP ya procesados) y `mp_conexiones` (cuenta de MP de cada
