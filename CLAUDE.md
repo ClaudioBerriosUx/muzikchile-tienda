@@ -18,6 +18,12 @@ npm run lint     # ESLint
 npx tsc --noEmit # type-check (no hay tests)
 ```
 
+**Las pruebas que escriben nunca corren en producción.** `.env.local` apunta a la
+base real. Los `verificar:*` que escriben leen `.env.pruebas` y se frenan solos
+(`scripts/freno-produccion.mjs`); con `--api=http://localhost:3000`, el servidor
+parte con `npm run dev:pruebas`. Una escritura puntual en producción va solo con
+el SQL mostrado y aprobado antes.
+
 ## Variables de entorno
 
 Copia `.env.example` → `.env.local`:

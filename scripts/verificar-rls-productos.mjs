@@ -26,8 +26,9 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { frenarSiEsProduccion } from "./freno-produccion.mjs";
 
-const REF_PRODUCCION = "rgskspvuvzwmvmsccoez";
+frenarSiEsProduccion();
 
 const URL_BASE    = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON_KEY    = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -35,10 +36,6 @@ const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!URL_BASE || !ANON_KEY || !SERVICE_KEY) {
   console.error("Faltan variables de entorno. Corre con: npm run verificar:rls-productos");
-  process.exit(1);
-}
-if (URL_BASE.includes(REF_PRODUCCION)) {
-  console.error("Este script escribe en la base y esa URL es la de producción. No se corre.");
   process.exit(1);
 }
 

@@ -7,18 +7,20 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:pruebas": "node --env-file=.env.pruebas node_modules/next/dist/bin/next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "verificar:rls": "node --env-file=.env.local scripts/verificar-rls-publicaciones.mjs",
+    "pruebas:preparar": "node scripts/preparar-base-pruebas.mjs",
+    "verificar:rls": "node --env-file=.env.pruebas scripts/verificar-rls-publicaciones.mjs",
     "verificar:rls-productos": "node --env-file=.env.pruebas scripts/verificar-rls-productos.mjs",
-    "verificar:rls-storage": "node --env-file=.env.local scripts/verificar-rls-storage.mjs",
-    "verificar:invitar": "node --env-file=.env.local scripts/verificar-invitar-artista.mjs",
+    "verificar:rls-storage": "node --env-file=.env.pruebas scripts/verificar-rls-storage.mjs",
+    "verificar:invitar": "node --env-file=.env.pruebas scripts/verificar-invitar-artista.mjs",
     "verificar:sanitizacion": "node scripts/verificar-sanitizacion.mjs",
-    "verificar:cobro": "node --env-file=.env.local scripts/verificar-seguridad-cobro.mjs",
-    "verificar:mp": "node --env-file=.env.local scripts/verificar-conexiones-mp.mjs",
+    "verificar:cobro": "node --env-file=.env.pruebas scripts/verificar-seguridad-cobro.mjs",
+    "verificar:mp": "node --env-file=.env.pruebas scripts/verificar-conexiones-mp.mjs",
     "verificar:firma": "node scripts/verificar-firma-mp.mjs",
-    "verificar:retencion": "node --env-file=.env.local scripts/verificar-retencion.mjs"
+    "verificar:retencion": "node --env-file=.env.pruebas scripts/verificar-retencion.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",

@@ -46,3 +46,4 @@ next-env.d.ts
 
 # La plantilla sí se versiona: solo nombres de variables, sin valores.
 !.env.example
+!.env.pruebas.example

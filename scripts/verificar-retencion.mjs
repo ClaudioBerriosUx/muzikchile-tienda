@@ -22,6 +22,9 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { frenarSiEsProduccion } from "./freno-produccion.mjs";
+
+frenarSiEsProduccion();
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

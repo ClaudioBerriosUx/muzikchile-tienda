@@ -2169,13 +2169,39 @@ aprobado desde el navegador, `productos.estado` pasa a tener CHECK y existe
 `borrador`. Banco local en memoria (PGlite) con las políticas de
 `schema_baseline.sql`: antes 17/26, después 26/26.
 
+**Hecho en producción (2026-11-07, con visto bueno):** Valentina `es_prueba=true` y
+los 10 productos aprobados a `pausado` (9 de artistas sin cuenta y su cassette; no
+quedó ninguno a la venta). Para volver a venderlos hay que reponerlos a mano.
+
+**`pg_policies` en vivo** coincide con lo que espera la migración. `20261107155705`
+quita el duplicado `admin_full_access_productos`. Un `db push` aplica las dos.
+Después: aprobar y rechazar un producto en `/admin/productos`.
+
+**`/admin/artistas`**: el form no se resincroniza si el id no cambia y guarda los seis
+campos de su estado: una pestaña vieja pisa cambios hechos por otro lado. Un error
+de guardado solo dice "Error al guardar". Sin corregir.
+
+### Base de pruebas
+El login de la CLI en esta máquina ve solo la org Agencia SBS (`bitacora-sbs`,
+pausado); sobre MuzikChile responde 403 en `db push --remote`, `db query` y `gen types`.
+
+1. Crear el proyecto y copiar sus llaves a `.env.pruebas` (ignorado por git).
+2. Regenerar el volcado, en una terminal propia, DESPUÉS del `db push`. Ahora trae
+   `private`, `auth` y permisos, que la receta vieja dejaba fuera:
+   `pg_dump.exe --schema-only --no-owner --schema=public --schema=private --schema=storage --schema=auth -f supabase/schema_baseline.sql "<URL del pooler, sin contraseña>"`
+3. `npm run pruebas:preparar -- --hasta=<última migración incluida>`
+4. `psql "<URL de PRUEBAS>" --single-transaction -f supabase/.temp/base-pruebas.sql`
+   (aborta si la base ya tiene `artistas`).
+5. `npm run verificar:rls-productos`, y después los demás.
+
+Probado solo en memoria (PGlite, con stubs de auth y storage): carga el baseline
+actual más 12 migraciones, y la segunda carga aborta. **Falta contra un Supabase
+real.** `verificar:invitar` además necesita la Edge Function desplegada ahí.
+
 **Pendiente**
-- Comparar `pg_policies` en vivo (lo corre Claudio: la CLI da 403) y aplicar con
-  `db push`. Regenerar `schema_baseline.sql`, atrasado desde el 2026-10-22.
-- **Base de pruebas**: regla nueva, las pruebas que escriben van en local o preview.
-  `.env.local` apunta a producción y no hay Docker, así que falta dónde correr
-  `verificar:rls-productos` (lee `.env.pruebas`, se niega a correr en producción).
-  Los demás `verificar:*` que escriben no tienen ese freno.
+- `db push` de las dos migraciones (lo corre Claudio, con una cuenta con acceso).
+- Crear la base de pruebas y correr ahí los `verificar:*`.
+- Decidir si los previews apuntan a esa base.
 - Commits 2 a 10 del plan de activación.
 
 ---
@@ -2271,6 +2297,6 @@ consentimiento previo; hoy no lo hay").
 | Precio, stock y cupón se calculan solo en el servidor (`lib/checkout/cotizar.ts`) | El cliente mandaba el precio y se cobraba ese; lo que se muestra y lo que se cobra salen de la misma función |
 | Pagos idempotentes con lock en la base (`pagos_mp` + `confirmar_pago()`) | MP manda varios avisos por pago, a veces simultáneos; el efecto se aplica una vez |
 | `notification_url` condicional a HTTPS | MP rechaza con "policy UNAUTHORIZED" si la URL es localhost/HTTP |
-| Sin tests unitarios; verificación con scripts `npm run verificar:*` contra la base real | No hay entorno de test; los scripts crean y limpian datos con prefijo `rlstest-` |
+| Sin tests unitarios; verificación con scripts `npm run verificar:*` contra la base de pruebas (nunca producción) | No hay entorno de test; los scripts crean y limpian datos con prefijo `rlstest-` |
 | Único branch `main` | Desarrollo directo en main, sin feature branches |
 | Deploy manual (`vercel --prod`), no auto-deploy por push a GitHub | El proyecto Vercel no tiene el repo Git conectado (confirmado 2026-06-30). `git push` a `main` NO dispara deploy — hay que correr `vercel --prod` explícitamente después de cada push |

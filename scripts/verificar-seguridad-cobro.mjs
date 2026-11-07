@@ -47,6 +47,9 @@ import { createServerClient } from "@supabase/ssr";
 // Node 24 importa TypeScript sin compilar (solo quita los tipos).
 import { comisionEfectiva, founderVigente, textoFounder } from "../lib/comision.ts";
 import { cifrar } from "../lib/mp/cifrado.ts";
+import { frenarSiEsProduccion } from "./freno-produccion.mjs";
+
+frenarSiEsProduccion();
 
 const URL          = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON_KEY     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

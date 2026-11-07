@@ -31,6 +31,9 @@ import { createServerClient } from "@supabase/ssr";
 // Node 24 importa TypeScript sin compilar (solo quita los tipos).
 import { cifrar, descifrar } from "../lib/mp/cifrado.ts";
 import { nuevoIntento } from "../lib/mp/oauth.ts";
+import { frenarSiEsProduccion } from "./freno-produccion.mjs";
+
+frenarSiEsProduccion();
 
 const URL          = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON_KEY     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -42,7 +45,7 @@ if (!URL || !ANON_KEY || !SERVICE_KEY || !process.env.MP_TOKENS_KEY) {
 }
 
 const API = process.argv.find((a) => a.startsWith("--api="))?.slice("--api=".length).replace(/\/$/, "");
-// Contra localhost el servidor usa este mismo .env.local (misma MP_TOKENS_KEY y
+// Contra localhost el servidor usa este mismo .env.pruebas (misma MP_TOKENS_KEY y
 // MP_CLIENT_ID); contra un deploy, las variables de Vercel.
 const API_LOCAL = !!API && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(API);
 /** App de MP del marketplace en producción. */

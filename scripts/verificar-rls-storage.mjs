@@ -6,7 +6,7 @@
  * CÓMO CORRERLO
  *
  *   npm run verificar:rls-storage
- *   (= node --env-file=.env.local scripts/verificar-rls-storage.mjs)
+ *   (= node --env-file=.env.pruebas scripts/verificar-rls-storage.mjs)
  *
  * Necesita en el entorno:
  *   NEXT_PUBLIC_SUPABASE_URL
@@ -48,6 +48,9 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { frenarSiEsProduccion } from "./freno-produccion.mjs";
+
+frenarSiEsProduccion();
 
 const URL          = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const ANON_KEY     = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -56,7 +59,7 @@ const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!URL || !ANON_KEY || !SERVICE_KEY) {
   console.error(
     "Faltan variables de entorno. Corre con:\n" +
-    "  node --env-file=.env.local scripts/verificar-rls-storage.mjs"
+    "  node --env-file=.env.pruebas scripts/verificar-rls-storage.mjs"
   );
   process.exit(1);
 }
