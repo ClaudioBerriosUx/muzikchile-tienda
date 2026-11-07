@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Music, UserPlus, Pencil } from "lucide-react";
 import { toast } from "sonner";
@@ -29,16 +29,15 @@ interface Artista {
   es_prueba: boolean;
 }
 
+type Campos = Pick<Artista, "comision" | "es_founder" | "founder_hasta" | "tienda_activa" | "verificado" | "es_prueba">;
+
 export default function ArtistasPage() {
   const queryClient = useQueryClient();
 
-  const [seleccionado, setSeleccionado] = useState<Artista | null>(null);
-  const [comision, setComision] = useState(0);
-  const [esFounder, setEsFounder] = useState(false);
-  const [founderHasta, setFounderHasta] = useState("");
-  const [tiendaActiva, setTiendaActiva] = useState(false);
-  const [verificado, setVerificado] = useState(false);
-  const [esPrueba, setEsPrueba] = useState(false);
+  const [seleccionadoId, setSeleccionadoId] = useState<string | null>(null);
+  // Solo lo que el admin tocó y aún no guarda. El resto se lee de la lista, así
+  // una pestaña abierta hace rato no muestra ni guarda valores viejos.
+  const [borrador, setBorrador] = useState<Partial<Campos>>({});
   const [guardando, setGuardando] = useState(false);
 
   const [invitarOpen, setInvitarOpen] = useState(false);
@@ -58,38 +57,72 @@ export default function ArtistasPage() {
     },
   });
 
-  useEffect(() => {
-    if (seleccionado) {
-      setComision(seleccionado.comision ?? 0);
-      setEsFounder(seleccionado.es_founder ?? false);
-      setFounderHasta(seleccionado.founder_hasta ?? "");
-      setTiendaActiva(seleccionado.tienda_activa ?? false);
-      setVerificado(seleccionado.verificado ?? false);
-      setEsPrueba(seleccionado.es_prueba ?? false);
-    }
-  }, [seleccionado?.id]);
+  const seleccionado = artistas.find((a) => a.id === seleccionadoId) ?? null;
+
+  const comision     = borrador.comision ?? seleccionado?.comision ?? 0;
+  const esFounder    = borrador.es_founder ?? seleccionado?.es_founder ?? false;
+  const tiendaActiva = borrador.tienda_activa ?? seleccionado?.tienda_activa ?? false;
+  const verificado   = borrador.verificado ?? seleccionado?.verificado ?? false;
+  const esPrueba     = borrador.es_prueba ?? seleccionado?.es_prueba ?? false;
+  // founder_hasta admite null como valor elegido: "sin fecha" no es "sin tocar".
+  const founderHasta = ("founder_hasta" in borrador ? borrador.founder_hasta : seleccionado?.founder_hasta) ?? "";
+
+  const editar = (campos: Partial<Campos>) => setBorrador((b) => ({ ...b, ...campos }));
+  const setComision     = (comision: number)  => editar({ comision });
+  const setEsFounder    = (es_founder: boolean) => editar({ es_founder });
+  const setFounderHasta = (fecha: string)     => editar({ founder_hasta: fecha || null });
+  const setTiendaActiva = (tienda_activa: boolean) => editar({ tienda_activa });
+  const setVerificado   = (verificado: boolean) => editar({ verificado });
+  const setEsPrueba     = (es_prueba: boolean) => editar({ es_prueba });
+
+  const seleccionar = (id: string) => {
+    if (id === seleccionadoId) return;
+    setSeleccionadoId(id);
+    setBorrador({});
+  };
 
   const guardar = async () => {
     if (!seleccionado) return;
+
+    // La comisión se guarda siempre como la tarifa del artista: el 0% de
+    // founder lo decide lib/comision.ts, así rige al vencer founder_hasta.
+    const valores: Campos = {
+      comision,
+      es_founder:    esFounder,
+      founder_hasta: esFounder && founderHasta ? founderHasta : null,
+      tienda_activa: tiendaActiva,
+      verificado,
+      es_prueba:     esPrueba,
+    };
+    // Solo lo que cambió: guardar la comisión no reescribe los otros campos.
+    const cambios = Object.fromEntries(
+      Object.entries(valores).filter(([campo, valor]) => valor !== seleccionado[campo as keyof Campos])
+    ) as Partial<Campos>;
+
+    if (Object.keys(cambios).length === 0) {
+      setBorrador({});
+      toast.info("No hay cambios que guardar");
+      return;
+    }
+
     setGuardando(true);
     const supabase = createClient();
-    const { error } = await supabase
+    // Con .select() se sabe si se guardó: RLS no da error, deja 0 filas.
+    const { data, error } = await supabase
       .from("artistas")
-      // La comisión se guarda siempre como la tarifa del artista: el 0% de
-      // founder lo decide lib/comision.ts, así rige al vencer founder_hasta.
-      .update({
-        comision,
-        es_founder:    esFounder,
-        founder_hasta: esFounder && founderHasta ? founderHasta : null,
-        tienda_activa: tiendaActiva,
-        verificado,
-        es_prueba:     esPrueba,
-      })
-      .eq("id", seleccionado.id);
-    if (error) { toast.error("Error al guardar"); }
-    else {
+      .update(cambios)
+      .eq("id", seleccionado.id)
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      toast.error(`No se pudo guardar: ${error.message}`);
+    } else if (!data) {
+      toast.error("No se guardó nada: la base no dejó cambiar este artista. Revisa que sigas con sesión de admin.");
+    } else {
+      await queryClient.invalidateQueries({ queryKey: ["admin-artistas"] });
+      setBorrador({});
       toast.success("Cambios guardados");
-      queryClient.invalidateQueries({ queryKey: ["admin-artistas"] });
     }
     setGuardando(false);
   };
@@ -147,7 +180,7 @@ export default function ArtistasPage() {
             return (
               <button
                 key={a.id}
-                onClick={() => setSeleccionado(a)}
+                onClick={() => seleccionar(a.id)}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-[#e8e8e8] transition-colors"
                 style={{
                   borderLeft: activo ? "3px solid #e8003d" : "3px solid transparent",

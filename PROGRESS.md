@@ -2177,9 +2177,7 @@ quedó ninguno a la venta). Para volver a venderlos hay que reponerlos a mano.
 quita el duplicado `admin_full_access_productos`. Un `db push` aplica las dos.
 Después: aprobar y rechazar un producto en `/admin/productos`.
 
-**`/admin/artistas`**: el form no se resincroniza si el id no cambia y guarda los seis
-campos de su estado: una pestaña vieja pisa cambios hechos por otro lado. Un error
-de guardado solo dice "Error al guardar". Sin corregir.
+**`/admin/artistas`** (corregido): los valores salen de la lista y lo editado queda en un borrador; guarda solo lo que cambió, avisa si quedaron 0 filas y muestra el error real. Falta probarlo en el navegador.
 
 ### Base de pruebas
 El login de la CLI en esta máquina ve solo la org Agencia SBS (`bitacora-sbs`,
@@ -2199,9 +2197,10 @@ actual más 12 migraciones, y la segunda carga aborta. **Falta contra un Supabas
 real.** `verificar:invitar` además necesita la Edge Function desplegada ahí.
 
 **Pendiente**
-- `db push` de las dos migraciones (lo corre Claudio, con una cuenta con acceso).
+- `db push` de las dos migraciones: **aplicado** (2026-11-07, según Claudio). Falta confirmar la prueba de aprobar y rechazar en `/admin/productos`.
+- Regenerar `schema_baseline.sql` con la receta de arriba (lo corre Claudio: pide la contraseña).
 - Crear la base de pruebas y correr ahí los `verificar:*`.
-- Decidir si los previews apuntan a esa base.
+- Base de pruebas en la cuenta de MuzikChile, no en Agencia SBS. Previews en dos pasos: primero solo scripts y `dev:pruebas`.
 - Commits 2 a 10 del plan de activación.
 
 ---
