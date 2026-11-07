@@ -88,6 +88,7 @@ Header y Footer. No importes `<Header/>` a mano en una página.
 | `/tienda` | público | Catálogo con filtros (categoría, región, tipo, orden, búsqueda) |
 | `/noticias`, `/noticias/[slug]` | público | Feed de publicaciones y nota individual |
 | `/privacidad` | público | Política de privacidad (borrador, pendiente revisión legal) |
+| `/terminos-artistas` | público, `noindex`, sin enlaces | Borrador para revisión legal; versión en `lib/terminos.ts` |
 | `/producto/[id]` | público | Ficha de producto |
 | `/artista/[slug]` | público | Ficha del artista (SSR con `generateMetadata`) |
 | `/carrito` | público | Carrito |

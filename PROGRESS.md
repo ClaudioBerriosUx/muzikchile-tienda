@@ -2211,7 +2211,11 @@ real.** `verificar:invitar` además necesita la Edge Function desplegada ahí.
 - `verificar:mp -- --api` necesita `MP_CLIENT_ID`: sin él da 32/36 (a6, a7, a11, a12); con el de la app de prueba (4083103325958872) en el servidor y en el script, 36/36.
 - `artistas.tienda_activa` de los 3 artistas sin cuenta sigue en `true` hasta el commit 9: bajarla los saca del sitemap, y ese commit es el único que cambia lo público.
 - **Commit 3**: `lib/cobro.ts` lee `artistas.cobro`, además del flag global y del piloto. Solo agrega.
-- Commits 4 a 10 del plan de activación.
+- **Commit 4, primera parte:** `/terminos-artistas` v1.0 como borrador para el abogado (`noindex`, sin enlaces, sin aceptación activa). Documento para el abogado: https://claude.ai/artifact/SVnVYfL6tfYQ92d53WTi5s (textos y 9 preguntas). Claudio escribe RUT y domicilio en `app/(publico)/terminos-artistas/page.tsx`. No se invita a nadie hasta la revisión legal.
+- Falta definir si los fundadores tienen condiciones distintas al 10%: el texto dice solo "condiciones especiales informadas en tu panel".
+- **Commit 5:** quitar la opción digital del formulario de productos (por ahora solo físicos); mostrar el % de comisión en `/panel/tienda`. Los 3 digitales pausados en producción no se reactivan.
+- **Commit 8:** correo de confirmación de compra por Resend (art. 12 A): sin confirmación escrita, el retracto sube de 10 a 90 días.
+- Commits 5 a 10 del plan de activación.
 
 ---
 
