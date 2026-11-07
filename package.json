@@ -14,6 +14,7 @@
     "pruebas:preparar": "node scripts/preparar-base-pruebas.mjs",
     "verificar:rls": "node --env-file=.env.pruebas scripts/verificar-rls-publicaciones.mjs",
     "verificar:rls-productos": "node --env-file=.env.pruebas scripts/verificar-rls-productos.mjs",
+    "verificar:tienda": "node --env-file=.env.pruebas scripts/verificar-tienda.mjs",
     "verificar:rls-storage": "node --env-file=.env.pruebas scripts/verificar-rls-storage.mjs",
     "verificar:invitar": "node --env-file=.env.pruebas scripts/verificar-invitar-artista.mjs",
     "verificar:sanitizacion": "node scripts/verificar-sanitizacion.mjs",

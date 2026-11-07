@@ -2206,7 +2206,10 @@ real.** `verificar:invitar` además necesita la Edge Function desplegada ahí.
 - `/admin/productos` en producción: rechazar funcionó con solo `admin manage productos` (cassette de Valentina, `pausado → rechazado`). Aprobar no se ha informado.
 - Base de pruebas en la cuenta de MuzikChile, no en Agencia SBS. Previews en dos pasos: primero solo scripts y `dev:pruebas`.
 - **Llaves de Supabase**: las legacy API keys (`eyJ…`) se retiran a comienzos de 2027 (dato de Claudio, 2026-11-07). Hay que migrar producción a `sb_publishable_` / `sb_secret_` antes de esa fecha.
-- Commits 2 a 10 del plan de activación.
+- **Antes del commit 7**: cargar en `app_settings.mp_access_token` de la base de pruebas un token de vendedor de prueba de MP (lo pega Claudio, nunca el de producción), para que `(api-8)` vuelva a probar lo suyo. Hoy es falla conocida.
+- **Commit 2 (hecho, sin aplicar):** migración `20261107172500` (`artistas.cobro`, `tiendas`, `terminos_artistas`, funciones de estado), `verificar:tienda`. En memoria 61/61. Falta aplicarla en pruebas, correr `verificar:tienda` y comparar con la línea base, y después `db push` a producción. Tipos editados a mano: `gen types` da 403 con el login de esta máquina; regenerarlos con una cuenta con acceso.
+- `artistas.tienda_activa` de los 3 artistas sin cuenta sigue en `true` hasta el commit 9: bajarla los saca del sitemap, y ese commit es el único que cambia lo público.
+- Commits 3 a 10 del plan de activación.
 
 ---
 

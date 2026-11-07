@@ -158,6 +158,13 @@ modo sandbox/prod, flag `cobro_modelo`, `comision_default`), `liquidaciones`,
 `pagos_mp` (pagos de MP ya procesados) y `mp_conexiones` (cuenta de MP de cada
 artista, tokens cifrados). Las dos últimas: RLS sin políticas, solo service role.
 
+**Activación de tienda** (en construcción, `verificar:tienda`): `tiendas` (1:1 con
+`artistas`: `no_activa` → `solicitada` → `devuelta` | `activa` → `suspendida`, más
+despacho) y `terminos_artistas` (solo agregar filas). `estado` nunca se escribe desde
+el navegador: cambia solo por `solicitar_tienda`, `aprobar_tienda`, `devolver_tienda` y
+`suspender_tienda` (service role, llamadas desde Route Handlers). `artistas.cobro` es
+el modo de cobro por artista; `aprobar_tienda` lo pasa a `marketplace`.
+
 **Retención** (plazos de la política de privacidad): cron diario
 `/api/cron/retencion` → `aplicar_retencion()` (solo service role). Órdenes de
 más de 6 años se anonimizan; `mp_conexiones` en `reconectar` 90 días se borran;

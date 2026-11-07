@@ -40,6 +40,7 @@ export type Database = {
           bio: string | null
           bio_completa: string | null
           ciudad: string | null
+          cobro: string
           cobros_activos: boolean
           color_acento: string
           comision: number
@@ -79,6 +80,7 @@ export type Database = {
           bio?: string | null
           bio_completa?: string | null
           ciudad?: string | null
+          cobro?: string
           cobros_activos?: boolean
           color_acento?: string
           comision?: number
@@ -118,6 +120,7 @@ export type Database = {
           bio?: string | null
           bio_completa?: string | null
           ciudad?: string | null
+          cobro?: string
           cobros_activos?: boolean
           color_acento?: string
           comision?: number
@@ -637,6 +640,100 @@ export type Database = {
         }
         Relationships: []
       }
+      terminos_artistas: {
+        Row: {
+          aceptado_at: string
+          aceptado_por: string
+          artista_id: string
+          id: string
+          version: string
+        }
+        Insert: {
+          aceptado_at?: string
+          aceptado_por: string
+          artista_id: string
+          id?: string
+          version: string
+        }
+        Update: {
+          aceptado_at?: string
+          aceptado_por?: string
+          artista_id?: string
+          id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "terminos_artistas_artista_id_fkey"
+            columns: ["artista_id"]
+            isOneToOne: false
+            referencedRelation: "artistas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tiendas: {
+        Row: {
+          artista_id: string
+          comentario_moderacion: string | null
+          created_at: string
+          despacho_costo: number | null
+          despacho_modo: string | null
+          despacho_plazo_max: number | null
+          despacho_plazo_min: number | null
+          estado: string
+          identidad_mp_declarada: boolean
+          identidad_mp_declarada_at: string | null
+          resuelta_at: string | null
+          resuelta_por: string | null
+          retiro_detalle: string | null
+          solicitada_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          artista_id: string
+          comentario_moderacion?: string | null
+          created_at?: string
+          despacho_costo?: number | null
+          despacho_modo?: string | null
+          despacho_plazo_max?: number | null
+          despacho_plazo_min?: number | null
+          estado?: string
+          identidad_mp_declarada?: boolean
+          identidad_mp_declarada_at?: string | null
+          resuelta_at?: string | null
+          resuelta_por?: string | null
+          retiro_detalle?: string | null
+          solicitada_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          artista_id?: string
+          comentario_moderacion?: string | null
+          created_at?: string
+          despacho_costo?: number | null
+          despacho_modo?: string | null
+          despacho_plazo_max?: number | null
+          despacho_plazo_min?: number | null
+          estado?: string
+          identidad_mp_declarada?: boolean
+          identidad_mp_declarada_at?: string | null
+          resuelta_at?: string | null
+          resuelta_por?: string | null
+          retiro_detalle?: string | null
+          solicitada_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiendas_artista_id_fkey"
+            columns: ["artista_id"]
+            isOneToOne: true
+            referencedRelation: "artistas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -663,7 +760,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      aceptar_terminos_artista: {
+        Args: { p_artista_id: string; p_user_id: string; p_version: string }
+        Returns: string
+      }
       aplicar_retencion: { Args: { p_simular?: boolean }; Returns: Json }
+      aprobar_tienda: {
+        Args: { p_admin: string; p_artista_id: string; p_version: string }
+        Returns: string
+      }
+      checklist_tienda: {
+        Args: { p_artista_id: string; p_version: string }
+        Returns: Json
+      }
       comision_por_defecto: { Args: never; Returns: number }
       confirmar_pago: {
         Args: { p_grupo_id: string; p_monto: number; p_payment_id: string }
@@ -683,6 +792,10 @@ export type Database = {
           tipo_cuenta: string
         }[]
       }
+      devolver_tienda: {
+        Args: { p_admin: string; p_artista_id: string; p_comentario: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -693,6 +806,14 @@ export type Database = {
       incrementar_usos_cupon: { Args: { cupon_id: string }; Returns: undefined }
       revertir_pago: {
         Args: { p_grupo_id: string; p_motivo: string; p_payment_id: string }
+        Returns: string
+      }
+      solicitar_tienda: {
+        Args: { p_artista_id: string; p_version: string }
+        Returns: string
+      }
+      suspender_tienda: {
+        Args: { p_admin: string; p_artista_id: string; p_motivo: string }
         Returns: string
       }
       tomar_lock_renovacion_mp: {
