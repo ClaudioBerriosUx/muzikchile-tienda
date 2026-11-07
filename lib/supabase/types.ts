@@ -363,6 +363,11 @@ export type Database = {
           created_at: string
           cupon_id: string | null
           direccion_envio: string | null
+          entrega: string | null
+          entrega_detalle: string | null
+          entrega_plazo_max: number | null
+          entrega_plazo_min: number | null
+          envio_monto: number
           estado: string
           grupo_id: string | null
           id: string
@@ -390,6 +395,11 @@ export type Database = {
           created_at?: string
           cupon_id?: string | null
           direccion_envio?: string | null
+          entrega?: string | null
+          entrega_detalle?: string | null
+          entrega_plazo_max?: number | null
+          entrega_plazo_min?: number | null
+          envio_monto?: number
           estado?: string
           grupo_id?: string | null
           id?: string
@@ -417,6 +427,11 @@ export type Database = {
           created_at?: string
           cupon_id?: string | null
           direccion_envio?: string | null
+          entrega?: string | null
+          entrega_detalle?: string | null
+          entrega_plazo_max?: number | null
+          entrega_plazo_min?: number | null
+          envio_monto?: number
           estado?: string
           grupo_id?: string | null
           id?: string

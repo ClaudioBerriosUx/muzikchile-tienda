@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
     if (pago.status === "approved") {
       const { data: ordenes, error: ordenesError } = await supabase
         .from("ordenes")
-        .select("monto_artista, comision_monto")
+        .select("monto_artista, comision_monto, envio_monto")
         .eq("grupo_id", grupoId);
       if (ordenesError) return reintentar();
 
@@ -165,7 +165,8 @@ export async function POST(req: NextRequest) {
 
       // Lo cobrado tiene que cubrir lo que se registró. Si no calza, el pago
       // no se confirma: queda en el log para revisión manual.
-      const esperado = ordenes.reduce((acc, o) => acc + o.monto_artista + o.comision_monto, 0);
+      // El envío (commit 7) va aparte de los productos; en las órdenes anteriores es 0.
+      const esperado = ordenes.reduce((acc, o) => acc + o.monto_artista + o.comision_monto + o.envio_monto, 0);
       const pagado = Number(pago.transaction_amount);
       if (pago.currency_id !== "CLP" || !(pagado >= esperado)) {
         console.error(

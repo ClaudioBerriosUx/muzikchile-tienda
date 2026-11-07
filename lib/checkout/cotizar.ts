@@ -2,11 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { comisionEfectiva, hoyEnChile } from "@/lib/comision";
 import { leerConfigCobro, modoCobro, type ModoCobro } from "@/lib/cobro";
+import { entregasDisponibles, leerDespachos, type Entrega } from "@/lib/checkout/despacho";
 
 /**
- * Calcula el carrito con los datos de la base: precio, stock, cupón y comisión.
+ * Calcula el carrito con los datos de la base: precio, stock, cupón, comisión y
+ * despacho.
  *
- * El navegador solo aporta `{ id, cantidad }` y el código del cupón. Todo lo
+ * El navegador solo aporta `{ id, cantidad }`, el código del cupón y la forma
+ * de entrega elegida por artista. Todo lo
  * que cuesta plata sale de acá, nunca del body: antes `crear-preferencia`
  * usaba el `precio` que mandaba el cliente, y cualquiera podía pagar $1.
  *
@@ -42,13 +45,40 @@ export interface LineaCotizada {
   comision_pct: number;
   comision_monto: number;
   monto_artista: number;
+  /**
+   * Envío del pedido de este artista. Va en su primera línea; las demás, 0.
+   * No paga comisión: monto + envio_monto es lo cobrado por la línea.
+   */
+  envio_monto: number;
+}
+
+/** La entrega de cada artista del carrito, lo que se informa antes de pagar. */
+export interface DespachoCotizado {
+  artista_id: string;
+  artista_nombre: string;
+  /** Lo que ofrece la tienda, envío primero. */
+  opciones: Entrega[];
+  entrega: Entrega;
+  /** Lo que se cobra por la entrega elegida; 0 si es retiro. */
+  costo: number;
+  /** Precio del envío si lo ofrece, elegido o no; null si no hace envíos. */
+  costo_envio: number | null;
+  plazo_min: number | null;
+  plazo_max: number | null;
+  /** Indicaciones de retiro, si lo ofrece. */
+  retiro_detalle: string | null;
+  /** false: la tienda no definió despacho (envío sin costo, sin plazo). */
+  configurado: boolean;
 }
 
 export interface Cotizacion {
   lineas: LineaCotizada[];
   subtotal: number;
   descuento: number;
+  /** Suma de los envíos. subtotal − descuento + envio = total. */
+  envio: number;
   total: number;
+  despachos: DespachoCotizado[];
   cupon: Pick<Cupon, "id" | "codigo" | "tipo_descuento" | "valor" | "artista_id"> | null;
   /**
    * Cómo se cobra el pedido (lib/cobro.ts). En 'marketplace' el carrito es de
@@ -59,7 +89,7 @@ export interface Cotizacion {
 
 export type ResultadoCotizacion =
   | { ok: true; cotizacion: Cotizacion }
-  | { ok: false; error: string; campo?: "cupon" };
+  | { ok: false; error: string; campo?: "cupon" | "entrega" };
 
 const MAX_LINEAS = 50;
 const MAX_CANTIDAD = 99;
@@ -113,7 +143,9 @@ async function buscarCupon(
 export async function cotizarCarrito(
   supabase: SupabaseClient<Database>,
   items: ItemPedido[],
-  codigoCupon?: string | null
+  codigoCupon?: string | null,
+  /** Forma de entrega elegida por artista (normalizarEntregas). Sin elegir, la primera que ofrezca. */
+  entregas: Record<string, Entrega> = {}
 ): Promise<ResultadoCotizacion> {
   const { data: productos, error: prodError } = await supabase
     .from("productos")
@@ -129,7 +161,7 @@ export async function cotizarCarrito(
   const hoy = hoyEnChile();
 
   // ── Líneas a precio de lista ──
-  const base: Omit<LineaCotizada, "precio_cobrado" | "monto" | "comision_monto" | "monto_artista">[] = [];
+  const base: Omit<LineaCotizada, "precio_cobrado" | "monto" | "comision_monto" | "monto_artista" | "envio_monto">[] = [];
   for (const item of items) {
     const p = porId.get(item.id);
     if (!p || p.estado !== "aprobado" || !p.artistas) {
@@ -208,17 +240,61 @@ export async function cotizarCarrito(
     return Math.max(1, l.precio_unitario - descuentoUnitario);
   };
 
+  // ── Despacho ──
+  // Uno por artista, en el orden en que aparecen en el carrito.
+  const artistas = [...new Set(base.map((l) => l.artista_id))];
+  const opciones = await leerDespachos(supabase, artistas);
+  if (!opciones) return { ok: false, error: "No pudimos calcular tu pedido. Intenta de nuevo." };
+
+  const despachos: DespachoCotizado[] = [];
+  for (const artista_id of artistas) {
+    const o = opciones.get(artista_id)!;
+    const artista_nombre = porId.get(base.find((l) => l.artista_id === artista_id)!.producto_id)!.artistas!.nombre;
+    const disponibles = entregasDisponibles(o);
+    const elegida = entregas[artista_id];
+    if (elegida && !disponibles.includes(elegida)) {
+      return {
+        ok: false,
+        campo: "entrega",
+        error: elegida === "retiro"
+          ? `${artista_nombre} no ofrece retiro. Elige envío.`
+          : `${artista_nombre} no hace envíos. Elige retiro.`,
+      };
+    }
+    const entrega = elegida ?? disponibles[0];
+    despachos.push({
+      artista_id,
+      artista_nombre,
+      opciones: disponibles,
+      entrega,
+      costo: entrega === "envio" ? o.envio!.costo : 0,
+      costo_envio: o.envio?.costo ?? null,
+      plazo_min: o.envio?.plazo_min ?? null,
+      plazo_max: o.envio?.plazo_max ?? null,
+      retiro_detalle: o.retiro?.detalle ?? null,
+      configurado: o.configurado,
+    });
+  }
+
   // ── Montos finales ──
-  // La comisión va sobre lo cobrado, después del descuento.
+  // La comisión va sobre lo cobrado por los productos, después del descuento.
+  // El envío no paga comisión y va en la primera línea de cada artista.
+  const conEnvio = new Set<string>();
   const lineas: LineaCotizada[] = base.map((l) => {
     const precio_cobrado = precioCobrado(l);
     const monto = precio_cobrado * l.cantidad;
     const comision_monto = Math.round((monto * l.comision_pct) / 100);
-    return { ...l, precio_cobrado, monto, comision_monto, monto_artista: monto - comision_monto };
+    let envio_monto = 0;
+    if (!conEnvio.has(l.artista_id)) {
+      conEnvio.add(l.artista_id);
+      envio_monto = despachos.find((d) => d.artista_id === l.artista_id)!.costo;
+    }
+    return { ...l, precio_cobrado, monto, comision_monto, monto_artista: monto - comision_monto, envio_monto };
   });
 
   const subtotal = lineas.reduce((acc, l) => acc + l.precio_unitario * l.cantidad, 0);
-  const total = lineas.reduce((acc, l) => acc + l.monto, 0);
+  const totalProductos = lineas.reduce((acc, l) => acc + l.monto, 0);
+  const envio = despachos.reduce((acc, d) => acc + d.costo, 0);
 
   return {
     ok: true,
@@ -227,8 +303,10 @@ export async function cotizarCarrito(
       subtotal,
       // Lo que de verdad se descontó tras el redondeo por unidad, no el valor
       // nominal del cupón: así subtotal − descuento = total, siempre.
-      descuento: subtotal - total,
-      total,
+      descuento: subtotal - totalProductos,
+      envio,
+      total: totalProductos + envio,
+      despachos,
       cupon: cupon
         ? { id: cupon.id, codigo: cupon.codigo, tipo_descuento: cupon.tipo_descuento, valor: cupon.valor, artista_id: cupon.artista_id }
         : null,

@@ -15,6 +15,8 @@ import { abrirComprobante, rutaComprobante, subirComprobante } from "@/lib/stora
 interface OrdenLiq {
   id: string;
   monto_artista: number;
+  /** El envío lo cobró MuzikChile y se le debe entero al artista, que despacha. */
+  envio_monto: number;
   estado: string;
   liquidado?: boolean | null;
   created_at: string;
@@ -61,7 +63,7 @@ export default function LiquidacionesPage() {
       const [{ data, error }, { data: bancos, error: bancoError }] = await Promise.all([
         supabase
           .from("artistas")
-          .select("id, nombre, foto_url, ordenes(id, monto_artista, estado, liquidado, created_at)")
+          .select("id, nombre, foto_url, ordenes(id, monto_artista, envio_monto, estado, liquidado, created_at)")
           // Solo lo que entró a la cuenta de MuzikChile se liquida: lo cobrado
           // en marketplace ya le llegó al artista. Filtra las órdenes
           // embebidas, no a los artistas.
@@ -110,7 +112,7 @@ export default function LiquidacionesPage() {
         ...a,
         monto: (a.ordenes ?? [])
           .filter((o) => o.estado === "pagado" && !o.liquidado)
-          .reduce((acc, o) => acc + (o.monto_artista ?? 0), 0),
+          .reduce((acc, o) => acc + (o.monto_artista ?? 0) + (o.envio_monto ?? 0), 0),
       }))
       .filter((a) => a.monto > 0),
   [artistas]);

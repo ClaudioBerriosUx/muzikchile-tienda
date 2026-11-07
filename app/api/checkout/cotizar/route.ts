@@ -2,18 +2,21 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { cotizarCarrito, normalizarItems } from "@/lib/checkout/cotizar";
+import { normalizarEntregas } from "@/lib/checkout/despacho";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Total del carrito según la base, con el cupón validado acá.
+ * Total del carrito según la base, con el cupón y el despacho validados acá.
+ * Body: `{ items, cupon_codigo?, entregas?: { [artista_id]: 'envio' | 'retiro' } }`.
  * El checkout lo muestra tal cual; crear-preferencia cobra exactamente esto.
  */
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => null);
     const items = normalizarItems(body?.items);
-    if (!items) {
+    const entregas = normalizarEntregas(body?.entregas);
+    if (!items || !entregas) {
       return NextResponse.json({ error: "Carrito inválido" }, { status: 400 });
     }
 
@@ -23,12 +26,12 @@ export async function POST(request: Request) {
     );
 
     const codigo = typeof body?.cupon_codigo === "string" ? body.cupon_codigo : null;
-    const resultado = await cotizarCarrito(supabase, items, codigo);
+    const resultado = await cotizarCarrito(supabase, items, codigo, entregas);
     if (!resultado.ok) {
       return NextResponse.json({ error: resultado.error, campo: resultado.campo }, { status: 422 });
     }
 
-    const { lineas, subtotal, descuento, total, cupon, cobro } = resultado.cotizacion;
+    const { lineas, subtotal, descuento, envio, total, cupon, cobro, despachos } = resultado.cotizacion;
     // Solo lo que el checkout necesita mostrar: sin comisiones ni montos del artista.
     return NextResponse.json({
       lineas: lineas.map((l) => ({
@@ -39,7 +42,9 @@ export async function POST(request: Request) {
       })),
       subtotal,
       descuento,
+      envio,
       total,
+      despachos,
       cupon: cupon
         ? { codigo: cupon.codigo, tipo_descuento: cupon.tipo_descuento, valor: cupon.valor }
         : null,

@@ -66,6 +66,8 @@ const API   = process.argv.find((a) => a.startsWith("--api="))?.slice("--api=".l
 const FAMILIA = "rlstest-";
 const PREFIJO = `${FAMILIA}${Date.now()}`;
 const CUPON_FAMILIA = "RLSTEST-";
+// Con envío, crear-preferencia exige dirección (commit 7).
+const DIRECCION_PRUEBA = { direccion: "Av. Prueba 123", ciudad: "Santiago", region: "Metropolitana de Santiago" };
 const CUPON = (s) => `${CUPON_FAMILIA}${Date.now()}-${s}`.toUpperCase();
 
 const opciones = { auth: { autoRefreshToken: false, persistSession: false } };
@@ -589,7 +591,7 @@ async function api(A, B) {
     await admin.from("artistas").update({ es_founder: true, founder_hasta: "2020-01-01" }).eq("id", A.artistaId);
     const r = await post("/api/mercadopago/crear-preferencia", {
       items: [{ id: P, cantidad: 2, precio: 1 }],
-      comprador: { nombre: "RLS Test", email: `${PREFIJO}-comprador@example.com` },
+      comprador: { nombre: "RLS Test", email: `${PREFIJO}-comprador@example.com`, ...DIRECCION_PRUEBA },
       cupon_codigo: cA.codigo,
     });
     const grupo = r.data?.external_reference;
@@ -617,6 +619,124 @@ async function api(A, B) {
     const { data } = await admin.from("ordenes").select("estado").eq("mercadopago_id", "166576770280");
     const { data: pagos } = await admin.from("pagos_mp").select("mp_payment_id").eq("mp_payment_id", "166576770280");
     check("(api-10) Webhook con un pago real rechazado → 200, no se registra como pagado", r.status === 200 && (pagos ?? []).length === 0 && (data ?? []).every((o) => o.estado !== "pagado"), `status=${r.status}`);
+  }
+}
+
+// ── Despacho (de) ────────────────────────────────────────────────────────────
+// lib/checkout/despacho.ts + cotizar + crear-preferencia: el envío se cobra
+// aparte, sin comisión, y cada orden guarda la copia de la entrega informada.
+
+async function despachoEnElCobro() {
+  console.log(`\n── (de) Despacho · ${API} ──`);
+  const E = await crearArtista("de-envio");
+  const R = await crearArtista("de-retiro");
+  const S = await crearArtista("de-sin");
+  for (const x of [E, R, S]) {
+    await admin.from("artistas").update({ comision: 10, es_founder: false, founder_hasta: null }).eq("id", x.artistaId);
+  }
+  const RETIRO = `Metro Baquedano ${PREFIJO}`;
+  await admin.from("tiendas").update({
+    despacho_modo: "ambos", despacho_costo: 3990, despacho_plazo_min: 2, despacho_plazo_max: 5, retiro_detalle: RETIRO,
+  }).eq("artista_id", E.artistaId);
+  await admin.from("tiendas").update({ despacho_modo: "retiro", retiro_detalle: "Feria del disco, domingos" }).eq("artista_id", R.artistaId);
+
+  const PE1 = await crearProducto(E.artistaId, "de-e1");
+  const PE2 = await crearProducto(E.artistaId, "de-e2", { precio: 5000 });
+  const PR  = await crearProducto(R.artistaId, "de-r");
+  const PS  = await crearProducto(S.artistaId, "de-s");
+  const DIRECCION = { direccion: "Av. Prueba 123", ciudad: "Santiago", region: "Metropolitana de Santiago" };
+  const comprador = (sufijo, extra = {}) => ({ nombre: "RLS Test", email: `${PREFIJO}-de-${sufijo}@example.com`, ...extra });
+  const ordenesDe = async (grupo) => grupo
+    ? (await admin.from("ordenes")
+        .select("producto_id, monto_artista, comision_monto, envio_monto, entrega, entrega_plazo_min, entrega_plazo_max, entrega_detalle, direccion_envio, ciudad_envio, region_envio")
+        .eq("grupo_id", grupo)).data ?? []
+    : [];
+
+  {
+    const r = await post("/api/checkout/cotizar", { items: [{ id: PS, cantidad: 1 }] });
+    const d = r.data?.despachos?.[0];
+    check("(de-1) Sin despacho definido: envío sin costo y sin plazo, como antes", r.status === 200 && r.data.envio === 0 && r.data.total === 10000
+      && d?.entrega === "envio" && d?.configurado === false && d?.plazo_max === null, JSON.stringify(r.data));
+  }
+  {
+    const r = await post("/api/checkout/cotizar", { items: [{ id: PE1, cantidad: 2 }] });
+    const d = r.data?.despachos?.[0];
+    check("(de-2) Envío y retiro: sin elegir va envío; costo fijo por pedido, aparte del subtotal", r.status === 200
+      && r.data.subtotal === 20000 && r.data.envio === 3990 && r.data.total === 23990
+      && d?.entrega === "envio" && JSON.stringify(d?.opciones) === '["envio","retiro"]' && d?.plazo_min === 2 && d?.plazo_max === 5, JSON.stringify(r.data));
+  }
+  {
+    const r = await post("/api/checkout/cotizar", { items: [{ id: PE1, cantidad: 2 }], entregas: { [E.artistaId]: "retiro" } });
+    const d = r.data?.despachos?.[0];
+    check("(de-3) Eligiendo retiro: sin envío; el precio del envío se sigue informando", r.status === 200 && r.data.envio === 0 && r.data.total === 20000
+      && d?.entrega === "retiro" && d?.costo === 0 && d?.costo_envio === 3990 && d?.retiro_detalle === RETIRO, JSON.stringify(r.data));
+  }
+  {
+    const r = await post("/api/checkout/cotizar", { items: [{ id: PE1, cantidad: 1 }], entregas: { [E.artistaId]: "dron" } });
+    check("(de-4) Una entrega que no existe → 400", r.status === 400, `status=${r.status}`);
+  }
+  {
+    const r = await post("/api/checkout/cotizar", { items: [{ id: PR, cantidad: 1 }], entregas: { [R.artistaId]: "envio" } });
+    check("(de-5) Envío a una tienda que solo ofrece retiro → 422 de la entrega", r.status === 422 && r.data?.campo === "entrega", JSON.stringify(r.data));
+  }
+  {
+    const r = await post("/api/mercadopago/crear-preferencia", { items: [{ id: PE1, cantidad: 1 }], comprador: comprador("sin-dir") });
+    const { count } = await admin.from("ordenes").select("id", { count: "exact", head: true }).eq("comprador_email", `${PREFIJO}-de-sin-dir@example.com`);
+    check("(de-6) crear-preferencia con envío y sin dirección → 400, sin órdenes", r.status === 400 && r.data?.campo === "direccion" && count === 0, JSON.stringify(r.data));
+  }
+  {
+    // Dos productos del mismo artista: un solo envío, en una línea, sin comisión.
+    const r = await post("/api/mercadopago/crear-preferencia", {
+      items: [{ id: PE1, cantidad: 2 }, { id: PE2, cantidad: 1 }],
+      comprador: comprador("envio", DIRECCION),
+    });
+    const ordenes = await ordenesDe(r.data?.external_reference);
+    const suma = (k) => ordenes.reduce((acc, o) => acc + Number(o[k]), 0);
+    const ok = r.status === 200 && ordenes.length === 2
+      && suma("envio_monto") === 3990 && ordenes.filter((o) => Number(o.envio_monto) > 0).length === 1
+      && suma("comision_monto") === 2500 && suma("monto_artista") + suma("comision_monto") === 25000
+      && ordenes.every((o) => o.entrega === "envio" && o.entrega_plazo_min === 2 && o.entrega_plazo_max === 5 && o.entrega_detalle === null
+        && o.direccion_envio === DIRECCION.direccion && o.region_envio === DIRECCION.region);
+    check("(de-7) crear-preferencia con envío: un envío por pedido, sin comisión, con la copia en las órdenes", ok, `status=${r.status} ${r.data?.error ?? ""} ${JSON.stringify(ordenes)}`);
+
+    // La preferencia en MP lleva el envío como ítem aparte (token de prueba).
+    const { data: pref } = await admin.from("ordenes").select("mp_preference_id").eq("grupo_id", r.data?.external_reference ?? crypto.randomUUID()).limit(1).maybeSingle();
+    const { data: token } = await admin.from("app_settings").select("value").eq("key", "mp_access_token").single();
+    const mp = pref?.mp_preference_id
+      ? await fetch(`https://api.mercadopago.com/checkout/preferences/${pref.mp_preference_id}`, { headers: { Authorization: `Bearer ${token.value}` } }).then((x) => x.json())
+      : null;
+    const items = mp?.items ?? [];
+    const envio = items.find((i) => i.id === `despacho-${E.artistaId}`);
+    const totalMP = items.reduce((acc, i) => acc + i.unit_price * i.quantity, 0);
+    check("(de-8) La preferencia de MP cobra el envío como ítem aparte y el total calza con las órdenes",
+      envio?.unit_price === 3990 && envio?.quantity === 1 && totalMP === 25000 + 3990, JSON.stringify(items.map((i) => [i.id, i.unit_price, i.quantity])));
+  }
+  {
+    // Retiro: no pide dirección y, si llega, no la guarda.
+    const r = await post("/api/mercadopago/crear-preferencia", {
+      items: [{ id: PE1, cantidad: 1 }],
+      comprador: comprador("retiro", DIRECCION),
+      entregas: { [E.artistaId]: "retiro" },
+    });
+    const [o] = await ordenesDe(r.data?.external_reference);
+    check("(de-9) crear-preferencia con retiro: sin envío, sin dirección guardada, con las indicaciones", r.status === 200
+      && o?.entrega === "retiro" && Number(o.envio_monto) === 0 && o.entrega_detalle === RETIRO
+      && o.direccion_envio === null && o.ciudad_envio === null && o.entrega_plazo_max === null, `status=${r.status} ${r.data?.error ?? ""} ${JSON.stringify(o)}`);
+  }
+  {
+    // Centralizado con dos artistas: un envío por cada uno que despacha.
+    const r = await post("/api/checkout/cotizar", { items: [{ id: PE1, cantidad: 1 }, { id: PR, cantidad: 1 }, { id: PS, cantidad: 1 }] });
+    const porArtista = Object.fromEntries((r.data?.despachos ?? []).map((d) => [d.artista_id, d]));
+    check("(de-10) Carrito de varios artistas: un despacho por artista, cada uno con lo suyo", r.status === 200 && r.data.despachos.length === 3
+      && porArtista[E.artistaId]?.costo === 3990 && porArtista[R.artistaId]?.entrega === "retiro" && porArtista[S.artistaId]?.configurado === false
+      && r.data.envio === 3990 && r.data.total === 30000 + 3990, JSON.stringify(r.data));
+  }
+  {
+    // La ficha recibe el despacho de la tienda (prop serializada en el HTML).
+    const html = await fetch(`${API}/producto/${PE1}`).then((x) => x.text());
+    const conDespacho = /despacho\\?":\{\\?"envio\\?":\{\\?"costo\\?":3990/.test(html) && html.includes(RETIRO);
+    const sin = await fetch(`${API}/producto/${PS}`).then((x) => x.text());
+    check("(de-11) La ficha muestra el despacho de la tienda; sin definir, no", conDespacho && /configurado\\?":false/.test(sin), `con=${conDespacho}`);
   }
 }
 
@@ -904,7 +1024,7 @@ async function marketplace(A, B, ADMIN) {
       // cobre con el token de MuzikChile (eso daría 200) y que no queden órdenes.
       const r = await post("/api/mercadopago/crear-preferencia", {
         items: [{ id: PA, cantidad: 1 }],
-        comprador: { nombre: "RLS Test", email: `${PREFIJO}-comprador@example.com` },
+        comprador: { nombre: "RLS Test", email: `${PREFIJO}-comprador@example.com`, ...DIRECCION_PRUEBA },
       });
       const { data: ords } = await admin.from("ordenes").select("id").eq("producto_id", PA);
       check("(mk-10) crear-preferencia en marketplace usa el token del artista (falso → MP lo rechaza, sin órdenes)",
@@ -918,7 +1038,7 @@ async function marketplace(A, B, ADMIN) {
       }).eq("artista_id", A.artistaId);
       const r = await post("/api/mercadopago/crear-preferencia", {
         items: [{ id: PA, cantidad: 1 }],
-        comprador: { nombre: "RLS Test", email: `${PREFIJO}-comprador@example.com` },
+        comprador: { nombre: "RLS Test", email: `${PREFIJO}-comprador@example.com`, ...DIRECCION_PRUEBA },
       });
       const { data: ords } = await admin.from("ordenes").select("id").eq("producto_id", PA);
       check("(mk-18) Token cifrado con otra MP_TOKENS_KEY → crear-preferencia 422 'no puede recibir pagos', sin órdenes",
@@ -1002,7 +1122,7 @@ async function despacho(A, B) {
   const gCanc = await crearGrupo(A.artistaId, [{ producto: prod, cantidad: 1 }], "cancelado");
   await admin.from("ordenes").update({ direccion_envio: "Calle Falsa 123", ciudad_envio: "Valparaíso", region_envio: "Valparaíso" }).eq("grupo_id", gPagado);
 
-  const DESPACHO = "id, grupo_id, estado, created_at, cantidad, comprador_nombre, comprador_email, direccion_envio, ciudad_envio, region_envio, productos(nombre)";
+  const DESPACHO = "id, grupo_id, estado, created_at, cantidad, comprador_nombre, comprador_email, direccion_envio, ciudad_envio, region_envio, entrega, envio_monto, entrega_plazo_min, entrega_plazo_max, entrega_detalle, productos(nombre)";
   {
     const { data, error } = await A.cliente.from("ordenes").select(DESPACHO).eq("grupo_id", gPagado);
     const o = data?.[0];
@@ -1048,6 +1168,7 @@ async function main() {
     await reembolsos(A, B, ADMIN);
     if (FASE2) await fase2(A, B, ADMIN);
     if (API) await api(A, B);
+    if (API) await despachoEnElCobro();
     if (API) await marketplace(A, B, ADMIN);
     if (API) await renovacion(A, B, ADMIN);
   } catch (err) {

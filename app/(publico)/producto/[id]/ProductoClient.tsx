@@ -12,6 +12,7 @@ import SelloVerificado from "@/components/tienda/SelloVerificado";
 import ArtistaTiendaCard from "@/components/tienda/ArtistaTiendaCard";
 import { useCarrito } from "@/lib/stores/carrito";
 import { formatCLP } from "@/lib/constants";
+import { textoPlazo, type OpcionesDespacho } from "@/lib/checkout/despacho";
 import { cn } from "@/lib/utils";
 
 interface Artista {
@@ -86,6 +87,19 @@ function Stock({ stock, digital }: { stock: number; digital: boolean }) {
   );
 }
 
+/** Las líneas del recuadro de despacho; vacío si la tienda no lo definió. */
+function textoDespacho(d: OpcionesDespacho | null): string[] {
+  if (!d?.configurado) return [];
+  const lineas: string[] = [];
+  if (d.envio) {
+    const plazo = textoPlazo(d.envio.plazo_min, d.envio.plazo_max);
+    const costo = d.envio.costo > 0 ? formatCLP(d.envio.costo) : "sin costo";
+    lineas.push(`Envío a todo Chile: ${costo} por pedido${plazo ? ` · ${plazo}` : ""}`);
+  }
+  if (d.retiro) lineas.push(`Retiro: ${d.retiro.detalle}`);
+  return lineas;
+}
+
 /**
  * Cómo cobra el artista (lib/cobro.ts), calculado en el servidor.
  * `directo`: cobra con su cuenta de MP y va solo en el pedido.
@@ -98,7 +112,11 @@ export interface CobroProducto {
   cerrada: boolean;
 }
 
-export default function ProductoClient({ id, cobro }: { id: string; cobro: CobroProducto }) {
+/**
+ * `despacho`: lo que ofrece la tienda (lib/checkout/despacho.ts). Si no lo
+ * definió, se muestran las zonas del producto, como antes.
+ */
+export default function ProductoClient({ id, cobro, despacho }: { id: string; cobro: CobroProducto; despacho: OpcionesDespacho | null }) {
   const supabase = createClient();
   const agregar  = useCarrito((s) => s.agregar);
   const actualizarCantidad = useCarrito((s) => s.actualizarCantidad);
@@ -167,6 +185,7 @@ export default function ProductoClient({ id, cobro }: { id: string; cobro: Cobro
   const pronto     = cobro.cerrada || (cobro.directo && !cobro.disponible);
   const digital    = producto.tipo === "digital";
   const zonas      = producto.zonas_envio ?? [];
+  const lineasDespacho = textoDespacho(despacho);
 
   /**
    * `agregar()` del store siempre suma 1. Para respetar la cantidad elegida se
@@ -350,7 +369,7 @@ export default function ProductoClient({ id, cobro }: { id: string; cobro: Cobro
               </button>
             </div>
 
-            {(digital || zonas.length > 0) && (
+            {(digital || lineasDespacho.length > 0 || zonas.length > 0) && (
               <div className="flex items-start gap-3.5 rounded-xl border border-tema-borde bg-tema-campo px-[18px] py-4">
                 <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[10px] border border-tema-azul bg-tema-azul-fondo text-tema-azul-etiqueta">
                   {digital
@@ -359,11 +378,19 @@ export default function ProductoClient({ id, cobro }: { id: string; cobro: Cobro
                 </div>
                 <div className="flex min-w-0 flex-col gap-[3px]">
                   <p className="m-0 text-[15px] font-bold text-tema-texto">
-                    {digital ? "Entrega digital" : "Zonas de despacho"}
+                    {digital ? "Entrega digital" : lineasDespacho.length > 0 ? "Despacho" : "Zonas de despacho"}
                   </p>
-                  <p className="m-0 text-sm leading-[1.6] text-tema-texto-2">
-                    {digital ? "Producto digital: no requiere despacho." : zonas.map((z) => ETIQUETA_ZONA[z.toLowerCase()] ?? z).join(" · ")}
-                  </p>
+                  {digital ? (
+                    <p className="m-0 text-sm leading-[1.6] text-tema-texto-2">Producto digital: no requiere despacho.</p>
+                  ) : lineasDespacho.length > 0 ? (
+                    lineasDespacho.map((linea) => (
+                      <p key={linea} className="m-0 text-sm leading-[1.6] text-tema-texto-2">{linea}</p>
+                    ))
+                  ) : (
+                    <p className="m-0 text-sm leading-[1.6] text-tema-texto-2">
+                      {zonas.map((z) => ETIQUETA_ZONA[z.toLowerCase()] ?? z).join(" · ")}
+                    </p>
+                  )}
                 </div>
               </div>
             )}

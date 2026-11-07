@@ -222,11 +222,17 @@ inclusive (hora de Chile) y después `artistas.comision`. Un artista nuevo recib
 `app_settings.comision_default` (vía `comision_por_defecto()`); no hay un 10%
 escrito en el código.
 
+- **Despacho**: `lib/checkout/despacho.ts` decide qué ofrece cada tienda (envío,
+  retiro o ambos, de `tiendas`). El envío es un costo fijo por pedido de cada
+  artista, para todo Chile, **sin comisión**; va como ítem aparte en la
+  preferencia y en `ordenes.envio_monto` de una sola línea del artista. Cada
+  orden guarda la copia de la entrega informada (`entrega`, plazo, detalle de
+  retiro): lo informado obliga al artista.
 - `POST /api/checkout/cotizar` — lo que muestra el checkout (misma función).
 - `POST /api/mercadopago/crear-preferencia` — cotiza, lee `mp_access_token` y
   `mp_modo` de `app_settings`, crea la preferencia e inserta una fila
-  `pendiente` en `ordenes` por línea (`monto_artista + comision_monto` = lo
-  cobrado por la línea).
+  `pendiente` en `ordenes` por línea (`monto_artista + comision_monto +
+  envio_monto` = lo cobrado por la línea).
 - `POST /api/mercadopago/webhook` — consulta el pago en la API de MP (el aviso
   no se cree), compara monto y moneda, y llama a `confirmar_pago()`: órdenes a
   `pagado`, stock y cupón, **una sola vez por pago** (lock en `pagos_mp`).

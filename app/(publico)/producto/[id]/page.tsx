@@ -5,6 +5,7 @@ import ProductoClient, { type CobroProducto } from "./ProductoClient";
 import { leerConfigCobro, modoCobro } from "@/lib/cobro";
 import { leerConfigVentas } from "@/lib/ventas";
 import { clienteServicio } from "@/lib/mp/conexiones";
+import { leerDespachos, type OpcionesDespacho } from "@/lib/checkout/despacho";
 import { BASE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -64,7 +65,21 @@ export default async function ProductoPage({ params, searchParams }: Props) {
   if (!producto) notFound();
 
   const artista = { id: producto.artista_id, cobro: producto.artistas?.cobro ?? "centralizado" };
-  return <ProductoClient id={id} cobro={await cobroDelProducto(artista, !!producto.artistas?.cobros_activos, compra === "controlada")} />;
+  const [cobro, despacho] = await Promise.all([
+    cobroDelProducto(artista, !!producto.artistas?.cobros_activos, compra === "controlada"),
+    despachoDelProducto(producto.artista_id),
+  ]);
+  return <ProductoClient id={id} cobro={cobro} despacho={despacho} />;
+}
+
+/**
+ * El despacho de la tienda (lib/checkout/despacho.ts), lo mismo que cobra
+ * cotizar. Si no se puede leer, la ficha no lo muestra: el checkout lo
+ * informa igual antes de pagar.
+ */
+async function despachoDelProducto(artistaId: string): Promise<OpcionesDespacho | null> {
+  const despachos = await leerDespachos(clienteServicio(), [artistaId]).catch(() => null);
+  return despachos?.get(artistaId) ?? null;
 }
 
 /**

@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import StatusBadge from "@/components/ui/StatusBadge";
+import { formatCLP } from "@/lib/constants";
+import { textoPlazo } from "@/lib/checkout/despacho";
 
 /**
  * Pedidos por despachar: lo que el artista necesita para enviar lo que le
@@ -16,11 +18,15 @@ import StatusBadge from "@/components/ui/StatusBadge";
  *
  * Un checkout es un grupo (grupo_id) con una fila por producto: se muestran
  * juntas, con los datos de despacho una sola vez.
+ *
+ * La entrega (envío o retiro), el costo y el plazo son la copia de lo que vio el
+ * comprador al pagar: es lo comprometido, aunque después cambie la tienda.
+ * Las órdenes anteriores al commit 7 no tienen entrega y se muestran como envío.
  */
 async function traerPedidos(supabase: ReturnType<typeof createClient>, artistaId: string) {
   const { data, error } = await supabase
     .from("ordenes")
-    .select("id, grupo_id, estado, created_at, cantidad, comprador_nombre, comprador_email, direccion_envio, ciudad_envio, region_envio, productos(nombre)")
+    .select("id, grupo_id, estado, created_at, cantidad, comprador_nombre, comprador_email, direccion_envio, ciudad_envio, region_envio, entrega, envio_monto, entrega_plazo_min, entrega_plazo_max, entrega_detalle, productos(nombre)")
     .eq("artista_id", artistaId)
     .in("estado", ["pagado", "enviado"])
     .order("created_at", { ascending: false });
@@ -80,6 +86,9 @@ export default function DespachoPage() {
         <ul className="flex flex-col gap-4">
           {pedidos.map(([clave, items]) => {
             const p = items[0];
+            const retiro = p.entrega === "retiro";
+            const envio = items.reduce((acc, l) => acc + (l.envio_monto ?? 0), 0);
+            const plazo = textoPlazo(p.entrega_plazo_min, p.entrega_plazo_max);
             return (
               <li key={clave} className="rounded-xl border border-[#e8e8e8] bg-white p-5">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
@@ -106,19 +115,31 @@ export default function DespachoPage() {
 
                   <div>
                     <h2 className="mb-2 text-xs uppercase tracking-wide" style={{ ...texto, color: "#999999", fontWeight: 600 }}>
-                      Despachar a
+                      {retiro ? "Retira" : "Despachar a"}
                     </h2>
                     <address className="not-italic" style={{ ...texto, fontSize: "14px", color: "#111111", lineHeight: 1.6 }}>
                       {p.comprador_nombre}
                       <br />
-                      {p.direccion_envio ?? "—"}
-                      <br />
-                      {[p.ciudad_envio, p.region_envio].filter(Boolean).join(", ") || "—"}
+                      {retiro ? (
+                        <>Retiro: {p.entrega_detalle ?? "—"}</>
+                      ) : (
+                        <>
+                          {p.direccion_envio ?? "—"}
+                          <br />
+                          {[p.ciudad_envio, p.region_envio].filter(Boolean).join(", ") || "—"}
+                        </>
+                      )}
                       <br />
                       <a href={`mailto:${p.comprador_email}`} className="underline" style={{ color: "#3b82f6" }}>
                         {p.comprador_email}
                       </a>
                     </address>
+                    {!retiro && p.entrega && (
+                      <p className="mt-2" style={{ ...texto, fontSize: "13px", color: "#666666" }}>
+                        Envío cobrado: {envio > 0 ? formatCLP(envio) : "sin costo"}
+                        {plazo && <> · Plazo comprometido: {plazo}</>}
+                      </p>
+                    )}
                   </div>
                 </div>
               </li>

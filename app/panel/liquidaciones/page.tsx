@@ -13,6 +13,8 @@ interface Orden {
   id: string;
   monto_artista: number;
   comision_monto: number;
+  /** Envío cobrado por MuzikChile en centralizado: se le liquida al artista. */
+  envio_monto: number;
   estado: string;
   liquidado?: boolean;
   /** 'marketplace': lo cobró el artista directo en su cuenta de MP; no se liquida. */
@@ -55,7 +57,7 @@ export default function LiquidacionesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ordenes")
-        .select("id, monto_artista, comision_monto, estado, liquidado, cobro, created_at, productos(nombre)")
+        .select("id, monto_artista, comision_monto, envio_monto, estado, liquidado, cobro, created_at, productos(nombre)")
         .eq("artista_id", artista!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -86,7 +88,7 @@ export default function LiquidacionesPage() {
     ordenes
       // Lo cobrado en marketplace ya le llegó al artista: no queda pendiente.
       .filter((o) => o.estado === "pagado" && !o.liquidado && o.cobro !== "marketplace")
-      .reduce((acc, o) => acc + (o.monto_artista ?? 0), 0),
+      .reduce((acc, o) => acc + (o.monto_artista ?? 0) + (o.envio_monto ?? 0), 0),
   [ordenes]);
 
   const totalVendido = useMemo(() =>

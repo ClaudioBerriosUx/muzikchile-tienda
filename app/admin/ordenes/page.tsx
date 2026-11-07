@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatCLP } from "@/lib/constants";
+import { textoPlazo } from "@/lib/checkout/despacho";
 
 /**
  * El tipo sale del select (sin cast): así una columna mal escrita no compila.
@@ -212,6 +213,13 @@ export default function OrdenesPage() {
               ["Cantidad", String(seleccionada.cantidad)],
               ["Monto artista", formatCLP(seleccionada.monto_artista)],
               ["Comisión", formatCLP(seleccionada.comision_monto)],
+              // Copia de la entrega informada al comprador; vacía en órdenes anteriores al commit 7.
+              ["Entrega", seleccionada.entrega === "retiro"
+                ? `Retiro: ${seleccionada.entrega_detalle ?? "—"}`
+                : seleccionada.entrega === "envio"
+                  ? ["Envío", textoPlazo(seleccionada.entrega_plazo_min, seleccionada.entrega_plazo_max)].filter(Boolean).join(" · ")
+                  : "—"],
+              ["Envío cobrado (en esta línea)", formatCLP(seleccionada.envio_monto ?? 0)],
             ].map(([label, val]) => (
               <div key={label} className="mb-3">
                 <p style={{ fontFamily: "var(--font-body)", fontSize: "11px", color: "#999999", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</p>

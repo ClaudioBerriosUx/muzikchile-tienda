@@ -14,6 +14,7 @@ import { useCarrito } from "@/lib/stores/carrito";
 import { formatCLP, REGIONES_CHILE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { BotonQuitar, FOCO, MiniaturaItem, Monto, Stepper } from "@/components/tienda/carrito-ui";
+import { textoPlazo, type Entrega } from "@/lib/checkout/despacho";
 
 interface Cupon {
   codigo: string;
@@ -21,48 +22,70 @@ interface Cupon {
   valor: number;
 }
 
+/** La entrega de un artista, tal como la cotiza el servidor (lib/checkout/cotizar.ts). */
+interface Despacho {
+  artista_id: string;
+  artista_nombre: string;
+  opciones: Entrega[];
+  entrega: Entrega;
+  costo: number;
+  costo_envio: number | null;
+  plazo_min: number | null;
+  plazo_max: number | null;
+  retiro_detalle: string | null;
+  configurado: boolean;
+}
+
 /** Respuesta de /api/checkout/cotizar: los montos que de verdad se cobran. */
 interface Cotizacion {
   lineas: { id: string; precio_unitario: number; cantidad: number }[];
   subtotal: number;
   descuento: number;
+  envio: number;
   total: number;
   cupon: Cupon | null;
+  despachos: Despacho[];
 }
 
 type ItemCotizable = { id: string; cantidad: number };
+type Entregas = Record<string, Entrega>;
 
 type ResultadoCotizar =
   | { ok: true; cotizacion: Cotizacion }
-  | { ok: false; error: string; delCupon: boolean };
+  | { ok: false; error: string; delCupon: boolean; deLaEntrega: boolean };
 
 /**
- * Pide al servidor el total del carrito (precios de la base, stock y cupón).
+ * Pide al servidor el total del carrito (precios de la base, stock, cupón y
+ * despacho según la entrega elegida).
  * El precio guardado en el carrito local puede estar viejo o adulterado: lo
  * que se muestra es esto, que es lo mismo que cobra crear-preferencia.
  */
-async function cotizar(items: ItemCotizable[], codigo: string | null): Promise<ResultadoCotizar> {
+async function cotizar(items: ItemCotizable[], codigo: string | null, entregas: Entregas): Promise<ResultadoCotizar> {
   try {
     const res = await fetch("/api/checkout/cotizar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items, cupon_codigo: codigo }),
+      body: JSON.stringify({ items, cupon_codigo: codigo, entregas }),
     });
     const data = await res.json();
-    if (!res.ok) return { ok: false, error: data.error ?? "No pudimos calcular tu pedido", delCupon: data.campo === "cupon" };
+    if (!res.ok) {
+      return { ok: false, error: data.error ?? "No pudimos calcular tu pedido", delCupon: data.campo === "cupon", deLaEntrega: data.campo === "entrega" };
+    }
     return { ok: true, cotizacion: data as Cotizacion };
   } catch {
-    return { ok: false, error: "Error de conexión. Intenta de nuevo.", delCupon: false };
+    return { ok: false, error: "Error de conexión. Intenta de nuevo.", delCupon: false, deLaEntrega: false };
   }
 }
 
+// La dirección es obligatoria solo si algún artista despacha (ver onSubmit);
+// con solo retiro no se pide. El servidor lo vuelve a revisar.
 const schema = z.object({
   nombre:    z.string().min(3, "Mínimo 3 caracteres"),
   email:     z.string().email("Email inválido"),
   telefono:  z.string().optional(),
-  direccion: z.string().min(5, "Ingresa tu dirección completa"),
-  ciudad:    z.string().min(2, "Ingresa tu ciudad"),
-  region:    z.string().min(2, "Ingresa tu región"),
+  direccion: z.string().optional(),
+  ciudad:    z.string().optional(),
+  region:    z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -97,6 +120,37 @@ function Campo({
   );
 }
 
+/** "$3.990 · llega en 2 a 5 días hábiles", o las indicaciones de retiro. */
+function detalleEntrega(d: Despacho, entrega: Entrega): string {
+  if (entrega === "retiro") return d.retiro_detalle ?? "";
+  const costo = d.costo_envio ? formatCLP(d.costo_envio) : "Sin costo";
+  const plazo = textoPlazo(d.plazo_min, d.plazo_max);
+  return plazo ? `${costo} · llega en ${plazo}` : costo;
+}
+
+function OpcionEntrega({
+  nombre, valor, elegida, titulo, detalle, onElegir,
+}: { nombre: string; valor: Entrega; elegida: boolean; titulo: string; detalle: string; onElegir: () => void }) {
+  return (
+    <label
+      className={cn(
+        "flex cursor-pointer items-start gap-3 rounded-[10px] border p-3.5",
+        elegida ? "border-tema-azul bg-tema-azul-fondo" : "border-tema-borde bg-transparent",
+        "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-tema-azul-texto"
+      )}
+    >
+      <input type="radio" name={nombre} value={valor} checked={elegida} onChange={onElegir} className="sr-only" />
+      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 border-tema-azul-texto" aria-hidden="true">
+        {elegida && <span className="h-2.5 w-2.5 rounded-full bg-tema-azul-texto" />}
+      </span>
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="text-[15px] font-bold text-tema-texto">{titulo}</span>
+        <span className="text-[13px] text-tema-texto-2">{detalle}</span>
+      </span>
+    </label>
+  );
+}
+
 function Cargando({ texto }: { texto: string }) {
   return (
     <main className="flex min-h-screen items-center justify-center bg-tema-fondo">
@@ -116,12 +170,13 @@ export default function CheckoutPage() {
   const [cuponCodigo,    setCuponCodigo]    = useState("");
   const [cuponAplicado,  setCuponAplicado]  = useState<Cupon | null>(null);
   const [cotizacion,     setCotizacion]     = useState<Cotizacion | null>(null);
+  const [entregas,       setEntregas]       = useState<Entregas>({});
   const [buscandoCupon,  setBuscandoCupon]  = useState(false);
   const [metodoPago,     setMetodoPago]     = useState<"mercadopago" | "webpay">("mercadopago");
   const [pagando,        setPagando]        = useState(false);
   const [hidratado,      setHidratado]      = useState(false);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, setError, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
   });
 
@@ -143,21 +198,23 @@ export default function CheckoutPage() {
   // hay (un cupón de artista solo descuenta los suyos).
   const claveItems = items.map((i) => `${i.id}:${i.cantidad}`).join(",");
   const codigoAplicado = cuponAplicado?.codigo ?? null;
+  const claveEntregas = JSON.stringify(entregas);
   useEffect(() => {
     if (!hidratado || items.length === 0) return;
     let vigente = true;
-    cotizar(items.map(({ id, cantidad }) => ({ id, cantidad })), codigoAplicado).then((r) => {
+    cotizar(items.map(({ id, cantidad }) => ({ id, cantidad })), codigoAplicado, entregas).then((r) => {
       if (!vigente) return;
       if (r.ok) { setCotizacion(r.cotizacion); return; }
-      // Si lo que falló es el cupón, se quita y se recotiza sin él.
+      // Si lo que falló es el cupón o la entrega, se quita y se recotiza sin eso.
       if (r.delCupon) setCuponAplicado(null);
+      else if (r.deLaEntrega) setEntregas({});
       else setCotizacion(null);
       toast.error(r.error);
     });
     return () => { vigente = false; };
-    // claveItems resume items; items en sí cambia de identidad en cada render.
+    // claveItems y claveEntregas resumen items y entregas, que cambian de identidad en cada render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hidratado, claveItems, codigoAplicado]);
+  }, [hidratado, claveItems, codigoAplicado, claveEntregas]);
 
   if (!hidratado) {
     return <Cargando texto="Cargando..." />;
@@ -171,13 +228,18 @@ export default function CheckoutPage() {
   const precioDe  = (id: string, local: number) => cotizacion?.lineas.find((l) => l.id === id)?.precio_unitario ?? local;
   const subtotal  = cotizacion ? cotizacion.subtotal : totalFn();
   const descuento = cotizacion ? cotizacion.descuento : 0;
+  const envio     = cotizacion ? cotizacion.envio : 0;
   const total     = cotizacion ? cotizacion.total : subtotal;
+  const despachos = cotizacion?.despachos ?? [];
+  // Mientras no hay cotización se muestran los campos de envío, lo habitual.
+  const hayEnvio   = despachos.length === 0 || despachos.some((d) => d.entrega === "envio");
+  const soloRetiro = !hayEnvio;
 
   const validarCupon = async () => {
     if (!cuponCodigo.trim()) return;
     setBuscandoCupon(true);
     try {
-      const r = await cotizar(items.map(({ id, cantidad }) => ({ id, cantidad })), cuponCodigo);
+      const r = await cotizar(items.map(({ id, cantidad }) => ({ id, cantidad })), cuponCodigo, entregas);
       if (!r.ok || !r.cotizacion.cupon) { toast.error(r.ok ? "Cupón inválido o no existe" : r.error); return; }
 
       setCotizacion(r.cotizacion);
@@ -190,6 +252,17 @@ export default function CheckoutPage() {
 
   const onSubmit = async (comprador: FormData) => {
     if (metodoPago !== "mercadopago") { toast.info("WebPay estará disponible próximamente"); return; }
+    if (!cotizacion) { toast.error("Estamos calculando tu pedido. Intenta en un momento."); return; }
+    if (hayEnvio) {
+      const requeridos = [
+        ["direccion", 5, "Ingresa tu dirección completa"],
+        ["ciudad", 2, "Ingresa tu ciudad"],
+        ["region", 2, "Ingresa tu región"],
+      ] as const;
+      const faltan = requeridos.filter(([campo, min]) => (comprador[campo]?.trim().length ?? 0) < min);
+      faltan.forEach(([campo, , mensaje]) => setError(campo, { message: mensaje }));
+      if (faltan.length > 0) return;
+    }
     setPagando(true);
     try {
       const res = await fetch("/api/mercadopago/crear-preferencia", {
@@ -197,14 +270,17 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: items.map((i) => ({ id: i.id, cantidad: i.cantidad })),
-          comprador,
+          // Con solo retiro no se manda la dirección.
+          comprador: hayEnvio ? comprador : { nombre: comprador.nombre, email: comprador.email, telefono: comprador.telefono },
           cupon_codigo: cuponAplicado?.codigo ?? null,
+          entregas: Object.fromEntries(despachos.map((d) => [d.artista_id, d.entrega])),
         }),
       });
       const data = await res.json();
       if (!res.ok) {
         // El cupón pudo vencer o agotarse entre que se aplicó y se pagó.
         if (data.campo === "cupon") setCuponAplicado(null);
+        if (data.campo === "entrega") setEntregas({});
         toast.error(data.error ?? "Error al procesar el pago");
         return;
       }
@@ -335,7 +411,35 @@ export default function CheckoutPage() {
                 </div>
               </Paso>
 
-              <Paso n={3} titulo="Dirección de envío">
+              <Paso n={3} titulo="Entrega">
+                {despachos.length === 0 ? (
+                  <p className="m-0 text-sm text-tema-texto-2">Calculando las opciones de entrega...</p>
+                ) : (
+                  <div className="flex flex-col gap-4">
+                    {despachos.map((d) => (
+                      <fieldset key={d.artista_id} className="m-0 flex flex-col gap-2.5 border-0 p-0">
+                        <legend className="mb-2.5 p-0 text-[10px] font-bold uppercase tracking-[0.16em] text-tema-texto-3">
+                          {despachos.length > 1 ? `Productos de ${d.artista_nombre}` : `Lo despacha ${d.artista_nombre}`}
+                        </legend>
+                        {d.opciones.map((op) => (
+                          <OpcionEntrega
+                            key={op}
+                            nombre={`entrega-${d.artista_id}`}
+                            valor={op}
+                            elegida={d.entrega === op}
+                            titulo={op === "envio" ? "Envío a domicilio" : "Retiro"}
+                            detalle={detalleEntrega(d, op)}
+                            onElegir={() => setEntregas((e) => ({ ...e, [d.artista_id]: op }))}
+                          />
+                        ))}
+                      </fieldset>
+                    ))}
+                  </div>
+                )}
+
+                {soloRetiro ? (
+                  <p className="m-0 text-sm text-tema-texto-2">Con retiro no necesitamos tu dirección. El artista coordina el retiro contigo por correo.</p>
+                ) : (
                 <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2">
                   <Campo id="chk-direccion" etiqueta="Dirección" error={errors.direccion?.message} className="md:col-span-2">
                     <input {...register("direccion")} {...a11y("direccion")} autoComplete="street-address" placeholder="Av. Ejemplo 1234, depto 5A" className={CAMPO} />
@@ -353,6 +457,7 @@ export default function CheckoutPage() {
                     </span>
                   </Campo>
                 </div>
+                )}
               </Paso>
             </div>
 
@@ -370,6 +475,12 @@ export default function CheckoutPage() {
                     <div className="flex justify-between gap-3 text-tema-ok-texto">
                       <dt>Cupón {cuponAplicado.codigo}</dt>
                       <dd className="m-0 tabular-nums">−{formatCLP(descuento)}</dd>
+                    </div>
+                  )}
+                  {despachos.length > 0 && (
+                    <div className="flex justify-between gap-3">
+                      <dt>{soloRetiro ? "Retiro" : "Envío"}</dt>
+                      <dd className="m-0 tabular-nums">{envio > 0 ? formatCLP(envio) : "Sin costo"}</dd>
                     </div>
                   )}
                 </dl>

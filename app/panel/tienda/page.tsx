@@ -355,7 +355,7 @@ function TextoDespacho({ despacho: d }: { despacho: DespachoTienda }) {
   const conRetiro = d.despacho_modo === "retiro" || d.despacho_modo === "ambos";
   return (
     <>
-      {conEnvio && <>Envío: ${(d.despacho_costo ?? 0).toLocaleString("es-CL")}, {d.despacho_plazo_min} a {d.despacho_plazo_max} días hábiles. </>}
+      {conEnvio && <>Envío: ${(d.despacho_costo ?? 0).toLocaleString("es-CL")} por pedido, para todo Chile, {d.despacho_plazo_min} a {d.despacho_plazo_max} días hábiles. </>}
       {conRetiro && <>Retiro: {d.retiro_detalle}.</>}
     </>
   );
@@ -576,7 +576,10 @@ function FormDespacho({ artistaId, inicial, onCambio }: { artistaId: string; ini
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label className="text-sm" style={{ color: "#444444" }}>
             Costo de envío (CLP)
-            <input type="number" min={0} value={costo} onChange={(e) => setCosto(e.target.value)} placeholder="3990" className={`${CAMPO} mt-1.5`} />
+            <input type="number" min={0} value={costo} onChange={(e) => setCosto(e.target.value)} placeholder="3990" aria-describedby="ayuda-costo-envio" className={`${CAMPO} mt-1.5`} />
+            <span id="ayuda-costo-envio" className="mt-1 block text-xs" style={{ color: "#666666" }}>
+              Costo fijo por pedido, para todo Chile.
+            </span>
           </label>
           <label className="text-sm" style={{ color: "#444444" }}>
             Plazo desde (días hábiles)
@@ -598,8 +601,12 @@ function FormDespacho({ artistaId, inicial, onCambio }: { artistaId: string; ini
             rows={2}
             onChange={(e) => setRetiro(e.target.value)}
             placeholder="Ej: Metro Baquedano, sábados de 12 a 14 h, coordinando por correo"
+            aria-describedby="ayuda-retiro"
             className={`${CAMPO} mt-1.5 resize-none`}
           />
+          <span id="ayuda-retiro" className="mt-1 block text-xs" style={{ color: "#666666" }}>
+            Se muestra en la ficha de tus productos y en el checkout.
+          </span>
         </label>
       )}
 
