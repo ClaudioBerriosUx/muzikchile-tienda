@@ -8,7 +8,7 @@ import type { Database } from "@/lib/supabase/types";
  *   - 'centralizado' → el pago entra a la cuenta de MuzikChile y después se le
  *                      liquida al artista (como siempre).
  *   - 'marketplace'  → el artista cobra con su propia cuenta de MP (la que
- *                      conectó en /panel/cobros) y MuzikChile recibe su
+ *                      conectó en /panel/tienda) y MuzikChile recibe su
  *                      comisión como marketplace_fee. No pasa por liquidaciones.
  *
  * Es 'marketplace' si artistas.cobro = 'marketplace' (lo pone aprobar_tienda),

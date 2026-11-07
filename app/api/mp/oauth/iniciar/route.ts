@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 const VIGENCIA_S = 10 * 60;
 
 /**
- * Inicio del OAuth: el botón "Conectar Mercado Pago" de /panel/cobros navega
+ * Inicio del OAuth: el botón "Conectar Mercado Pago" de /panel/tienda navega
  * acá. Genera state + PKCE, los guarda en una cookie httpOnly cifrada (atada al
  * usuario de la sesión) y redirige a la autorización de MP.
  */
@@ -16,7 +16,7 @@ export async function GET() {
   const base = process.env.NEXT_PUBLIC_URL!;
   try {
     const sesion = await artistaDeLaSesion(clienteServicio());
-    if (!sesion) return NextResponse.redirect(`${base}/login?redirectTo=/panel/cobros`);
+    if (!sesion) return NextResponse.redirect(`${base}/login?redirectTo=/panel/tienda`);
 
     const { verifier, challenge, state } = nuevoIntento();
     const res = NextResponse.redirect(urlAutorizacion(state, challenge));
@@ -37,6 +37,6 @@ export async function GET() {
     return res;
   } catch (err) {
     console.error("[mp oauth] iniciar:", err);
-    return NextResponse.redirect(`${base}/panel/cobros?error=config`);
+    return NextResponse.redirect(`${base}/panel/tienda?error=config`);
   }
 }

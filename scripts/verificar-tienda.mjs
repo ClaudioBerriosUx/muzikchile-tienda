@@ -6,7 +6,8 @@
  *
  *   npm run verificar:tienda
  *   npm run verificar:tienda -- --api=http://localhost:3000
- *                         → + cómo cobra una tienda (cotizar, ficha, /api/mp/conexion).
+ *                         → + cómo cobra una tienda (cotizar, ficha, /api/mp/conexion)
+ *                           y las rutas del panel (/api/panel/tienda).
  *                           El servidor parte con `npm run dev:pruebas`.
  *
  * Lee `.env.pruebas`. La base tiene que tener aplicada la migración
@@ -25,6 +26,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { frenarSiEsProduccion } from "./freno-produccion.mjs";
+import { VERSION_TERMINOS_ARTISTAS } from "../lib/terminos.ts";
 
 frenarSiEsProduccion();
 
@@ -452,6 +454,79 @@ async function cobroPorArtista(ADMIN) {
   }
 }
 
+// ── Rutas del panel (--api) ──────────────────────────────────────────────────
+
+async function rutasDelPanel() {
+  console.log(`\n── Rutas del panel · ${API} ──`);
+  for (const [caso, metodo, ruta] of [
+    ["(m1)", "GET", "/api/panel/tienda"],
+    ["(m2)", "POST", "/api/panel/tienda/aceptar-terminos"],
+    ["(m3)", "POST", "/api/panel/tienda/solicitar"],
+  ]) {
+    const res = await fetch(`${API}${ruta}`, { method: metodo });
+    check(`${caso} ${metodo} ${ruta} sin sesión → 401`, res.status === 401, `status=${res.status}`);
+  }
+
+  const F = await crearUsuario("f", "artista");
+  const cookie = await cookieDe(F);
+  const llamar = async (metodo, ruta, body) => {
+    const res = await fetch(`${API}${ruta}`, {
+      method: metodo,
+      headers: { Cookie: cookie, ...(body ? { "Content-Type": "application/json" } : {}) },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    return { status: res.status, data: await res.json().catch(() => null) };
+  };
+  const leer = async () => (await llamar("GET", "/api/panel/tienda")).data;
+
+  {
+    const d = await leer();
+    check("(m4) La tienda nueva se lee 'no_activa', con el checklist vacío y la versión vigente",
+      d?.estado === "no_activa" && Object.values(d?.checklist ?? { x: true }).every((x) => x === false) && d?.terminos?.version === VERSION_TERMINOS_ARTISTAS,
+      JSON.stringify(d));
+    check("(m5) Muestra la comisión de la tienda", d?.comision?.porcentaje === 10 && d?.comision?.detalle === null, JSON.stringify(d?.comision));
+    check("(m6) No trae tokens", !/token/i.test(JSON.stringify(d)), JSON.stringify(d));
+    check("(m7) Sin ventas, tieneOrdenes es false", d?.tieneOrdenes === false);
+  }
+  {
+    await admin.from("artistas").update({ es_founder: true, founder_hasta: null }).eq("id", F.artistaId);
+    const d = await leer();
+    check("(m8) Founder sin fecha → comisión 0% y su detalle", d?.comision?.porcentaje === 0 && /de por vida/.test(d?.comision?.detalle ?? ""), JSON.stringify(d?.comision));
+    await admin.from("artistas").update({ es_founder: false }).eq("id", F.artistaId);
+  }
+  {
+    const r = await llamar("POST", "/api/panel/tienda/solicitar");
+    check("(m9) Solicitar con el checklist vacío → 422 con lo que falta", r.status === 422 && /incompleto/.test(r.data?.error ?? ""), JSON.stringify(r));
+  }
+  {
+    const r = await llamar("POST", "/api/panel/tienda/aceptar-terminos", { version: "9.9", artista_id: "cualquiera" });
+    const { data: filas } = await admin.from("terminos_artistas").select("version, aceptado_por").eq("artista_id", F.artistaId);
+    check("(m10) Aceptar guarda la versión vigente e ignora lo que venga en el body",
+      r.status === 200 && filas?.length === 1 && filas[0].version === VERSION_TERMINOS_ARTISTAS && filas[0].aceptado_por === F.userId, JSON.stringify(filas));
+    check("(m11) El checklist marca los términos", (await leer())?.checklist?.terminos === true);
+  }
+  {
+    await admin.from("artistas").update({ cobros_activos: true }).eq("id", F.artistaId);
+    await F.cliente.from("tiendas").update({
+      identidad_mp_declarada: true, despacho_modo: "retiro", retiro_detalle: "Metro Baquedano",
+    }).eq("artista_id", F.artistaId);
+    const { error } = await F.cliente.from("productos").insert({
+      artista_id: F.artistaId, nombre: `${PREFIJO}-panel`, precio: 5000, stock: 1, tipo: "fisico", imagenes: [], estado: "borrador",
+    });
+    check("(m12) El artista sin tienda activa guarda un producto en borrador", !error, fmt(error));
+    const d = await leer();
+    check("(m13) Con todo listo, el checklist está completo", Object.values(d?.checklist ?? {}).every((x) => x === true), JSON.stringify(d?.checklist));
+    const r = await llamar("POST", "/api/panel/tienda/solicitar");
+    check("(m14) Solicitar → 'solicitada'", r.status === 200 && r.data?.estado === "solicitada" && (await leer())?.estado === "solicitada", JSON.stringify(r));
+    const r2 = await llamar("POST", "/api/panel/tienda/solicitar");
+    check("(m15) Solicitar otra vez → 422", r2.status === 422, JSON.stringify(r2));
+  }
+  {
+    const res = await fetch(`${API}/panel/cobros`, { redirect: "manual", headers: { Cookie: cookie } });
+    check("(m16) /panel/cobros redirige a /panel/tienda", /\/panel\/tienda/.test(res.headers.get("location") ?? ""), `status=${res.status} ${res.headers.get("location")}`);
+  }
+}
+
 // ── Principal ────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -462,7 +537,10 @@ async function main() {
     const B = await crearUsuario("b", "artista");
     const ADMIN = await crearUsuario("admin", "admin");
     await casos(A, B, ADMIN);
-    if (API) await cobroPorArtista(ADMIN);
+    if (API) {
+      await cobroPorArtista(ADMIN);
+      await rutasDelPanel();
+    }
     else console.log("\n── Cómo cobra una tienda: sin --api no se prueba ──");
   } finally {
     await limpiar();

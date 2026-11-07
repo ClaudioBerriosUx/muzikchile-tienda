@@ -63,7 +63,6 @@ const schema = z.object({
   descripcion:     z.string().min(10, "Mínimo 10 caracteres").max(500, "Máximo 500 caracteres"),
   categoria_id:    z.string().uuid("Selecciona una categoría"),
   subcategoria_id: z.string().uuid().optional().or(z.literal("")),
-  tipo:            z.enum(["fisico", "digital"]),
   precio:          z.number().min(1100, "Mínimo $1.100 CLP"),
   stock:           z.number().min(0).optional(),
   zonas_envio:     z.array(z.string()).min(1, "Selecciona al menos una zona"),
@@ -107,6 +106,17 @@ export default function EditarProductoPage() {
     },
   });
 
+  // Sin tienda activa, lo que guarda queda en borrador: aprobar la tienda los
+  // manda a revisión. Mientras no se sepa el estado, también.
+  const { data: tiendaActiva = false } = useQuery({
+    queryKey: ["tienda-activa", artista?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("tiendas").select("estado").eq("artista_id", artista!.id).maybeSingle();
+      return data?.estado === "activa";
+    },
+    enabled: !!artista?.id,
+  });
+
   const { data: producto, isLoading } = useQuery<Producto | null>({
     queryKey: ["producto-editar", params.id],
     queryFn: async () => {
@@ -124,7 +134,7 @@ export default function EditarProductoPage() {
     queryKey: ["categorias"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("categorias").select("id, nombre, slug, padre_id").is("padre_id", null).order("orden");
+        .from("categorias").select("id, nombre, slug, padre_id").is("padre_id", null).neq("slug", "digital").order("orden");
       return (data ?? []) as Categoria[];
     },
   });
@@ -139,10 +149,9 @@ export default function EditarProductoPage() {
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { tipo: "fisico", zonas_envio: [] },
+    defaultValues: { zonas_envio: [] },
   });
 
-  const tipo        = watch("tipo");
   const categoriaId = watch("categoria_id");
   const zonas       = watch("zonas_envio") ?? [];
   const descripcion = watch("descripcion") ?? "";
@@ -162,7 +171,6 @@ export default function EditarProductoPage() {
     reset({
       nombre:          producto.nombre,
       descripcion:     producto.descripcion,
-      tipo:            producto.tipo,
       precio:          producto.precio,
       stock:           producto.stock ?? undefined,
       zonas_envio:     producto.zonas_envio ?? [],
@@ -181,12 +189,7 @@ export default function EditarProductoPage() {
     enabled: !!categoriaId,
   });
 
-  useEffect(() => {
-    if (tipo === "digital") setValue("zonas_envio", [...ZONAS]);
-  }, [tipo, setValue]);
-
   const toggleZona = (zona: string) => {
-    if (tipo === "digital") return;
     const current = getValues("zonas_envio") ?? [];
     setValue(
       "zonas_envio",
@@ -243,25 +246,25 @@ export default function EditarProductoPage() {
       const urlsNuevas = await uploadNuevas(artista.id);
       const imagenes   = [...imagenesExistentes, ...urlsNuevas];
 
-      const { error } = await supabase
+      // Con .select() se sabe si se guardó: RLS no da error, deja 0 filas.
+      const { data: filas, error } = await supabase
         .from("productos")
         .update({
           categoria_id: data.subcategoria_id || data.categoria_id,
           nombre:       data.nombre,
           descripcion:  data.descripcion,
-          tipo:         data.tipo,
           precio:       data.precio,
-          // Los digitales no llevan inventario: 999 es el sentinel de "ilimitado".
-          // La columna es NOT NULL, así que no se puede enviar null.
-          stock:        data.tipo === "fisico" ? (data.stock ?? 0) : 999,
+          stock:        data.stock ?? 0,
           imagenes,
           zonas_envio:  data.zonas_envio,
-          estado:       "en_revision",
+          estado:       tiendaActiva ? "en_revision" : "borrador",
         })
-        .eq("id", params.id);
+        .eq("id", params.id)
+        .select("id");
 
       if (error) throw error;
-      toast.success("Producto actualizado — en revisión");
+      if (!filas?.length) throw new Error("No se guardó: este producto ya no se puede editar.");
+      toast.success(tiendaActiva ? "Producto actualizado — en revisión" : "Guardado como borrador");
       router.push("/panel/productos");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al guardar");
@@ -286,6 +289,22 @@ export default function EditarProductoPage() {
     return (
       <div className="flex flex-col items-center justify-center h-40 gap-4">
         <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>Producto no encontrado.</p>
+        <Link href="/panel/productos" style={{ fontFamily: "var(--font-body)", color: "#e8003d", fontSize: "14px" }}>
+          ← Volver a mis productos
+        </Link>
+      </div>
+    );
+  }
+
+  // Los digitales ya no se venden, y lo pausado lo cerró una baja o un admin.
+  if (producto.tipo === "digital" || producto.estado === "pausado") {
+    return (
+      <div className="flex flex-col items-center justify-center h-40 gap-4">
+        <p style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
+          {producto.tipo === "digital"
+            ? "Por ahora solo se venden productos físicos: este producto digital no se puede editar."
+            : "Este producto está pausado y no se puede editar."}
+        </p>
         <Link href="/panel/productos" style={{ fontFamily: "var(--font-body)", color: "#e8003d", fontSize: "14px" }}>
           ← Volver a mis productos
         </Link>
@@ -415,30 +434,6 @@ export default function EditarProductoPage() {
                 </select>
               </div>
             )}
-
-            {/* Toggle Físico / Digital */}
-            <div>
-              <label style={{ fontFamily: "var(--font-body)", color: "#444444" }} className={labelClass}>
-                Tipo de producto
-              </label>
-              <div className="flex rounded-md border border-[#e8e8e8] overflow-hidden w-fit">
-                {(["fisico", "digital"] as const).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setValue("tipo", t)}
-                    className="px-5 py-2 text-sm transition-colors capitalize"
-                    style={{
-                      fontFamily: "var(--font-body)",
-                      backgroundColor: tipo === t ? "#111111" : "#ffffff",
-                      color: tipo === t ? "#ffffff" : "#666666",
-                    }}
-                  >
-                    {t === "fisico" ? "Físico" : "Digital"}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           {/* ── Columna derecha ── */}
@@ -471,22 +466,20 @@ export default function EditarProductoPage() {
               )}
             </div>
 
-            {/* Stock (solo físico) */}
-            {tipo === "fisico" && (
-              <div>
-                <label style={{ fontFamily: "var(--font-body)", color: "#444444" }} className={labelClass}>
-                  Stock disponible
-                </label>
-                <input
-                  type="number"
-                  {...register("stock", { valueAsNumber: true })}
-                  className={inputClass}
-                  style={{ fontFamily: "var(--font-body)", color: "#111111" }}
-                  placeholder="10"
-                  min={0}
-                />
-              </div>
-            )}
+            {/* Stock */}
+            <div>
+              <label style={{ fontFamily: "var(--font-body)", color: "#444444" }} className={labelClass}>
+                Stock disponible
+              </label>
+              <input
+                type="number"
+                {...register("stock", { valueAsNumber: true })}
+                className={inputClass}
+                style={{ fontFamily: "var(--font-body)", color: "#111111" }}
+                placeholder="10"
+                min={0}
+              />
+            </div>
 
             {/* Imágenes */}
             <div>
@@ -564,11 +557,6 @@ export default function EditarProductoPage() {
             <div>
               <label style={{ fontFamily: "var(--font-body)", color: "#444444" }} className={labelClass}>
                 Zonas de envío
-                {tipo === "digital" && (
-                  <span className="ml-2 text-xs" style={{ color: "#22c55e" }}>
-                    (todas incluidas — producto digital)
-                  </span>
-                )}
               </label>
               <div className="flex flex-wrap gap-2">
                 {ZONAS.map((zona) => {
@@ -578,15 +566,13 @@ export default function EditarProductoPage() {
                       key={zona}
                       type="button"
                       onClick={() => toggleZona(zona)}
-                      disabled={tipo === "digital"}
                       className="px-3 py-1.5 text-sm rounded border transition-colors"
                       style={{
                         fontFamily: "var(--font-body)",
                         backgroundColor: activa ? "#111111" : "#ffffff",
                         borderColor: activa ? "#111111" : "#e8e8e8",
                         color: activa ? "#ffffff" : "#555555",
-                        cursor: tipo === "digital" ? "default" : "pointer",
-                        opacity: tipo === "digital" ? 0.7 : 1,
+                        cursor: "pointer",
                       }}
                     >
                       {zona}
@@ -630,7 +616,7 @@ export default function EditarProductoPage() {
             onMouseEnter={(e) => { if (!enviando) e.currentTarget.style.backgroundColor = "#c5002e"; }}
             onMouseLeave={(e) => { if (!enviando) e.currentTarget.style.backgroundColor = "#e8003d"; }}
           >
-            {enviando ? "Guardando..." : "Guardar cambios"}
+            {enviando ? "Guardando..." : tiendaActiva ? "Guardar y enviar a revisión" : "Guardar borrador"}
           </button>
         </div>
       </form>

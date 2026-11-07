@@ -28,7 +28,7 @@ function mismoTexto(a: string, b: string): boolean {
 export async function GET(req: NextRequest) {
   const base = process.env.NEXT_PUBLIC_URL!;
   const volver = (resultado: string) => {
-    const res = NextResponse.redirect(`${base}/panel/cobros?${resultado}`);
+    const res = NextResponse.redirect(`${base}/panel/tienda?${resultado}`);
     // De un solo uso: se borra pase lo que pase.
     res.cookies.set(COOKIE_OAUTH, "", { path: "/api/mp/oauth", maxAge: 0 });
     return res;

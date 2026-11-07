@@ -6,8 +6,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Estado de la conexión de MP del artista de la sesión. Nunca devuelve
- * tokens. `modelo` es cómo cobra ESTE artista (lib/cobro.ts); el panel muestra
- * el menú "Cobros" cuando es 'marketplace' o ya hay una conexión.
+ * tokens. `modelo` es cómo cobra ESTE artista (lib/cobro.ts).
  */
 export async function GET() {
   const servicio = clienteServicio();

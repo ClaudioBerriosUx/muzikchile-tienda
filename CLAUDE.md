@@ -97,7 +97,7 @@ Header y Footer. No importes `<Header/>` a mano en una página.
 | `/contacto` | público | Correo de contacto |
 | `/login`, `/registro`, `/recuperar` | público | Auth (registro = set-password tras invitación o recuperación) |
 | `/panel/**` | rol: `artista` | Dashboard del artista |
-| `/panel/cobros` | rol: `artista` | Conectar/desconectar su cuenta de Mercado Pago (marketplace) |
+| `/panel/tienda` | rol: `artista` | Mi tienda: estado, comisión, checklist (términos, Mercado Pago, identidad, despacho, borrador) y solicitud. `/panel/cobros` redirige acá |
 | `/panel/despacho` | rol: `artista` | Pedidos pagados/enviados con nombre, email y dirección del comprador. RLS (`artista_lee_sus_ordenes_pagadas`): el artista solo lee órdenes pagado/enviado/entregado/reembolsado |
 | `/admin/**` | rol: `admin` | Panel de administración |
 
@@ -246,7 +246,7 @@ escrito en el código.
 
 Flag `app_settings.cobro_modelo`: `centralizado` (hoy, todo entra a la cuenta de
 MuzikChile) o `marketplace` (cada artista cobra con su cuenta y MuzikChile
-recibe `marketplace_fee`). Cada artista conecta su cuenta en `/panel/cobros`
+recibe `marketplace_fee`). Cada artista conecta su cuenta en `/panel/tienda`
 (OAuth con PKCE vía `auth.mercadopago.cl`, `lib/mp/`). `artistas.cobros_activos`
 lo mantiene un trigger sobre `mp_conexiones`; nunca lo escribas a mano.
 Si el artista desvincula la app desde MP, llega al webhook un aviso

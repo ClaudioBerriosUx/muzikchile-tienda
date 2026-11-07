@@ -29,3 +29,10 @@ ON CONFLICT (id) DO UPDATE SET
 INSERT INTO public.artistas (nombre, slug, es_editorial, verificado)
 VALUES ('MuzikChile', 'muzikchile', true, true)
 ON CONFLICT (slug) DO NOTHING;
+
+-- Para probar el formulario de productos. Digital existe en producción, pero el
+-- formulario la oculta: por ahora solo se venden productos físicos.
+INSERT INTO public.categorias (nombre, slug, orden) VALUES
+  ('Merch',   'merch',   1),
+  ('Digital', 'digital', 2)
+ON CONFLICT (slug) DO NOTHING;

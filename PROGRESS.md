@@ -2213,9 +2213,10 @@ real.** `verificar:invitar` además necesita la Edge Function desplegada ahí.
 - **Commit 3**: `lib/cobro.ts` lee `artistas.cobro`, además del flag global y del piloto. Solo agrega.
 - **Commit 4, primera parte:** `/terminos-artistas` v1.0 como borrador para el abogado (`noindex`, sin enlaces, sin aceptación activa). Documento para el abogado: https://claude.ai/artifact/SVnVYfL6tfYQ92d53WTi5s (textos y 9 preguntas). Claudio escribe RUT y domicilio en `app/(publico)/terminos-artistas/page.tsx`. No se invita a nadie hasta la revisión legal.
 - Falta definir si los fundadores tienen condiciones distintas al 10%: el texto dice solo "condiciones especiales informadas en tu panel".
-- **Commit 5:** quitar la opción digital del formulario de productos (por ahora solo físicos); mostrar el % de comisión en `/panel/tienda`. Los 3 digitales pausados en producción no se reactivan.
+- **Commit 5 (hecho):** `/panel/tienda` (estado, comisión, checklist, solicitud), menú nuevo, `/panel/cobros` redirige con un 307 de `next.config.ts`, formularios solo físicos y en borrador sin tienda activa. Rutas `/api/panel/tienda*`. `verificar:tienda --api` 95/95, `cobro` idéntico a la línea base, `mp --api` 36/36, `rls-productos` 26/26; flujo probado en el navegador con una cuenta de prueba, menos el OAuth real de MP y la tienda activa. Los 3 digitales pausados en producción no se reactivan.
+- La aceptación de términos ya funciona en el panel, sobre un texto en revisión: no invitar a nadie hasta la revisión legal. Si el texto cambia, subir `VERSION_TERMINOS_ARTISTAS`.
 - **Commit 8:** correo de confirmación de compra por Resend (art. 12 A): sin confirmación escrita, el retracto sube de 10 a 90 días.
-- Commits 5 a 10 del plan de activación.
+- Commits 6 a 10 del plan de activación.
 
 ---
 

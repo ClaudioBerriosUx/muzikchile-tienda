@@ -4,23 +4,27 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, Package, Plus, Newspaper, User, Ticket, Truck, Wallet, CreditCard, LogOut, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, Package, Plus, Newspaper, Store, User, Ticket, Truck, Wallet, LogOut, AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import HeaderPanel from "@/components/layout/HeaderPanel";
 import Sidebar from "@/components/layout/Sidebar";
+import type { PanelTienda } from "@/lib/tienda";
 
 const SIDEBAR_ITEMS = [
-  { label: "Dashboard",       href: "/panel",                   icon: <LayoutDashboard size={16} /> },
-  { label: "Mis productos",   href: "/panel/productos",          icon: <Package size={16} /> },
-  { label: "Subir producto",  href: "/panel/productos/nuevo",    icon: <Plus size={16} /> },
-  { label: "Mis publicaciones", href: "/panel/publicaciones",    icon: <Newspaper size={16} /> },
-  { label: "Mi perfil",       href: "/panel/perfil",             icon: <User size={16} /> },
-  { label: "Mis cupones",     href: "/panel/cupones",            icon: <Ticket size={16} /> },
-  { label: "Por despachar",   href: "/panel/despacho",           icon: <Truck size={16} /> },
-  { label: "Liquidaciones",   href: "/panel/liquidaciones",      icon: <Wallet size={16} /> },
+  { label: "Dashboard",         href: "/panel",                icon: <LayoutDashboard size={16} /> },
+  { label: "Mi tienda",         href: "/panel/tienda",         icon: <Store size={16} /> },
+  { label: "Mis productos",     href: "/panel/productos",      icon: <Package size={16} /> },
+  { label: "Mis publicaciones", href: "/panel/publicaciones",  icon: <Newspaper size={16} /> },
+  { label: "Mi perfil",         href: "/panel/perfil",         icon: <User size={16} /> },
 ];
 
-const ITEM_COBROS = { label: "Cobros", href: "/panel/cobros", icon: <CreditCard size={16} /> };
+/** Con la tienda activa, o si ya vendió algo: tiene pedidos que atender. */
+const SIDEBAR_VENTAS = [
+  { label: "Subir producto", href: "/panel/productos/nuevo", icon: <Plus size={16} /> },
+  { label: "Mis cupones",    href: "/panel/cupones",         icon: <Ticket size={16} /> },
+  { label: "Por despachar",  href: "/panel/despacho",        icon: <Truck size={16} /> },
+  { label: "Liquidaciones",  href: "/panel/liquidaciones",   icon: <Wallet size={16} /> },
+];
 
 export default function PanelShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -93,21 +97,20 @@ export default function PanelShell({ children }: { children: React.ReactNode }) 
     checkAuth();
   }, [router]);
 
-  // Conexión de Mercado Pago: decide si se muestra "Cobros" en el menú y el
-  // aviso de reconectar. Mientras el cobro sea centralizado, "Cobros" solo
-  // aparece para quien ya conectó; al resto se le comparte /panel/cobros.
-  const { data: mp } = useQuery<{ modelo: string; conexion: { estado: string } | null }>({
-    queryKey: ["mp-conexion-shell"],
+  // Estado de la tienda: decide el menú y el aviso de reconectar. Es la misma
+  // consulta de /panel/tienda, que la refresca al cambiar algo.
+  const { data: tienda } = useQuery<PanelTienda>({
+    queryKey: ["panel-tienda"],
     queryFn: async () => {
-      const res = await fetch("/api/mp/conexion");
-      if (!res.ok) throw new Error("conexion");
+      const res = await fetch("/api/panel/tienda");
+      if (!res.ok) throw new Error("tienda");
       return res.json();
     },
     enabled: authorized,
-    staleTime: 5 * 60_000,
+    staleTime: 60_000,
   });
-  const mostrarCobros = mp?.modelo === "marketplace" || !!mp?.conexion;
-  const reconectar = mp?.conexion?.estado === "reconectar";
+  const conVentas = tienda?.estado === "activa" || !!tienda?.tieneOrdenes;
+  const reconectar = tienda?.conexion?.estado === "reconectar";
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -133,7 +136,7 @@ export default function PanelShell({ children }: { children: React.ReactNode }) 
       <HeaderPanel />
       <div className="flex min-h-screen">
         <Sidebar
-          items={mostrarCobros ? [...SIDEBAR_ITEMS, ITEM_COBROS] : SIDEBAR_ITEMS}
+          items={conVentas ? [...SIDEBAR_ITEMS, ...SIDEBAR_VENTAS] : SIDEBAR_ITEMS}
           footer={
             <button
               onClick={handleSignOut}
@@ -159,7 +162,7 @@ export default function PanelShell({ children }: { children: React.ReactNode }) 
               <AlertTriangle size={18} className="mt-0.5 shrink-0" style={{ color: "#b45309" }} />
               <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#92400e" }}>
                 Tu cuenta de Mercado Pago se desconectó y no podemos cobrar tus ventas con ella.{" "}
-                <Link href="/panel/cobros" className="font-semibold underline">Reconéctala en Cobros</Link>.
+                <Link href="/panel/tienda" className="font-semibold underline">Reconéctala en Mi tienda</Link>.
               </p>
             </div>
           )}

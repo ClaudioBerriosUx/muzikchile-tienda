@@ -46,6 +46,8 @@ const nextConfig: NextConfig = {
       { source: "/reset-password",  destination: "https://tv.muzikchile.cl/reset-password",  permanent: true },
       { source: "/admin/settings",  destination: "https://tv.muzikchile.cl/admin/settings",  permanent: true },
       // Las noticias ahora se administran acá. Temporal (302) por si cambia.
+      // "Cobros" pasó a ser parte de Mi tienda. Queda para enlaces ya compartidos.
+      { source: "/panel/cobros", destination: "/panel/tienda", permanent: false },
       { source: "/admin/noticias/:rest*", destination: "/admin/publicaciones", permanent: false },
     ];
   },
