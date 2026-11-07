@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict FUnL0L0rS4UusOwXFie35QdGg3dkkG4xGwE7Z4x8gw86gn7eFmQBhS540qItd4R
+\restrict yweWDGTGD5gueScnfIUFujilrltgl0L0UIhtXpsiBhfrs9z5dQh1q9hRG2M2zi1
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.6
@@ -270,6 +270,34 @@ $$;
 
 
 --
+-- Name: aceptar_terminos_artista(uuid, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.aceptar_terminos_artista(p_artista_id uuid, p_user_id uuid, p_version text) RETURNS timestamp with time zone
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+DECLARE
+  v_aceptado timestamptz;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.artistas WHERE id = p_artista_id AND user_id = p_user_id) THEN
+    RAISE EXCEPTION 'Ese artista no es de este usuario' USING ERRCODE = '42501';
+  END IF;
+
+  INSERT INTO public.terminos_artistas (artista_id, version, aceptado_por)
+  VALUES (p_artista_id, p_version, p_user_id)
+  ON CONFLICT (artista_id, version) DO NOTHING;
+
+  -- Aceptar dos veces no mueve la fecha: vale la primera.
+  SELECT aceptado_at INTO v_aceptado
+  FROM public.terminos_artistas
+  WHERE artista_id = p_artista_id AND version = p_version;
+  RETURN v_aceptado;
+END;
+$$;
+
+
+--
 -- Name: aplicar_retencion(boolean); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -348,6 +376,59 @@ $$;
 
 
 --
+-- Name: aprobar_tienda(uuid, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.aprobar_tienda(p_artista_id uuid, p_admin uuid, p_version text) RETURNS text
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+DECLARE
+  v_estado text;
+  v_faltan text;
+BEGIN
+  IF NOT public.has_role(p_admin, 'admin'::public.app_role) THEN
+    RAISE EXCEPTION 'Solo un admin puede aprobar una tienda' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT estado INTO v_estado FROM public.tiendas WHERE artista_id = p_artista_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Tienda no encontrada' USING ERRCODE = 'P0002';
+  END IF;
+  IF v_estado NOT IN ('solicitada', 'suspendida') THEN
+    RAISE EXCEPTION 'Una tienda en estado % no se puede aprobar', v_estado USING ERRCODE = '22023';
+  END IF;
+
+  -- Lo que pudo cambiar desde la solicitud: si desconectó MP, no se aprueba. Al
+  -- reactivar una suspendida no se exige un borrador: sus productos ya existen.
+  SELECT string_agg(item.key, ', ' ORDER BY item.key) INTO v_faltan
+  FROM jsonb_each_text(public.checklist_tienda(p_artista_id, p_version)) AS item
+  WHERE item.value = 'false' AND (v_estado = 'solicitada' OR item.key <> 'producto');
+  IF v_faltan IS NOT NULL THEN
+    RAISE EXCEPTION 'Checklist incompleto: %', v_faltan USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE public.tiendas
+  SET estado = 'activa', comentario_moderacion = NULL, resuelta_at = now(), resuelta_por = p_admin
+  WHERE artista_id = p_artista_id;
+
+  UPDATE public.artistas
+  SET tienda_activa = true, cobro = 'marketplace'
+  WHERE id = p_artista_id;
+
+  -- Aprobar no publica: los borradores van a la moderación normal, sin que el
+  -- artista los reenvíe. Al reactivar no: un borrador nuevo es del artista.
+  IF v_estado = 'solicitada' THEN
+    UPDATE public.productos SET estado = 'en_revision'
+    WHERE artista_id = p_artista_id AND estado = 'borrador';
+  END IF;
+
+  RETURN 'activa';
+END;
+$$;
+
+
+--
 -- Name: assign_artista_role(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -363,6 +444,39 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
+$$;
+
+
+--
+-- Name: checklist_tienda(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.checklist_tienda(p_artista_id uuid, p_version text) RETURNS jsonb
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+  SELECT jsonb_build_object(
+    'terminos', EXISTS (
+      SELECT 1 FROM public.terminos_artistas ta
+      WHERE ta.artista_id = t.artista_id AND ta.version = p_version
+    ),
+    'identidad', t.identidad_mp_declarada,
+    'mp', a.cobros_activos,
+    'despacho', COALESCE(
+      CASE t.despacho_modo
+        WHEN 'envio'  THEN t.despacho_costo IS NOT NULL AND t.despacho_plazo_max IS NOT NULL
+        WHEN 'retiro' THEN NULLIF(btrim(t.retiro_detalle), '') IS NOT NULL
+        WHEN 'ambos'  THEN t.despacho_costo IS NOT NULL AND t.despacho_plazo_max IS NOT NULL
+                           AND NULLIF(btrim(t.retiro_detalle), '') IS NOT NULL
+      END, false),
+    'producto', EXISTS (
+      SELECT 1 FROM public.productos p
+      WHERE p.artista_id = t.artista_id AND p.estado = 'borrador'
+    )
+  )
+  FROM public.tiendas t
+  JOIN public.artistas a ON a.id = t.artista_id
+  WHERE t.artista_id = p_artista_id;
 $$;
 
 
@@ -448,6 +562,21 @@ $$;
 
 
 --
+-- Name: crear_tienda_de_artista(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.crear_tienda_de_artista() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+BEGIN
+  INSERT INTO public.tiendas (artista_id) VALUES (NEW.id) ON CONFLICT (artista_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: dar_de_baja_artista(uuid, boolean); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -455,36 +584,44 @@ CREATE FUNCTION public.dar_de_baja_artista(p_artista_id uuid, p_revertir boolean
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO ''
     AS $$
-declare
+DECLARE
   v_baja timestamptz;
   v_eliminados timestamptz;
-begin
-  if not public.has_role(auth.uid(), 'admin'::public.app_role) then
-    raise exception 'Solo un admin puede dar de baja una cuenta' using errcode = '42501';
-  end if;
+BEGIN
+  IF NOT public.has_role(auth.uid(), 'admin'::public.app_role) THEN
+    RAISE EXCEPTION 'Solo un admin puede dar de baja una cuenta' USING ERRCODE = '42501';
+  END IF;
 
-  select baja_at, datos_eliminados_at into v_baja, v_eliminados
-  from public.artistas where id = p_artista_id for update;
-  if not found then
-    raise exception 'Artista no encontrado' using errcode = 'P0002';
-  end if;
+  SELECT baja_at, datos_eliminados_at INTO v_baja, v_eliminados
+  FROM public.artistas WHERE id = p_artista_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Artista no encontrado' USING ERRCODE = 'P0002';
+  END IF;
 
-  if p_revertir then
-    if v_eliminados is not null then
-      raise exception 'Los datos de esta cuenta ya se eliminaron: no se puede revertir la baja' using errcode = '22023';
-    end if;
-    update public.artistas set baja_at = null where id = p_artista_id;
-    update public.productos set estado = 'aprobado' where artista_id = p_artista_id and estado = 'pausado';
-    return null;
-  end if;
+  IF p_revertir THEN
+    IF v_eliminados IS NOT NULL THEN
+      RAISE EXCEPTION 'Los datos de esta cuenta ya se eliminaron: no se puede revertir la baja' USING ERRCODE = '22023';
+    END IF;
+    UPDATE public.artistas SET baja_at = NULL WHERE id = p_artista_id;
+    UPDATE public.productos SET estado = 'aprobado' WHERE artista_id = p_artista_id AND estado = 'pausado';
+    RETURN NULL;
+  END IF;
 
-  update public.artistas
-     set baja_at = coalesce(baja_at, now()), tienda_activa = false
-   where id = p_artista_id
-  returning baja_at into v_baja;
-  update public.productos set estado = 'pausado' where artista_id = p_artista_id and estado = 'aprobado';
-  return v_baja;
-end;
+  UPDATE public.artistas
+     SET baja_at = COALESCE(baja_at, now()), tienda_activa = false
+   WHERE id = p_artista_id
+  RETURNING baja_at INTO v_baja;
+  UPDATE public.productos SET estado = 'pausado' WHERE artista_id = p_artista_id AND estado = 'aprobado';
+
+  UPDATE public.tiendas
+     SET estado = 'suspendida', comentario_moderacion = 'Baja de la cuenta', resuelta_at = now(), resuelta_por = auth.uid()
+   WHERE artista_id = p_artista_id AND estado = 'activa';
+  UPDATE public.tiendas
+     SET estado = 'devuelta', comentario_moderacion = 'Baja de la cuenta', resuelta_at = now(), resuelta_por = auth.uid()
+   WHERE artista_id = p_artista_id AND estado = 'solicitada';
+
+  RETURN v_baja;
+END;
 $$;
 
 
@@ -503,6 +640,40 @@ CREATE FUNCTION public.datos_bancarios(p_artista_id uuid DEFAULT NULL::uuid) RET
       a.user_id = auth.uid()
       OR public.has_role(auth.uid(), 'admin'::public.app_role)
     );
+$$;
+
+
+--
+-- Name: devolver_tienda(uuid, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.devolver_tienda(p_artista_id uuid, p_admin uuid, p_comentario text) RETURNS text
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+DECLARE
+  v_estado text;
+BEGIN
+  IF NOT public.has_role(p_admin, 'admin'::public.app_role) THEN
+    RAISE EXCEPTION 'Solo un admin puede devolver una solicitud' USING ERRCODE = '42501';
+  END IF;
+  IF NULLIF(btrim(p_comentario), '') IS NULL THEN
+    RAISE EXCEPTION 'Devolver una solicitud exige un comentario' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT estado INTO v_estado FROM public.tiendas WHERE artista_id = p_artista_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Tienda no encontrada' USING ERRCODE = 'P0002';
+  END IF;
+  IF v_estado <> 'solicitada' THEN
+    RAISE EXCEPTION 'Una tienda en estado % no se puede devolver', v_estado USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE public.tiendas
+  SET estado = 'devuelta', comentario_moderacion = btrim(p_comentario), resuelta_at = now(), resuelta_por = p_admin
+  WHERE artista_id = p_artista_id;
+  RETURN 'devuelta';
+END;
 $$;
 
 
@@ -563,6 +734,7 @@ BEGIN
     NEW.es_prueba           := false;
     NEW.baja_at             := NULL;
     NEW.datos_eliminados_at := NULL;
+    NEW.cobro               := 'centralizado';
     RETURN NEW;
   END IF;
 
@@ -574,8 +746,9 @@ BEGIN
   OR NEW.cobros_activos      IS DISTINCT FROM OLD.cobros_activos
   OR NEW.es_prueba           IS DISTINCT FROM OLD.es_prueba
   OR NEW.baja_at             IS DISTINCT FROM OLD.baja_at
-  OR NEW.datos_eliminados_at IS DISTINCT FROM OLD.datos_eliminados_at THEN
-    RAISE EXCEPTION 'Solo un admin puede cambiar comision, es_founder, founder_hasta, tienda_activa, verificado, cobros_activos, es_prueba o la baja'
+  OR NEW.datos_eliminados_at IS DISTINCT FROM OLD.datos_eliminados_at
+  OR NEW.cobro               IS DISTINCT FROM OLD.cobro THEN
+    RAISE EXCEPTION 'Solo un admin puede cambiar comision, es_founder, founder_hasta, tienda_activa, verificado, cobros_activos, es_prueba, cobro o la baja'
       USING ERRCODE = '42501';
   END IF;
 
@@ -727,6 +900,94 @@ BEGIN
   UPDATE public.artistas
   SET cobros_activos = (NEW.estado = 'conectado')
   WHERE id = NEW.artista_id;
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: solicitar_tienda(uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.solicitar_tienda(p_artista_id uuid, p_version text) RETURNS text
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+DECLARE
+  v_estado text;
+  v_faltan text;
+BEGIN
+  SELECT estado INTO v_estado FROM public.tiendas WHERE artista_id = p_artista_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Tienda no encontrada' USING ERRCODE = 'P0002';
+  END IF;
+  IF v_estado NOT IN ('no_activa', 'devuelta') THEN
+    RAISE EXCEPTION 'Una tienda en estado % no puede solicitar activación', v_estado USING ERRCODE = '22023';
+  END IF;
+
+  SELECT string_agg(item.key, ', ' ORDER BY item.key) INTO v_faltan
+  FROM jsonb_each_text(public.checklist_tienda(p_artista_id, p_version)) AS item
+  WHERE item.value = 'false';
+  IF v_faltan IS NOT NULL THEN
+    RAISE EXCEPTION 'Checklist incompleto: %', v_faltan USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE public.tiendas
+  SET estado = 'solicitada', solicitada_at = now(), comentario_moderacion = NULL
+  WHERE artista_id = p_artista_id;
+  RETURN 'solicitada';
+END;
+$$;
+
+
+--
+-- Name: suspender_tienda(uuid, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.suspender_tienda(p_artista_id uuid, p_admin uuid, p_motivo text) RETURNS text
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO ''
+    AS $$
+DECLARE
+  v_estado text;
+BEGIN
+  IF NOT public.has_role(p_admin, 'admin'::public.app_role) THEN
+    RAISE EXCEPTION 'Solo un admin puede suspender una tienda' USING ERRCODE = '42501';
+  END IF;
+  IF NULLIF(btrim(p_motivo), '') IS NULL THEN
+    RAISE EXCEPTION 'Suspender una tienda exige un motivo' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT estado INTO v_estado FROM public.tiendas WHERE artista_id = p_artista_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Tienda no encontrada' USING ERRCODE = 'P0002';
+  END IF;
+  IF v_estado <> 'activa' THEN
+    RAISE EXCEPTION 'Una tienda en estado % no se puede suspender', v_estado USING ERRCODE = '22023';
+  END IF;
+
+  UPDATE public.tiendas
+  SET estado = 'suspendida', comentario_moderacion = btrim(p_motivo), resuelta_at = now(), resuelta_por = p_admin
+  WHERE artista_id = p_artista_id;
+  UPDATE public.artistas SET tienda_activa = false WHERE id = p_artista_id;
+  RETURN 'suspendida';
+END;
+$$;
+
+
+--
+-- Name: tiendas_al_actualizar(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.tiendas_al_actualizar() RETURNS trigger
+    LANGUAGE plpgsql
+    SET search_path TO ''
+    AS $$
+BEGIN
+  NEW.updated_at := now();
+  IF NEW.identidad_mp_declarada IS DISTINCT FROM OLD.identidad_mp_declarada THEN
+    NEW.identidad_mp_declarada_at := CASE WHEN NEW.identidad_mp_declarada THEN now() END;
+  END IF;
   RETURN NEW;
 END;
 $$;
@@ -3550,7 +3811,9 @@ CREATE TABLE public.artistas (
     founder_hasta date,
     es_prueba boolean DEFAULT false NOT NULL,
     baja_at timestamp with time zone,
-    datos_eliminados_at timestamp with time zone
+    datos_eliminados_at timestamp with time zone,
+    cobro text DEFAULT 'centralizado'::text NOT NULL,
+    CONSTRAINT artistas_cobro_check CHECK ((cobro = ANY (ARRAY['centralizado'::text, 'marketplace'::text])))
 );
 
 
@@ -3791,6 +4054,47 @@ COMMENT ON TABLE public.suscriptores IS 'Altas al boletin por email. Solo el adm
 --
 
 COMMENT ON COLUMN public.suscriptores.email IS 'Normalizado a minusculas por el cliente antes del INSERT. UNIQUE.';
+
+
+--
+-- Name: terminos_artistas; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.terminos_artistas (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    artista_id uuid NOT NULL,
+    version text NOT NULL,
+    aceptado_at timestamp with time zone DEFAULT now() NOT NULL,
+    aceptado_por uuid NOT NULL
+);
+
+
+--
+-- Name: tiendas; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.tiendas (
+    artista_id uuid NOT NULL,
+    estado text DEFAULT 'no_activa'::text NOT NULL,
+    comentario_moderacion text,
+    identidad_mp_declarada boolean DEFAULT false NOT NULL,
+    identidad_mp_declarada_at timestamp with time zone,
+    despacho_modo text,
+    despacho_costo integer,
+    despacho_plazo_min smallint,
+    despacho_plazo_max smallint,
+    retiro_detalle text,
+    solicitada_at timestamp with time zone,
+    resuelta_at timestamp with time zone,
+    resuelta_por uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT tiendas_despacho_costo_check CHECK ((despacho_costo >= 0)),
+    CONSTRAINT tiendas_despacho_modo_check CHECK ((despacho_modo = ANY (ARRAY['envio'::text, 'retiro'::text, 'ambos'::text]))),
+    CONSTRAINT tiendas_despacho_plazo_check CHECK (((despacho_plazo_min >= 0) AND (despacho_plazo_max >= despacho_plazo_min))),
+    CONSTRAINT tiendas_estado_check CHECK ((estado = ANY (ARRAY['no_activa'::text, 'solicitada'::text, 'devuelta'::text, 'activa'::text, 'suspendida'::text]))),
+    CONSTRAINT tiendas_retiro_detalle_check CHECK ((char_length(retiro_detalle) <= 300))
+);
 
 
 --
@@ -4475,6 +4779,30 @@ ALTER TABLE ONLY public.suscriptores
 
 
 --
+-- Name: terminos_artistas terminos_artistas_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.terminos_artistas
+    ADD CONSTRAINT terminos_artistas_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: terminos_artistas terminos_artistas_unica; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.terminos_artistas
+    ADD CONSTRAINT terminos_artistas_unica UNIQUE (artista_id, version);
+
+
+--
+-- Name: tiendas tiendas_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tiendas
+    ADD CONSTRAINT tiendas_pkey PRIMARY KEY (artista_id);
+
+
+--
 -- Name: user_roles user_roles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5118,6 +5446,13 @@ CREATE INDEX idx_productos_estado ON public.productos USING btree (estado);
 
 
 --
+-- Name: idx_tiendas_estado; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_tiendas_estado ON public.tiendas USING btree (estado);
+
+
+--
 -- Name: publicaciones_artista_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5258,6 +5593,13 @@ CREATE UNIQUE INDEX vector_indexes_name_bucket_id_idx ON storage.vector_indexes 
 
 
 --
+-- Name: artistas crear_tienda_de_artista; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER crear_tienda_de_artista AFTER INSERT ON public.artistas FOR EACH ROW EXECUTE FUNCTION public.crear_tienda_de_artista();
+
+
+--
 -- Name: artistas proteger_columnas_artista; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -5283,6 +5625,13 @@ CREATE TRIGGER publicaciones_set_updated_at BEFORE UPDATE ON public.publicacione
 --
 
 CREATE TRIGGER sincronizar_cobros_activos AFTER INSERT OR DELETE OR UPDATE OF estado ON public.mp_conexiones FOR EACH ROW EXECUTE FUNCTION public.sincronizar_cobros_activos();
+
+
+--
+-- Name: tiendas tiendas_al_actualizar; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER tiendas_al_actualizar BEFORE UPDATE ON public.tiendas FOR EACH ROW EXECUTE FUNCTION public.tiendas_al_actualizar();
 
 
 --
@@ -5639,6 +5988,22 @@ ALTER TABLE ONLY public.productos
 
 ALTER TABLE ONLY public.publicaciones
     ADD CONSTRAINT publicaciones_artista_id_fkey FOREIGN KEY (artista_id) REFERENCES public.artistas(id) ON DELETE CASCADE;
+
+
+--
+-- Name: terminos_artistas terminos_artistas_artista_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.terminos_artistas
+    ADD CONSTRAINT terminos_artistas_artista_id_fkey FOREIGN KEY (artista_id) REFERENCES public.artistas(id) ON DELETE CASCADE;
+
+
+--
+-- Name: tiendas tiendas_artista_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.tiendas
+    ADD CONSTRAINT tiendas_artista_id_fkey FOREIGN KEY (artista_id) REFERENCES public.artistas(id) ON DELETE CASCADE;
 
 
 --
@@ -6189,6 +6554,61 @@ CREATE POLICY suscriptores_update_admin ON public.suscriptores FOR UPDATE TO aut
 
 
 --
+-- Name: terminos_artistas; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.terminos_artistas ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: terminos_artistas terminos_select_admin; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY terminos_select_admin ON public.terminos_artistas FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: terminos_artistas terminos_select_propios; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY terminos_select_propios ON public.terminos_artistas FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
+   FROM public.artistas a
+  WHERE ((a.id = terminos_artistas.artista_id) AND (a.user_id = auth.uid())))));
+
+
+--
+-- Name: tiendas; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.tiendas ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: tiendas tiendas_select_admin; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tiendas_select_admin ON public.tiendas FOR SELECT TO authenticated USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+
+--
+-- Name: tiendas tiendas_select_propia; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tiendas_select_propia ON public.tiendas FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
+   FROM public.artistas a
+  WHERE ((a.id = tiendas.artista_id) AND (a.user_id = auth.uid())))));
+
+
+--
+-- Name: tiendas tiendas_update_propia; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY tiendas_update_propia ON public.tiendas FOR UPDATE TO authenticated USING ((EXISTS ( SELECT 1
+   FROM public.artistas a
+  WHERE ((a.id = tiendas.artista_id) AND (a.user_id = auth.uid()))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM public.artistas a
+  WHERE ((a.id = tiendas.artista_id) AND (a.user_id = auth.uid())))));
+
+
+--
 -- Name: user_roles; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -6502,11 +6922,27 @@ GRANT ALL ON FUNCTION auth.uid() TO dashboard_user;
 
 
 --
+-- Name: FUNCTION aceptar_terminos_artista(p_artista_id uuid, p_user_id uuid, p_version text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.aceptar_terminos_artista(p_artista_id uuid, p_user_id uuid, p_version text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.aceptar_terminos_artista(p_artista_id uuid, p_user_id uuid, p_version text) TO service_role;
+
+
+--
 -- Name: FUNCTION aplicar_retencion(p_simular boolean); Type: ACL; Schema: public; Owner: -
 --
 
 REVOKE ALL ON FUNCTION public.aplicar_retencion(p_simular boolean) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.aplicar_retencion(p_simular boolean) TO service_role;
+
+
+--
+-- Name: FUNCTION aprobar_tienda(p_artista_id uuid, p_admin uuid, p_version text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.aprobar_tienda(p_artista_id uuid, p_admin uuid, p_version text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.aprobar_tienda(p_artista_id uuid, p_admin uuid, p_version text) TO service_role;
 
 
 --
@@ -6516,6 +6952,14 @@ GRANT ALL ON FUNCTION public.aplicar_retencion(p_simular boolean) TO service_rol
 GRANT ALL ON FUNCTION public.assign_artista_role() TO anon;
 GRANT ALL ON FUNCTION public.assign_artista_role() TO authenticated;
 GRANT ALL ON FUNCTION public.assign_artista_role() TO service_role;
+
+
+--
+-- Name: FUNCTION checklist_tienda(p_artista_id uuid, p_version text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.checklist_tienda(p_artista_id uuid, p_version text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.checklist_tienda(p_artista_id uuid, p_version text) TO service_role;
 
 
 --
@@ -6536,6 +6980,14 @@ GRANT ALL ON FUNCTION public.confirmar_pago(p_grupo_id uuid, p_payment_id text, 
 
 
 --
+-- Name: FUNCTION crear_tienda_de_artista(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.crear_tienda_de_artista() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.crear_tienda_de_artista() TO service_role;
+
+
+--
 -- Name: FUNCTION dar_de_baja_artista(p_artista_id uuid, p_revertir boolean); Type: ACL; Schema: public; Owner: -
 --
 
@@ -6551,6 +7003,14 @@ GRANT ALL ON FUNCTION public.dar_de_baja_artista(p_artista_id uuid, p_revertir b
 REVOKE ALL ON FUNCTION public.datos_bancarios(p_artista_id uuid) FROM PUBLIC;
 GRANT ALL ON FUNCTION public.datos_bancarios(p_artista_id uuid) TO authenticated;
 GRANT ALL ON FUNCTION public.datos_bancarios(p_artista_id uuid) TO service_role;
+
+
+--
+-- Name: FUNCTION devolver_tienda(p_artista_id uuid, p_admin uuid, p_comentario text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.devolver_tienda(p_artista_id uuid, p_admin uuid, p_comentario text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.devolver_tienda(p_artista_id uuid, p_admin uuid, p_comentario text) TO service_role;
 
 
 --
@@ -6610,6 +7070,30 @@ GRANT ALL ON FUNCTION public.revertir_pago(p_grupo_id uuid, p_payment_id text, p
 
 REVOKE ALL ON FUNCTION public.sincronizar_cobros_activos() FROM PUBLIC;
 GRANT ALL ON FUNCTION public.sincronizar_cobros_activos() TO service_role;
+
+
+--
+-- Name: FUNCTION solicitar_tienda(p_artista_id uuid, p_version text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.solicitar_tienda(p_artista_id uuid, p_version text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.solicitar_tienda(p_artista_id uuid, p_version text) TO service_role;
+
+
+--
+-- Name: FUNCTION suspender_tienda(p_artista_id uuid, p_admin uuid, p_motivo text); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.suspender_tienda(p_artista_id uuid, p_admin uuid, p_motivo text) FROM PUBLIC;
+GRANT ALL ON FUNCTION public.suspender_tienda(p_artista_id uuid, p_admin uuid, p_motivo text) TO service_role;
+
+
+--
+-- Name: FUNCTION tiendas_al_actualizar(); Type: ACL; Schema: public; Owner: -
+--
+
+REVOKE ALL ON FUNCTION public.tiendas_al_actualizar() FROM PUBLIC;
+GRANT ALL ON FUNCTION public.tiendas_al_actualizar() TO service_role;
 
 
 --
@@ -7166,6 +7650,14 @@ GRANT SELECT(datos_eliminados_at) ON TABLE public.artistas TO authenticated;
 
 
 --
+-- Name: COLUMN artistas.cobro; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT(cobro) ON TABLE public.artistas TO anon;
+GRANT SELECT(cobro) ON TABLE public.artistas TO authenticated;
+
+
+--
 -- Name: TABLE categorias; Type: ACL; Schema: public; Owner: -
 --
 
@@ -7240,6 +7732,64 @@ GRANT ALL ON TABLE public.publicaciones TO service_role;
 GRANT ALL ON TABLE public.suscriptores TO anon;
 GRANT ALL ON TABLE public.suscriptores TO authenticated;
 GRANT ALL ON TABLE public.suscriptores TO service_role;
+
+
+--
+-- Name: TABLE terminos_artistas; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.terminos_artistas TO service_role;
+GRANT SELECT ON TABLE public.terminos_artistas TO authenticated;
+
+
+--
+-- Name: TABLE tiendas; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON TABLE public.tiendas TO service_role;
+GRANT SELECT ON TABLE public.tiendas TO authenticated;
+
+
+--
+-- Name: COLUMN tiendas.identidad_mp_declarada; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT UPDATE(identidad_mp_declarada) ON TABLE public.tiendas TO authenticated;
+
+
+--
+-- Name: COLUMN tiendas.despacho_modo; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT UPDATE(despacho_modo) ON TABLE public.tiendas TO authenticated;
+
+
+--
+-- Name: COLUMN tiendas.despacho_costo; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT UPDATE(despacho_costo) ON TABLE public.tiendas TO authenticated;
+
+
+--
+-- Name: COLUMN tiendas.despacho_plazo_min; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT UPDATE(despacho_plazo_min) ON TABLE public.tiendas TO authenticated;
+
+
+--
+-- Name: COLUMN tiendas.despacho_plazo_max; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT UPDATE(despacho_plazo_max) ON TABLE public.tiendas TO authenticated;
+
+
+--
+-- Name: COLUMN tiendas.retiro_detalle; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT UPDATE(retiro_detalle) ON TABLE public.tiendas TO authenticated;
 
 
 --
@@ -7454,5 +8004,5 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA storage GRANT ALL ON TABLES
 -- PostgreSQL database dump complete
 --
 
-\unrestrict FUnL0L0rS4UusOwXFie35QdGg3dkkG4xGwE7Z4x8gw86gn7eFmQBhS540qItd4R
+\unrestrict yweWDGTGD5gueScnfIUFujilrltgl0L0UIhtXpsiBhfrs9z5dQh1q9hRG2M2zi1
 
