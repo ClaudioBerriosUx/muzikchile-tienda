@@ -2199,7 +2199,8 @@ real.** `verificar:invitar` además necesita la Edge Function desplegada ahí.
 **Pendiente**
 - `db push` de las dos migraciones: **aplicado** (2026-11-07, según Claudio). Falta confirmar la prueba de aprobar y rechazar en `/admin/productos`.
 - Regenerar `schema_baseline.sql` con la receta de arriba (lo corre Claudio: pide la contraseña).
-- Crear la base de pruebas y correr ahí los `verificar:*`.
+- Base de pruebas `muzikchile-pruebas` (`boxeigxyyzvfhawwdedj`, us-east-1) creada y cargada con psql, según Claudio. Baseline regenerado el 2026-11-07, con `private`, `auth` y permisos.
+- Falta llenar `.env.pruebas` y correr ahí los `verificar:*`: esa corrida es la línea base del commit 2.
 - Base de pruebas en la cuenta de MuzikChile, no en Agencia SBS. Previews en dos pasos: primero solo scripts y `dev:pruebas`.
 - Commits 2 a 10 del plan de activación.
 
@@ -2246,7 +2247,7 @@ consentimiento previo; hoy no lo hay").
    scoop install postgresql
 
    C:/Users/raice/scoop/apps/postgresql/current/bin/pg_dump.exe \
-     --schema-only --no-owner --no-privileges --schema=public --schema=storage \
+     --schema-only --no-owner --schema=public --schema=private --schema=storage --schema=auth \
      -f supabase/schema_baseline.sql \
      "postgresql://postgres.rgskspvuvzwmvmsccoez@aws-1-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require"
    ```
