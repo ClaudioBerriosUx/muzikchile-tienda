@@ -2219,6 +2219,8 @@ real.** `verificar:invitar` además necesita la Edge Function desplegada ahí.
 - **BLOQUEANTE antes de invitar al primer artista** (decisión de Claudio, 2026-11-07): probar el OAuth real de MP desde `/panel/tienda`, junto con la compra real con reembolso. Además de la revisión legal.
 - RUT y domicilio siguen pendientes hasta definir dirección comercial o SpA. Mantener `[PENDIENTE]` en `/terminos-artistas`.
 - **Commit 6 (hecho):** `/admin/tiendas` y `/api/admin/tiendas`; el switch de `tienda_activa` salió de `/admin/artistas`. `verificar:tienda --api` 118/118, `cobro` idéntico a la línea base. Probado en el navegador en local con cuentas de prueba: devolver, aprobar, suspender.
+- **Ajustes de Mi tienda:** migración `20261107200000` (declarar identidad exige conexión; desconectar la borra), bloques de ayuda de despacho y de qué se puede vender, términos punto 7 alineado (sigue v1.0). Limpiar la declaración de la cuenta de prueba en producción.
+- **Sin correos de tienda:** aprobar, devolver y suspender no avisan por correo, y una solicitud nueva solo sube el contador del admin. Los términos (punto 11) prometen aviso por correo al suspender: hasta tener Resend, avisar a mano.
 - Commits 7 a 10 del plan de activación.
 
 ---

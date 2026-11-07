@@ -104,10 +104,10 @@ const rpc = (fn, args) => admin.rpc(fn, args);
 
 /** Deja una tienda con todo el checklist listo, sin pasar por el navegador. */
 async function completarChecklist(u) {
+  await admin.from("artistas").update({ cobros_activos: true }).eq("id", u.artistaId);
   await admin.from("tiendas").update({
     identidad_mp_declarada: true, despacho_modo: "envio", despacho_costo: 3000, despacho_plazo_min: 2, despacho_plazo_max: 5,
   }).eq("artista_id", u.artistaId);
-  await admin.from("artistas").update({ cobros_activos: true }).eq("id", u.artistaId);
   await rpc("aceptar_terminos_artista", { p_artista_id: u.artistaId, p_user_id: u.userId, p_version: VERSION });
 }
 
@@ -195,10 +195,39 @@ async function casos(A, B, ADMIN) {
   }
   {
     const { error } = await A.cliente.from("tiendas").update({ identidad_mp_declarada: true }).eq("artista_id", A.artistaId);
+    check("(b2a) Declara su identidad sin cuenta conectada → rechazado, y no queda guardada",
+      error?.code === "22023" && !(await tienda(A.artistaId)).identidad_mp_declarada, fmt(error));
+    const { error: e2 } = await admin.from("tiendas").update({ identidad_mp_declarada: true }).eq("artista_id", A.artistaId);
+    check("(b2b) Tampoco con service role", e2?.code === "22023", fmt(e2));
+  }
+  {
+    // La conexión real: su trigger mantiene cobros_activos.
+    const { error: errConexion } = await admin.from("mp_conexiones").insert({
+      artista_id: A.artistaId, mp_user_id: 8_000_000_000 + Math.floor(Math.random() * 999_999_999),
+      access_token_cifrado: "falso", refresh_token_cifrado: "falso", live_mode: false,
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+    });
+    if (errConexion) throw new Error(`Conexión: ${errConexion.message}`);
+
+    const { error } = await A.cliente.from("tiendas").update({ identidad_mp_declarada: true }).eq("artista_id", A.artistaId);
     const t = await tienda(A.artistaId);
-    check("(b2) Declara su identidad de MP y la fecha la pone la base", !error && t.identidad_mp_declarada && !!t.identidad_mp_declarada_at, fmt(error));
+    check("(b2) Con la cuenta conectada declara su identidad, y la fecha la pone la base", !error && t.identidad_mp_declarada && !!t.identidad_mp_declarada_at, fmt(error));
+    const c = await rpc("checklist_tienda", { p_artista_id: A.artistaId, p_version: VERSION });
+    check("(b2c) El checklist la cuenta", c.data?.identidad === true && c.data?.mp === true, JSON.stringify(c.data));
+
+    await admin.from("mp_conexiones").update({ estado: "reconectar" }).eq("artista_id", A.artistaId);
+    const c2 = await rpc("checklist_tienda", { p_artista_id: A.artistaId, p_version: VERSION });
+    check("(b2d) Conexión en 'reconectar': la declaración se conserva, pero no cuenta en el checklist",
+      (await tienda(A.artistaId)).identidad_mp_declarada && c2.data?.identidad === false, JSON.stringify(c2.data));
+    await admin.from("mp_conexiones").update({ estado: "conectado" }).eq("artista_id", A.artistaId);
+
     await A.cliente.from("tiendas").update({ identidad_mp_declarada: false }).eq("artista_id", A.artistaId);
     check("(b3) Quitar la declaración borra la fecha", !(await tienda(A.artistaId)).identidad_mp_declarada_at);
+
+    await A.cliente.from("tiendas").update({ identidad_mp_declarada: true }).eq("artista_id", A.artistaId);
+    await admin.from("mp_conexiones").delete().eq("artista_id", A.artistaId);
+    const t2 = await tienda(A.artistaId);
+    check("(b3a) Desconectar borra la declaración y su fecha", !t2.identidad_mp_declarada && !t2.identidad_mp_declarada_at, JSON.stringify(t2));
   }
   {
     const { error: e1 } = await A.cliente.from("tiendas").update({ despacho_costo: -1 }).eq("artista_id", A.artistaId);
@@ -310,7 +339,7 @@ async function casos(A, B, ADMIN) {
     const r = await rpc("aprobar_tienda", { p_artista_id: C.artistaId, p_admin: ADMIN.userId, p_version: VERSION });
     const a = await artista(C.artistaId);
     check("(g2) Si desconectó MP tras solicitar → rechazado, y nada cambió",
-      /incompleto: mp$/.test(r.error?.message ?? "") && !a.tienda_activa && a.cobro === "centralizado" && (await estadoProducto(borrador)) === "borrador", fmt(r.error));
+      /incompleto: identidad, mp$/.test(r.error?.message ?? "") && !a.tienda_activa && a.cobro === "centralizado" && (await estadoProducto(borrador)) === "borrador", fmt(r.error));
     await admin.from("artistas").update({ cobros_activos: true }).eq("id", C.artistaId);
   }
   {

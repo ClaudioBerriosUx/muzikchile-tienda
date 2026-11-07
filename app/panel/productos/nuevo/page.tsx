@@ -10,6 +10,7 @@ import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { X, Upload } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { QuePuedesVender } from "@/components/panel/AyudaTienda";
 import { comprimirImagen } from "@/lib/imagen";
 
 const ZONAS = ["Chile", "Latinoamérica", "EE.UU.", "Europa", "Mundial"];
@@ -172,6 +173,8 @@ export default function NuevoProductoPage() {
       >
         Subir producto
       </h1>
+
+      <div className="mb-8 max-w-3xl"><QuePuedesVender /></div>
 
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

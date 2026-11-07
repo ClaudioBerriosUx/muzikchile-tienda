@@ -110,9 +110,16 @@ export default function TerminosArtistasPage() {
 
         <Seccion titulo="7. Productos">
           <P>
-            Por ahora solo se pueden vender productos físicos. Solo puedes vender lo que tienes derecho a
-            vender. No se permiten productos falsificados, ilegales, peligrosos o que infrinjan derechos de
-            terceros. Podemos rechazar o retirar un producto indicando el motivo.
+            Solo puedes vender productos oficiales de tu propio proyecto musical y, por ahora, solo productos
+            físicos: merch oficial, música en formato físico y piezas de colección ligadas a tu música.
+          </P>
+          <P>
+            No se permite merch de otros artistas o bandas, la reventa de productos ajenos, las réplicas o
+            productos no oficiales, ni productos sin relación con tu música. Tampoco productos falsificados,
+            ilegales, peligrosos o que infrinjan derechos de terceros.
+          </P>
+          <P>
+            Revisamos cada producto antes de publicarlo y podemos rechazarlo o retirarlo indicando el motivo.
           </P>
         </Seccion>
 
