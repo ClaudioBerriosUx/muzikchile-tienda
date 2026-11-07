@@ -122,7 +122,9 @@ export async function POST(request: Request) {
           failure: `${process.env.NEXT_PUBLIC_URL}/checkout/error`,
           pending: `${process.env.NEXT_PUBLIC_URL}/checkout/pendiente`,
         },
-        auto_return: "approved",
+        // auto_return también exige URL HTTPS: con localhost MP responde 400
+        // "auto_return invalid". En local el comprador vuelve con el botón de MP.
+        ...(process.env.NEXT_PUBLIC_URL?.startsWith("https://") ? { auto_return: "approved" } : {}),
         external_reference,
         // La comisión de MuzikChile en marketplace. Si es 0 (founder) se omite.
         ...(directo && directo.fee > 0 ? { marketplace_fee: directo.fee } : {}),
