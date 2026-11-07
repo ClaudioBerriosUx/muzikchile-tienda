@@ -3,4 +3,4 @@
  * (`terminos_artistas`) y la que exigen `solicitar_tienda` y `aprobar_tienda`.
  * Si el texto cambia, sube esta versión: los artistas tendrán que aceptarlo.
  */
-export const VERSION_TERMINOS_ARTISTAS = "1.0";
+export const VERSION_TERMINOS_ARTISTAS = "0.9";
