@@ -2200,9 +2200,10 @@ real.** `verificar:invitar` además necesita la Edge Function desplegada ahí.
 - `db push` de las dos migraciones: **aplicado** (2026-11-07, según Claudio). Falta confirmar la prueba de aprobar y rechazar en `/admin/productos`.
 - Regenerar `schema_baseline.sql` con la receta de arriba (lo corre Claudio: pide la contraseña).
 - Base de pruebas `muzikchile-pruebas` (`boxeigxyyzvfhawwdedj`, us-east-1) creada y cargada con psql, según Claudio. Baseline regenerado el 2026-11-07, con `private`, `auth` y permisos.
-- Primera corrida contra `muzikchile-pruebas` (2026-11-07): `verificar:rls-productos` 26/26, `rls` 18/18, `sanitizacion` 51/51, `firma` 15/15. Fallaron `cobro --fase2` 80/94, `mp` 16/18, `retencion` 13/14 y `rls-storage` 20/22 porque la carga dejó esa base más abierta que producción (permisos por defecto de un proyecto nuevo y buckets sin límites); producción rechaza esas lecturas (`42501`). Arreglado en `preparar-base-pruebas.mjs`; falta aplicar `--solo-permisos` con psql y repetir.
-- `verificar:invitar` 2/4 hasta desplegar la Edge Function en pruebas (404).
-- Línea base de los 136 con `dev:pruebas`: pendiente, va antes del commit 2.
+- Corridas contra `muzikchile-pruebas` (2026-11-07, tras reparar permisos): `rls-productos` 26/26, `rls` 18/18, `rls-storage` 22/22, `mp` 18/18, `retencion` 14/14, `sanitizacion` 51/51, `firma` 15/15.
+- **Línea base de `verificar:cobro -- --fase2 --api=http://localhost:3000` con `npm run dev:pruebas`: 140/141** (son 141, ya no 136). Falla solo `(api-8)`: MP responde 400 UNAUTHORIZED a la preferencia, probablemente por el token falso del seed. Salida guardada en `supabase/.temp/linea-base-cobro.txt` (no versionada): el commit 2 tiene que dar idéntico.
+- `verificar:invitar` 2/4: la Edge Function no se despliega en pruebas por ahora (decisión de Claudio). Sin correr: `mp` y `retencion` con `--api`.
+- `/admin/productos` en producción: rechazar funcionó con solo `admin manage productos` (cassette de Valentina, `pausado → rechazado`). Aprobar no se ha informado.
 - Base de pruebas en la cuenta de MuzikChile, no en Agencia SBS. Previews en dos pasos: primero solo scripts y `dev:pruebas`.
 - **Llaves de Supabase**: las legacy API keys (`eyJ…`) se retiran a comienzos de 2027 (dato de Claudio, 2026-11-07). Hay que migrar producción a `sb_publishable_` / `sb_secret_` antes de esa fecha.
 - Commits 2 a 10 del plan de activación.

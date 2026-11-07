@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "dev:pruebas": "node --env-file=.env.pruebas node_modules/next/dist/bin/next dev",
+    "dev:pruebas": "node scripts/dev-pruebas.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
