@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Package, Newspaper, Music, Tag,
   ShoppingBag, Ticket, Wallet, Settings, LogOut, Mail,
+  Store,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import HeaderPanel from "@/components/layout/HeaderPanel";
@@ -51,6 +52,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
    * invalidan al aprobar/rechazar/devolver:
    *   - `admin/productos`     invalida ["admin-count-revision"]
    *   - `admin/publicaciones` invalida ["admin-count-publicaciones-pendientes"]
+   *   - `admin/tiendas`       invalida ["admin-count-tiendas"]
    *
    * Antes el badge se calculaba una sola vez al montar el layout y se quedaba
    * pegado hasta recargar la página. (La invalidación de productos ya existía y
@@ -85,6 +87,20 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     enabled: authorized,
   });
 
+  const { data: tiendasPorRevisar = 0 } = useQuery({
+    queryKey: ["admin-count-tiendas"],
+    queryFn: async () => {
+      const supabase = createClient();
+      const { count, error } = await supabase
+        .from("tiendas")
+        .select("artista_id", { count: "exact", head: true })
+        .eq("estado", "solicitada");
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: authorized,
+  });
+
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -95,6 +111,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     { label: "Dashboard",            href: "/admin",                icon: <LayoutDashboard size={16} /> },
     { label: "Productos pendientes", href: "/admin/productos",      icon: <Package size={16} />, badge: pendientes },
     { label: "Publicaciones",        href: "/admin/publicaciones",  icon: <Newspaper size={16} />, badge: pendientesPub },
+    { label: "Tiendas",              href: "/admin/tiendas",        icon: <Store size={16} />, badge: tiendasPorRevisar },
     { label: "Artistas",             href: "/admin/artistas",       icon: <Music size={16} /> },
     { label: "Categorías",           href: "/admin/categorias",     icon: <Tag size={16} /> },
     { label: "Órdenes",              href: "/admin/ordenes",        icon: <ShoppingBag size={16} /> },
@@ -102,7 +119,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     { label: "Liquidaciones",        href: "/admin/liquidaciones",  icon: <Wallet size={16} /> },
     { label: "Suscriptores",         href: "/admin/suscriptores",   icon: <Mail size={16} /> },
     { label: "Configuración",        href: "/admin/configuracion",  icon: <Settings size={16} /> },
-  ], [pendientes, pendientesPub]);
+  ], [pendientes, pendientesPub, tiendasPorRevisar]);
 
   if (!authorized) {
     return (

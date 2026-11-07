@@ -7,7 +7,7 @@
  *   npm run verificar:tienda
  *   npm run verificar:tienda -- --api=http://localhost:3000
  *                         → + cómo cobra una tienda (cotizar, ficha, /api/mp/conexion)
- *                           y las rutas del panel (/api/panel/tienda).
+ *                           y las rutas del panel y del admin (/api/panel/tienda, /api/admin/tiendas).
  *                           El servidor parte con `npm run dev:pruebas`.
  *
  * Lee `.env.pruebas`. La base tiene que tener aplicada la migración
@@ -527,6 +527,88 @@ async function rutasDelPanel() {
   }
 }
 
+// ── Bandeja del admin (--api) ────────────────────────────────────────────────
+
+async function bandejaDelAdmin(ADMIN, ARTISTA) {
+  console.log(`\n── Bandeja del admin · ${API} ──`);
+  const RUTA = `${API}/api/admin/tiendas`;
+  const jsonDe = (res) => res.json().catch(() => null);
+
+  const G = await crearUsuario("g", "artista");
+  const cookieAdmin = await cookieDe(ADMIN);
+  const cookieArtista = await cookieDe(ARTISTA);
+  const leerComo = async (cookie, query = "") => {
+    const res = await fetch(`${RUTA}${query}`, { headers: cookie ? { Cookie: cookie } : {} });
+    return { status: res.status, data: await jsonDe(res) };
+  };
+  const actuarComo = async (cookie, body) => {
+    const res = await fetch(RUTA, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(cookie ? { Cookie: cookie } : {}) },
+      body: JSON.stringify(body),
+    });
+    return { status: res.status, data: await jsonDe(res) };
+  };
+  const actuar = (body) => actuarComo(cookieAdmin, body);
+  const deG = async () => (await leerComo(cookieAdmin)).data?.tiendas?.find((t) => t.artistaId === G.artistaId);
+
+  {
+    check("(n1) GET sin sesión → 401", (await leerComo(null)).status === 401);
+    check("(n2) GET como artista → 403", (await leerComo(cookieArtista)).status === 403);
+    check("(n3) POST sin sesión → 401", (await actuarComo(null, { accion: "aprobar", artista_id: G.artistaId })).status === 401);
+    check("(n4) POST como artista → 403, y nada cambia",
+      (await actuarComo(cookieArtista, { accion: "aprobar", artista_id: ARTISTA.artistaId })).status === 403 && !(await artista(ARTISTA.artistaId)).tienda_activa);
+    check("(n5) POST con acción desconocida → 400", (await actuar({ accion: "activar", artista_id: G.artistaId })).status === 400);
+    check("(n6) POST sin artista → 400", (await actuar({ accion: "aprobar" })).status === 400);
+    check("(n7) POST con artista inexistente → 404", (await actuar({ accion: "aprobar", artista_id: crypto.randomUUID() })).status === 404);
+    check("(n8) Aprobar una tienda 'no_activa' → 422", (await actuar({ accion: "aprobar", artista_id: G.artistaId })).status === 422);
+  }
+
+  await completarChecklist(G);
+  await rpc("aceptar_terminos_artista", { p_artista_id: G.artistaId, p_user_id: G.userId, p_version: VERSION_TERMINOS_ARTISTAS });
+  const borrador = await sembrarProducto(G.artistaId, "borrador");
+  const s = await rpc("solicitar_tienda", { p_artista_id: G.artistaId, p_version: VERSION_TERMINOS_ARTISTAS });
+  if (s.error) throw new Error(`Solicitar: ${fmt(s.error)}`);
+
+  {
+    const r = await leerComo(cookieAdmin, "?estado=solicitada");
+    const t = r.data?.tiendas?.find((x) => x.artistaId === G.artistaId);
+    check("(n9) La solicitud aparece en la bandeja", r.status === 200 && !!t, JSON.stringify(r).slice(0, 200));
+    check("(n10) Trae el checklist en vivo, despacho y productos",
+      Object.values(t?.checklist ?? {}).every((x) => x === true) && t?.despacho?.despacho_costo === 3000 && t?.productos?.[0]?.id === borrador, JSON.stringify(t));
+    check("(n11) No trae tokens", !/token/i.test(JSON.stringify(r.data)));
+    const todas = await leerComo(cookieAdmin);
+    check("(n12) Sin filtro trae otras tiendas; nunca al autor editorial",
+      todas.data?.tiendas?.some((x) => x.artistaId === ARTISTA.artistaId) && !todas.data?.tiendas?.some((x) => x.slug === "muzikchile"), "");
+    const { count } = await anon.from("tiendas").select("artista_id", { count: "exact", head: true }).eq("estado", "solicitada");
+    check("(n13) El contador del menú no lo lee un anónimo", count === null);
+    const { count: delAdmin, error } = await ADMIN.cliente.from("tiendas").select("artista_id", { count: "exact", head: true }).eq("estado", "solicitada");
+    check("(n14) El contador del menú lo lee el admin", !error && delAdmin >= 1, fmt(error));
+  }
+  {
+    const r = await actuar({ accion: "devolver", artista_id: G.artistaId, texto: "  " });
+    check("(n15) Devolver sin comentario → 422", r.status === 422, JSON.stringify(r));
+    const r2 = await actuar({ accion: "devolver", artista_id: G.artistaId, texto: "Falta la foto" });
+    const t = await tienda(G.artistaId);
+    check("(n16) Devolver → 'devuelta', y resuelve el admin de la sesión", r2.status === 200 && t.estado === "devuelta" && t.resuelta_por === ADMIN.userId, JSON.stringify(r2));
+    await rpc("solicitar_tienda", { p_artista_id: G.artistaId, p_version: VERSION_TERMINOS_ARTISTAS });
+  }
+  {
+    const r = await actuar({ accion: "aprobar", artista_id: G.artistaId, p_admin: G.userId, resuelta_por: G.userId });
+    const t = await tienda(G.artistaId);
+    const a = await artista(G.artistaId);
+    check("(n17) Aprobar → 'activa', cobro 'marketplace'", r.status === 200 && t.estado === "activa" && a.tienda_activa && a.cobro === "marketplace", JSON.stringify(r));
+    check("(n18) Ignora quién dice el body que resuelve", t.resuelta_por === ADMIN.userId, t.resuelta_por);
+    check("(n19) Su borrador pasa a 'en_revision'", (await estadoProducto(borrador)) === "en_revision");
+    check("(n20) La lista refleja el cambio", (await deG())?.estado === "activa");
+    check("(n21) Suspender sin motivo → 422", (await actuar({ accion: "suspender", artista_id: G.artistaId })).status === 422);
+    const r2 = await actuar({ accion: "suspender", artista_id: G.artistaId, texto: "Reclamos" });
+    const a2 = await artista(G.artistaId);
+    check("(n22) Suspender apaga la tienda y conserva el cobro", r2.status === 200 && !a2.tienda_activa && a2.cobro === "marketplace", JSON.stringify(a2));
+    check("(n23) Se reactiva con la misma acción", (await actuar({ accion: "aprobar", artista_id: G.artistaId })).status === 200 && (await artista(G.artistaId)).tienda_activa);
+  }
+}
+
 // ── Principal ────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -540,6 +622,7 @@ async function main() {
     if (API) {
       await cobroPorArtista(ADMIN);
       await rutasDelPanel();
+      await bandejaDelAdmin(ADMIN, B);
     }
     else console.log("\n── Cómo cobra una tienda: sin --api no se prueba ──");
   } finally {

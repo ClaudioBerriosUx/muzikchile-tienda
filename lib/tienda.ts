@@ -45,6 +45,27 @@ export interface PanelTienda {
   conexion: { estado: string } | null;
 }
 
+/** Una tienda en la bandeja del admin (GET /api/admin/tiendas). Nunca lleva tokens. */
+export interface TiendaAdmin {
+  artistaId: string;
+  nombre: string;
+  slug: string;
+  esPrueba: boolean;
+  enBaja: boolean;
+  cobro: string;
+  estado: EstadoTienda;
+  comentario: string | null;
+  solicitadaAt: string | null;
+  resueltaAt: string | null;
+  identidadDeclaradaAt: string | null;
+  despacho: DespachoTienda;
+  checklist: ChecklistTienda;
+  terminos: { version: string; aceptadoAt: string | null };
+  comision: { porcentaje: number; detalle: string | null };
+  conexion: { estado: string; nickname: string | null; email: string | null; liveMode: boolean } | null;
+  productos: { id: string; nombre: string; estado: string }[];
+}
+
 /** Cómo se llama cada ítem del checklist cuando falta. */
 export const FALTA_CHECKLIST: Record<keyof ChecklistTienda, string> = {
   terminos:  "aceptar los términos",

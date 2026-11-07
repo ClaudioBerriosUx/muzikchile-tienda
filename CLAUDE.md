@@ -99,6 +99,7 @@ Header y Footer. No importes `<Header/>` a mano en una página.
 | `/panel/**` | rol: `artista` | Dashboard del artista |
 | `/panel/tienda` | rol: `artista` | Mi tienda: estado, comisión, checklist (términos, Mercado Pago, identidad, despacho, borrador) y solicitud. `/panel/cobros` redirige acá |
 | `/panel/despacho` | rol: `artista` | Pedidos pagados/enviados con nombre, email y dirección del comprador. RLS (`artista_lee_sus_ordenes_pagadas`): el artista solo lee órdenes pagado/enviado/entregado/reembolsado |
+| `/admin/tiendas` | rol: `admin` | Bandeja de tiendas: checklist en vivo, aprobar, devolver, suspender y reactivar. `tienda_activa` y `artistas.cobro` se cambian solo acá |
 | `/admin/**` | rol: `admin` | Panel de administración |
 
 `/contacto` es una página simple con `CORREO_CONTACTO` (`lib/site.ts`).

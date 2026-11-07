@@ -29,7 +29,7 @@ interface Artista {
   es_prueba: boolean;
 }
 
-type Campos = Pick<Artista, "comision" | "es_founder" | "founder_hasta" | "tienda_activa" | "verificado" | "es_prueba">;
+type Campos = Pick<Artista, "comision" | "es_founder" | "founder_hasta" | "verificado" | "es_prueba">;
 
 export default function ArtistasPage() {
   const queryClient = useQueryClient();
@@ -61,7 +61,6 @@ export default function ArtistasPage() {
 
   const comision     = borrador.comision ?? seleccionado?.comision ?? 0;
   const esFounder    = borrador.es_founder ?? seleccionado?.es_founder ?? false;
-  const tiendaActiva = borrador.tienda_activa ?? seleccionado?.tienda_activa ?? false;
   const verificado   = borrador.verificado ?? seleccionado?.verificado ?? false;
   const esPrueba     = borrador.es_prueba ?? seleccionado?.es_prueba ?? false;
   // founder_hasta admite null como valor elegido: "sin fecha" no es "sin tocar".
@@ -71,7 +70,6 @@ export default function ArtistasPage() {
   const setComision     = (comision: number)  => editar({ comision });
   const setEsFounder    = (es_founder: boolean) => editar({ es_founder });
   const setFounderHasta = (fecha: string)     => editar({ founder_hasta: fecha || null });
-  const setTiendaActiva = (tienda_activa: boolean) => editar({ tienda_activa });
   const setVerificado   = (verificado: boolean) => editar({ verificado });
   const setEsPrueba     = (es_prueba: boolean) => editar({ es_prueba });
 
@@ -90,7 +88,6 @@ export default function ArtistasPage() {
       comision,
       es_founder:    esFounder,
       founder_hasta: esFounder && founderHasta ? founderHasta : null,
-      tienda_activa: tiendaActiva,
       verificado,
       es_prueba:     esPrueba,
     };
@@ -337,17 +334,19 @@ export default function ArtistasPage() {
                 </div>
               )}
 
-              {/* Tienda activa */}
+              {/* Tienda: se activa solo desde la bandeja, junto con el modo de cobro. */}
               <div className="flex items-center justify-between py-3 border-t border-[#e8e8e8]">
                 <div>
                   <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#111111", fontWeight: 600 }}>
-                    Tienda activa
+                    Tienda {seleccionado.tienda_activa ? "activa" : "no activa"}
                   </p>
                   <p style={{ fontFamily: "var(--font-body)", fontSize: "12px", color: "#666666" }}>
-                    Visible en el marketplace
+                    Se activa o suspende en la bandeja de tiendas
                   </p>
                 </div>
-                <Switch checked={tiendaActiva} onCheckedChange={setTiendaActiva} />
+                <Link href="/admin/tiendas" className="text-sm font-semibold underline" style={{ fontFamily: "var(--font-body)", color: "#444444" }}>
+                  Ir a tiendas
+                </Link>
               </div>
 
               {/* Verificado */}

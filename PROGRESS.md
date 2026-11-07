@@ -2216,7 +2216,10 @@ real.** `verificar:invitar` además necesita la Edge Function desplegada ahí.
 - **Commit 5 (hecho):** `/panel/tienda` (estado, comisión, checklist, solicitud), menú nuevo, `/panel/cobros` redirige con un 307 de `next.config.ts`, formularios solo físicos y en borrador sin tienda activa. Rutas `/api/panel/tienda*`. `verificar:tienda --api` 95/95, `cobro` idéntico a la línea base, `mp --api` 36/36, `rls-productos` 26/26; flujo probado en el navegador con una cuenta de prueba, menos el OAuth real de MP y la tienda activa. Los 3 digitales pausados en producción no se reactivan.
 - La aceptación de términos ya funciona en el panel, sobre un texto en revisión: no invitar a nadie hasta la revisión legal. Si el texto cambia, subir `VERSION_TERMINOS_ARTISTAS`.
 - **Commit 8:** correo de confirmación de compra por Resend (art. 12 A): sin confirmación escrita, el retracto sube de 10 a 90 días.
-- Commits 6 a 10 del plan de activación.
+- **BLOQUEANTE antes de invitar al primer artista** (decisión de Claudio, 2026-11-07): probar el OAuth real de MP desde `/panel/tienda`, junto con la compra real con reembolso. Además de la revisión legal.
+- RUT y domicilio siguen pendientes hasta definir dirección comercial o SpA. Mantener `[PENDIENTE]` en `/terminos-artistas`.
+- **Commit 6 (hecho):** `/admin/tiendas` y `/api/admin/tiendas`; el switch de `tienda_activa` salió de `/admin/artistas`. `verificar:tienda --api` 118/118, `cobro` idéntico a la línea base. Probado en el navegador en local con cuentas de prueba: devolver, aprobar, suspender.
+- Commits 7 a 10 del plan de activación.
 
 ---
 
