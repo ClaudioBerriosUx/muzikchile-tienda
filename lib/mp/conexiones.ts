@@ -25,14 +25,14 @@ export function clienteServicio(): Servicio {
  * Artista de la sesión actual (cookies de Supabase), o null. La sesión se
  * valida contra Supabase Auth (getUser), no solo se lee la cookie.
  */
-export async function artistaDeLaSesion(servicio: Servicio): Promise<{ userId: string; artistaId: string } | null> {
+export async function artistaDeLaSesion(servicio: Servicio): Promise<{ userId: string; artistaId: string; cobro: string } | null> {
   const supabase = await createSessionClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: artista } = await servicio.from("artistas").select("id").eq("user_id", user.id).maybeSingle();
+  const { data: artista } = await servicio.from("artistas").select("id, cobro").eq("user_id", user.id).maybeSingle();
   if (!artista) return null;
-  return { userId: user.id, artistaId: artista.id };
+  return { userId: user.id, artistaId: artista.id, cobro: artista.cobro };
 }
 
 let cuentaPlataforma: number | null = null;

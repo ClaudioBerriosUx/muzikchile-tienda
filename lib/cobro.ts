@@ -11,9 +11,10 @@ import type { Database } from "@/lib/supabase/types";
  *                      conectó en /panel/cobros) y MuzikChile recibe su
  *                      comisión como marketplace_fee. No pasa por liquidaciones.
  *
- * Es 'marketplace' si app_settings.cobro_modelo = 'marketplace' (todos) o si
- * el artista está en app_settings.marketplace_piloto (lista JSON de ids). Con
- * el piloto vacío y el modelo en 'centralizado', todo sigue igual que antes.
+ * Es 'marketplace' si artistas.cobro = 'marketplace' (lo pone aprobar_tienda),
+ * si app_settings.cobro_modelo = 'marketplace' (todos) o si el artista está en
+ * app_settings.marketplace_piloto (lista JSON de ids; se retira cuando haya una
+ * tienda activa de verdad).
  */
 
 export type ModoCobro = "centralizado" | "marketplace";
@@ -53,6 +54,9 @@ export async function leerConfigCobro(servicio: SupabaseClient<Database>): Promi
   };
 }
 
-export function modoCobro(config: ConfigCobro, artistaId: string): ModoCobro {
-  return config.modelo === "marketplace" || config.piloto.has(artistaId) ? "marketplace" : "centralizado";
+/** El artista con su columna `cobro`: quien llama la trae en su propia consulta. */
+export function modoCobro(config: ConfigCobro, artista: { id: string; cobro: string }): ModoCobro {
+  return artista.cobro === "marketplace" || config.modelo === "marketplace" || config.piloto.has(artista.id)
+    ? "marketplace"
+    : "centralizado";
 }

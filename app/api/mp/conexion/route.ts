@@ -6,9 +6,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * Estado de la conexión de MP del artista de la sesión. Nunca devuelve
- * tokens. `modelo` es cómo cobra ESTE artista (lib/cobro.ts: cobro_modelo o
- * el piloto); el panel muestra el menú "Cobros" cuando es 'marketplace' o ya
- * hay una conexión.
+ * tokens. `modelo` es cómo cobra ESTE artista (lib/cobro.ts); el panel muestra
+ * el menú "Cobros" cuando es 'marketplace' o ya hay una conexión.
  */
 export async function GET() {
   const servicio = clienteServicio();
@@ -25,5 +24,5 @@ export async function GET() {
   ]);
   if (error || !config) return NextResponse.json({ error: "No pudimos leer la conexión" }, { status: 500 });
 
-  return NextResponse.json({ modelo: modoCobro(config, sesion.artistaId), conexion: conexion ?? null });
+  return NextResponse.json({ modelo: modoCobro(config, { id: sesion.artistaId, cobro: sesion.cobro }), conexion: conexion ?? null });
 }

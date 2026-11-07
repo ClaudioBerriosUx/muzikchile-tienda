@@ -57,7 +57,8 @@ export default async function ProductoPage({ params }: Props) {
   const producto = await traerProductoPorId(id);
   if (!producto) notFound();
 
-  return <ProductoClient id={id} cobro={await cobroDelProducto(producto.artista_id, !!producto.artistas?.cobros_activos)} />;
+  const artista = { id: producto.artista_id, cobro: producto.artistas?.cobro ?? "centralizado" };
+  return <ProductoClient id={id} cobro={await cobroDelProducto(artista, !!producto.artistas?.cobros_activos)} />;
 }
 
 /**
@@ -65,10 +66,10 @@ export default async function ProductoPage({ params }: Props) {
  * el botón: el que manda es cotizar, en el servidor. Si la configuración no se
  * puede leer, se muestra como centralizado y el checkout dirá lo que corresponda.
  */
-async function cobroDelProducto(artistaId: string, cobrosActivos: boolean): Promise<CobroProducto> {
+async function cobroDelProducto(artista: { id: string; cobro: string }, cobrosActivos: boolean): Promise<CobroProducto> {
   try {
     const config = await leerConfigCobro(clienteServicio());
-    return { directo: modoCobro(config, artistaId) === "marketplace", disponible: cobrosActivos };
+    return { directo: modoCobro(config, artista) === "marketplace", disponible: cobrosActivos };
   } catch (err) {
     console.error("[producto] no se pudo leer el modo de cobro:", err instanceof Error ? err.message : err);
     return { directo: false, disponible: true };

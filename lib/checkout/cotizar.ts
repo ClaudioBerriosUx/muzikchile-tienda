@@ -117,7 +117,7 @@ export async function cotizarCarrito(
 ): Promise<ResultadoCotizacion> {
   const { data: productos, error: prodError } = await supabase
     .from("productos")
-    .select("id, nombre, precio, stock, tipo, estado, imagenes, artista_id, artistas(nombre, comision, es_founder, founder_hasta, cobros_activos)")
+    .select("id, nombre, precio, stock, tipo, estado, imagenes, artista_id, artistas(nombre, comision, es_founder, founder_hasta, cobros_activos, cobro)")
     .in("id", items.map((i) => i.id));
 
   if (prodError) {
@@ -158,7 +158,9 @@ export async function cotizarCarrito(
   // Un artista que cobra con su cuenta de MP (marketplace) va solo en el
   // pedido: el pago entero va a su cuenta. El resto se mezcla como siempre.
   const config = await leerConfigCobro(supabase);
-  const directos = base.filter((l) => modoCobro(config, l.artista_id) === "marketplace");
+  const directos = base.filter((l) =>
+    modoCobro(config, { id: l.artista_id, cobro: porId.get(l.producto_id)!.artistas!.cobro }) === "marketplace"
+  );
   const cobro: ModoCobro = directos.length > 0 ? "marketplace" : "centralizado";
   if (cobro === "marketplace") {
     const vendedor = porId.get(directos[0].producto_id)!.artistas!;

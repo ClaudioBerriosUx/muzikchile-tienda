@@ -5,6 +5,9 @@
  * CÓMO CORRERLO
  *
  *   npm run verificar:tienda
+ *   npm run verificar:tienda -- --api=http://localhost:3000
+ *                         → + cómo cobra una tienda (cotizar, ficha, /api/mp/conexion).
+ *                           El servidor parte con `npm run dev:pruebas`.
  *
  * Lee `.env.pruebas`. La base tiene que tener aplicada la migración
  * 20261107172500_tiendas_y_terminos_artistas.
@@ -20,6 +23,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import { frenarSiEsProduccion } from "./freno-produccion.mjs";
 
 frenarSiEsProduccion();
@@ -33,6 +37,7 @@ if (!ANON_KEY || !SERVICE_KEY) {
   process.exit(1);
 }
 
+const API = process.argv.find((a) => a.startsWith("--api="))?.slice("--api=".length).replace(/\/$/, "");
 const FAMILIA = "rlstienda-";
 const PREFIJO = `${FAMILIA}${Date.now()}`;
 const VERSION = "1.0-prueba";
@@ -76,7 +81,7 @@ async function crearUsuario(sufijo, rol) {
   const cliente = createClient(URL_BASE, ANON_KEY, opciones);
   const { error: loginError } = await cliente.auth.signInWithPassword({ email, password });
   if (loginError) throw new Error(`Login ${sufijo}: ${loginError.message}`);
-  return { cliente, artistaId, userId };
+  return { cliente, artistaId, userId, email, password };
 }
 
 let nProducto = 0;
@@ -362,6 +367,91 @@ async function casos(A, B, ADMIN) {
   }
 }
 
+// ── Cómo cobra una tienda (--api) ────────────────────────────────────────────
+
+async function cotizar(items) {
+  const res = await fetch(`${API}/api/checkout/cotizar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items }),
+  });
+  return { status: res.status, data: await res.json().catch(() => null) };
+}
+
+/** Cookie de sesión de un usuario, armada por @supabase/ssr (el formato de la app). */
+async function cookieDe(u) {
+  const frasco = new Map();
+  const ssr = createServerClient(URL_BASE, ANON_KEY, {
+    cookies: {
+      getAll: () => [...frasco].map(([name, value]) => ({ name, value })),
+      setAll: (lista) => lista.forEach(({ name, value }) => (value ? frasco.set(name, value) : frasco.delete(name))),
+    },
+  });
+  const { error } = await ssr.auth.signInWithPassword({ email: u.email, password: u.password });
+  if (error) throw new Error(`Cookie de sesión: ${error.message}`);
+  return [...frasco].map(([n, v]) => `${n}=${v}`).join("; ");
+}
+
+async function modeloDe(u) {
+  const res = await fetch(`${API}/api/mp/conexion`, { headers: { Cookie: await cookieDe(u) } });
+  return (await res.json().catch(() => null))?.modelo;
+}
+
+async function propCobro(productoId) {
+  const html = await fetch(`${API}/producto/${productoId}`).then((res) => res.text());
+  const prop = html.match(/directo\\?":(true|false),\\?"disponible\\?":(true|false)/);
+  return prop ? `${prop[1]}/${prop[2]}` : "sin prop";
+}
+
+async function cobroPorArtista(ADMIN) {
+  console.log(`\n── Cómo cobra una tienda · ${API} ──`);
+  const D = await crearUsuario("d", "artista");
+  const E = await crearUsuario("e", "artista");
+  await sembrarProducto(D.artistaId, "borrador");
+  const PD = await sembrarProducto(D.artistaId, "aprobado");
+  const PE = await sembrarProducto(E.artistaId, "aprobado");
+
+  {
+    const r = await cotizar([{ id: PD, cantidad: 1 }]);
+    check("(k1) Antes de aprobar → cotiza 'centralizado'", r.status === 200 && r.data?.cobro === "centralizado", JSON.stringify(r));
+    check("(k2) Antes de aprobar → /api/mp/conexion dice 'centralizado'", (await modeloDe(D)) === "centralizado");
+  }
+
+  await completarChecklist(D);
+  const s = await rpc("solicitar_tienda", { p_artista_id: D.artistaId, p_version: VERSION });
+  const a = await rpc("aprobar_tienda", { p_artista_id: D.artistaId, p_admin: ADMIN.userId, p_version: VERSION });
+  if (s.error || a.error) throw new Error(`Aprobar: ${fmt(s.error ?? a.error)}`);
+
+  {
+    const r = await cotizar([{ id: PD, cantidad: 1 }]);
+    check("(k3) Tienda aprobada → cotiza 'marketplace', con el flag global y el piloto sin tocar", r.status === 200 && r.data?.cobro === "marketplace", JSON.stringify(r));
+    check("(k4) Tienda aprobada → /api/mp/conexion dice 'marketplace'", (await modeloDe(D)) === "marketplace");
+    check("(k5) Tienda aprobada → la ficha cobra directo y está disponible", (await propCobro(PD)) === "true/true", await propCobro(PD));
+  }
+  {
+    const r = await cotizar([{ id: PE, cantidad: 1 }]);
+    check("(k6) Otro artista sigue 'centralizado'", r.status === 200 && r.data?.cobro === "centralizado", JSON.stringify(r));
+    check("(k7) La ficha de otro artista sigue centralizada", (await propCobro(PE)).startsWith("false"), await propCobro(PE));
+  }
+  {
+    const r = await cotizar([{ id: PD, cantidad: 1 }, { id: PE, cantidad: 1 }]);
+    check("(k8) Carrito con una tienda marketplace y otro artista → 422 'pedido aparte'", r.status === 422 && /pedido aparte/.test(r.data?.error ?? ""), JSON.stringify(r));
+  }
+  {
+    // Perdió la conexión: el trigger de mp_conexiones deja cobros_activos en false.
+    await admin.from("artistas").update({ cobros_activos: false }).eq("id", D.artistaId);
+    const r = await cotizar([{ id: PD, cantidad: 1 }]);
+    check("(k9) Sin cuenta conectada → 422 'disponibles pronto', nunca a la cuenta de MuzikChile", r.status === 422 && /disponibles pronto/.test(r.data?.error ?? ""), JSON.stringify(r));
+    check("(k10) Sin cuenta conectada → la ficha muestra 'Pronto disponible'", (await propCobro(PD)) === "true/false", await propCobro(PD));
+    await admin.from("artistas").update({ cobros_activos: true }).eq("id", D.artistaId);
+  }
+  {
+    const su = await rpc("suspender_tienda", { p_artista_id: D.artistaId, p_admin: ADMIN.userId, p_motivo: "prueba" });
+    const r = await cotizar([{ id: PD, cantidad: 1 }]);
+    check("(k11) Suspendida: si se cotiza, nunca vuelve a 'centralizado'", !su.error && r.data?.cobro !== "centralizado", JSON.stringify(r));
+  }
+}
+
 // ── Principal ────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -372,6 +462,8 @@ async function main() {
     const B = await crearUsuario("b", "artista");
     const ADMIN = await crearUsuario("admin", "admin");
     await casos(A, B, ADMIN);
+    if (API) await cobroPorArtista(ADMIN);
+    else console.log("\n── Cómo cobra una tienda: sin --api no se prueba ──");
   } finally {
     await limpiar();
   }
