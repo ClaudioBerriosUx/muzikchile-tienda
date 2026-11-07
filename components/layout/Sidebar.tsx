@@ -13,14 +13,46 @@ interface SidebarItem {
 interface Props {
   items: SidebarItem[];
   footer?: React.ReactNode;
+  /** En móvil, el menú pasa a una franja horizontal sobre el contenido. */
+  franjaMovil?: boolean;
 }
 
-export default function Sidebar({ items, footer }: Props) {
+export default function Sidebar({ items, footer, franjaMovil }: Props) {
   const pathname = usePathname();
 
   return (
+    <>
+    {franjaMovil && (
+      <nav
+        aria-label="Menú del panel"
+        className="sticky top-16 z-40 flex shrink-0 items-center gap-1 overflow-x-auto border-b border-[#e8e8e8] px-2 py-2 md:hidden"
+        style={{ backgroundColor: "#f8f7f5" }}
+      >
+        {items.map((item) => {
+          const activo =
+            pathname === item.href ||
+            (item.href !== "/panel" && pathname.startsWith(`${item.href}/`));
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={activo ? "page" : undefined}
+              className="shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-sm"
+              style={{
+                fontFamily: "var(--font-body)",
+                backgroundColor: activo ? "#111111" : "transparent",
+                color: activo ? "#ffffff" : "#666666",
+              }}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+        {footer && <div className="shrink-0 whitespace-nowrap">{footer}</div>}
+      </nav>
+    )}
     <div
-      className="w-60 sticky top-16 border-r border-[#e8e8e8] shrink-0 flex flex-col"
+      className={`w-60 sticky top-16 border-r border-[#e8e8e8] shrink-0 flex-col ${franjaMovil ? "hidden md:flex" : "flex"}`}
       style={{ height: "calc(100vh - 64px)", backgroundColor: "#f8f7f5" }}
     >
       <nav className="flex-1 overflow-y-auto py-4">
@@ -63,5 +95,6 @@ export default function Sidebar({ items, footer }: Props) {
         </div>
       )}
     </div>
+    </>
   );
 }

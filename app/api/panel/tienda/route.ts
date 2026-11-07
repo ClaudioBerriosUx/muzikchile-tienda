@@ -15,38 +15,46 @@ export async function GET() {
   const sesion = await artistaDeLaSesion(servicio);
   if (!sesion) return NextResponse.json({ error: "Sin sesión de artista" }, { status: 401 });
 
-  const [tienda, artista, checklist, terminos, ordenes, conexion] = await Promise.all([
+  const [tienda, artista, checklist, terminos, ordenes, pagadas, conexion] = await Promise.all([
     servicio
       .from("tiendas")
-      .select("estado, comentario_moderacion, identidad_mp_declarada, despacho_modo, despacho_costo, despacho_plazo_min, despacho_plazo_max, retiro_detalle")
+      .select("estado, comentario_moderacion, identidad_mp_declarada, despacho_modo, despacho_costo, despacho_plazo_min, despacho_plazo_max, retiro_detalle, resuelta_at")
       .eq("artista_id", sesion.artistaId)
       .single(),
-    servicio.from("artistas").select("comision, es_founder, founder_hasta").eq("id", sesion.artistaId).single(),
+    servicio.from("artistas").select("slug, comision, es_founder, founder_hasta").eq("id", sesion.artistaId).single(),
     servicio.rpc("checklist_tienda", { p_artista_id: sesion.artistaId, p_version: VERSION_TERMINOS_ARTISTAS }),
     servicio
       .from("terminos_artistas")
-      .select("aceptado_at")
+      .select("version, aceptado_at")
       .eq("artista_id", sesion.artistaId)
-      .eq("version", VERSION_TERMINOS_ARTISTAS)
-      .maybeSingle(),
+      .order("aceptado_at", { ascending: false }),
     servicio
       .from("ordenes")
       .select("id", { count: "exact", head: true })
       .eq("artista_id", sesion.artistaId)
       .in("estado", ["pagado", "enviado", "entregado", "reembolsado"]),
+    servicio
+      .from("ordenes")
+      .select("id", { count: "exact", head: true })
+      .eq("artista_id", sesion.artistaId)
+      .eq("estado", "pagado"),
     servicio.from("mp_conexiones").select("estado").eq("artista_id", sesion.artistaId).maybeSingle(),
   ]);
 
-  const error = tienda.error ?? artista.error ?? checklist.error ?? terminos.error ?? ordenes.error ?? conexion.error;
+  const error = tienda.error ?? artista.error ?? checklist.error ?? terminos.error ?? ordenes.error ?? pagadas.error ?? conexion.error;
   if (error || !tienda.data || !artista.data) {
     console.error("[tienda] leer:", JSON.stringify(error));
     return NextResponse.json({ error: "No pudimos leer tu tienda" }, { status: 500 });
   }
 
   const t = tienda.data;
+  const vigente = terminos.data?.find((a) => a.version === VERSION_TERMINOS_ARTISTAS);
+  const ultima = terminos.data?.[0];
   const respuesta: PanelTienda = {
     artistaId: sesion.artistaId,
+    slug: artista.data.slug,
     estado: t.estado as EstadoTienda,
+    activaDesde: t.estado === "activa" ? t.resuelta_at : null,
     comentario: t.comentario_moderacion,
     identidadDeclarada: t.identidad_mp_declarada,
     despacho: {
@@ -57,12 +65,14 @@ export async function GET() {
       retiro_detalle: t.retiro_detalle,
     },
     checklist: checklist.data as unknown as ChecklistTienda,
-    terminos: { version: VERSION_TERMINOS_ARTISTAS, aceptadoAt: terminos.data?.aceptado_at ?? null },
+    terminos: { version: VERSION_TERMINOS_ARTISTAS, aceptadoAt: vigente?.aceptado_at ?? null },
+    ultimaAceptacion: ultima ? { version: ultima.version, aceptadoAt: ultima.aceptado_at } : null,
     comision: {
       porcentaje: comisionEfectiva(artista.data),
       detalle: founderVigente(artista.data) ? textoFounder(artista.data.founder_hasta) : null,
     },
     tieneOrdenes: (ordenes.count ?? 0) > 0,
+    porDespachar: pagadas.count ?? 0,
     conexion: conexion.data ? { estado: conexion.data.estado } : null,
   };
   return NextResponse.json(respuesta);

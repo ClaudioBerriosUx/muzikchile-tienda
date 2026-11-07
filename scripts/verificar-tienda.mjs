@@ -515,7 +515,9 @@ async function rutasDelPanel() {
       JSON.stringify(d));
     check("(m5) Muestra la comisión de la tienda", d?.comision?.porcentaje === 10 && d?.comision?.detalle === null, JSON.stringify(d?.comision));
     check("(m6) No trae tokens", !/token/i.test(JSON.stringify(d)), JSON.stringify(d));
-    check("(m7) Sin ventas, tieneOrdenes es false", d?.tieneOrdenes === false);
+    check("(m7) Sin ventas, tieneOrdenes es false y no hay nada por despachar", d?.tieneOrdenes === false && d?.porDespachar === 0);
+    check("(m7a) Trae su slug; sin tienda activa, sin fecha de activación", d?.slug === `${PREFIJO}-f` && d?.activaDesde === null, JSON.stringify(d));
+    check("(m7b) Sin aceptaciones, ultimaAceptacion es null", d?.ultimaAceptacion === null);
   }
   {
     await admin.from("artistas").update({ es_founder: true, founder_hasta: null }).eq("id", F.artistaId);
@@ -532,7 +534,9 @@ async function rutasDelPanel() {
     const { data: filas } = await admin.from("terminos_artistas").select("version, aceptado_por").eq("artista_id", F.artistaId);
     check("(m10) Aceptar guarda la versión vigente e ignora lo que venga en el body",
       r.status === 200 && filas?.length === 1 && filas[0].version === VERSION_TERMINOS_ARTISTAS && filas[0].aceptado_por === F.userId, JSON.stringify(filas));
-    check("(m11) El checklist marca los términos", (await leer())?.checklist?.terminos === true);
+    const d = await leer();
+    check("(m11) El checklist marca los términos", d?.checklist?.terminos === true);
+    check("(m11a) ultimaAceptacion trae la versión vigente", d?.ultimaAceptacion?.version === VERSION_TERMINOS_ARTISTAS && !!d?.terminos?.aceptadoAt, JSON.stringify(d?.ultimaAceptacion));
   }
   {
     await admin.from("artistas").update({ cobros_activos: true }).eq("id", F.artistaId);
@@ -635,6 +639,34 @@ async function bandejaDelAdmin(ADMIN, ARTISTA) {
     const a2 = await artista(G.artistaId);
     check("(n22) Suspender apaga la tienda y conserva el cobro", r2.status === 200 && !a2.tienda_activa && a2.cobro === "marketplace", JSON.stringify(a2));
     check("(n23) Se reactiva con la misma acción", (await actuar({ accion: "aprobar", artista_id: G.artistaId })).status === 200 && (await artista(G.artistaId)).tienda_activa);
+  }
+  {
+    // Lo que ve el artista con la tienda activa.
+    const cookieG = await cookieDe(G);
+    const leerG = async () => {
+      const res = await fetch(`${API}/api/panel/tienda`, { headers: { Cookie: cookieG } });
+      return res.json().catch(() => null);
+    };
+    const d = await leerG();
+    check("(n24) Tienda activa: trae la fecha de activación", d?.estado === "activa" && !!d?.activaDesde, JSON.stringify(d));
+
+    const { error } = await admin.from("ordenes").insert({
+      artista_id: G.artistaId, producto_id: borrador, precio_unitario: 10000, cantidad: 1, monto_artista: 9000, comision_monto: 1000,
+      comprador_nombre: "Prueba", comprador_email: `${PREFIJO}-comprador@example.com`, estado: "pagado", grupo_id: crypto.randomUUID(),
+    });
+    if (error) throw new Error(`Orden: ${error.message}`);
+    const d2 = await leerG();
+    check("(n25) Una orden pagada cuenta en porDespachar y en tieneOrdenes", d2?.porDespachar === 1 && d2?.tieneOrdenes === true, JSON.stringify({ a: d2?.porDespachar, b: d2?.tieneOrdenes }));
+    await admin.from("ordenes").update({ estado: "enviado" }).eq("artista_id", G.artistaId);
+    const d3 = await leerG();
+    check("(n26) Enviada, ya no está por despachar, pero sigue en tieneOrdenes", d3?.porDespachar === 0 && d3?.tieneOrdenes === true);
+    await admin.from("ordenes").delete().eq("artista_id", G.artistaId);
+
+    // Una versión anterior aceptada, sin la vigente: el panel debe pedir la nueva.
+    await admin.from("terminos_artistas").delete().eq("artista_id", G.artistaId).eq("version", VERSION_TERMINOS_ARTISTAS);
+    const d4 = await leerG();
+    check("(n27) Con una versión nueva, aceptadoAt es null y ultimaAceptacion trae la anterior",
+      d4?.terminos?.aceptadoAt === null && !!d4?.ultimaAceptacion && d4.ultimaAceptacion.version !== VERSION_TERMINOS_ARTISTAS, JSON.stringify(d4?.ultimaAceptacion));
   }
 }
 

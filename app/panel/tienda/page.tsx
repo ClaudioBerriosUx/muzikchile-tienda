@@ -6,10 +6,11 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { CheckCircle2, CircleDashed, ExternalLink } from "lucide-react";
+import { CheckCircle2, ChevronDown, CircleDashed, ExternalLink } from "lucide-react";
 import { AyudaDespacho, QuePuedesVender } from "@/components/panel/AyudaTienda";
 import ConexionMP from "@/components/panel/ConexionMP";
 import { createClient } from "@/lib/supabase/client";
+import { CORREO_CONTACTO } from "@/lib/site";
 import {
   ETIQUETA_ESTADO_TIENDA,
   FALTA_CHECKLIST,
@@ -30,13 +31,21 @@ const COLOR_ESTADO: Record<EstadoTienda, { bg: string; text: string }> = {
   suspendida: { bg: "#fff1f2", text: "#be123c" },
 };
 
+const ETIQUETA_CHECKLIST: Record<keyof ChecklistTienda, string> = {
+  terminos:  "Términos aceptados",
+  mp:        "Mercado Pago conectado",
+  identidad: "Identidad de Mercado Pago declarada",
+  despacho:  "Despacho o retiro definido",
+  producto:  "Al menos un producto en borrador",
+};
+
 function fecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
 }
 
+/** Una vista por estado: cada una decide qué se ve y qué se puede editar. */
 function TiendaContenido() {
   const queryClient = useQueryClient();
-  const [enviando, setEnviando] = useState(false);
 
   const { data, isLoading, isError } = useQuery<PanelTienda>({
     queryKey: ["panel-tienda"],
@@ -52,9 +61,32 @@ function TiendaContenido() {
   if (isLoading) return <p style={{ ...TEXTO, color: "#999999" }}>Cargando…</p>;
   if (isError || !data) return <p style={{ ...TEXTO, color: "#b91c1c" }}>No pudimos leer tu tienda. Recarga la página.</p>;
 
-  const { estado, checklist } = data;
+  return (
+    <div className="max-w-3xl">
+      <div className="mb-2 flex flex-wrap items-center gap-3">
+        <h1 style={{ ...TITULO, fontSize: "28px", color: "#111111" }}>Mi tienda</h1>
+        <span
+          className="rounded-full px-3 py-1 text-xs font-semibold"
+          style={{ ...TEXTO, backgroundColor: COLOR_ESTADO[data.estado].bg, color: COLOR_ESTADO[data.estado].text }}
+        >
+          {ETIQUETA_ESTADO_TIENDA[data.estado]}
+        </span>
+      </div>
+
+      {data.estado === "activa" && <VistaActiva data={data} onCambio={refrescar} />}
+      {data.estado === "solicitada" && <VistaSolicitada data={data} />}
+      {data.estado === "suspendida" && <VistaSuspendida data={data} />}
+      {(data.estado === "no_activa" || data.estado === "devuelta") && <VistaChecklist data={data} onCambio={refrescar} />}
+    </div>
+  );
+}
+
+// ── no_activa y devuelta: el checklist editable ──────────────────────────────
+
+function VistaChecklist({ data, onCambio }: { data: PanelTienda; onCambio: () => void }) {
+  const [enviando, setEnviando] = useState(false);
+  const { checklist, estado } = data;
   const faltan = (Object.keys(FALTA_CHECKLIST) as (keyof ChecklistTienda)[]).filter((k) => !checklist[k]);
-  const puedeSolicitar = estado === "no_activa" || estado === "devuelta";
 
   const solicitar = async () => {
     setEnviando(true);
@@ -62,129 +94,270 @@ function TiendaContenido() {
       const res = await fetch("/api/panel/tienda/solicitar", { method: "POST" });
       const cuerpo = await res.json().catch(() => null);
       if (!res.ok) throw new Error(cuerpo?.error ?? "No pudimos enviar tu solicitud.");
-      toast.success("Solicitud enviada. Te avisaremos cuando la revisemos.");
-      refrescar();
+      toast.success("Solicitud enviada. La revisaremos pronto.");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No pudimos enviar tu solicitud.");
-      refrescar();
     } finally {
       setEnviando(false);
+      onCambio();
     }
   };
 
   return (
-    <div className="max-w-3xl">
-      <div className="mb-2 flex flex-wrap items-center gap-3">
-        <h1 style={{ ...TITULO, fontSize: "28px", color: "#111111" }}>Mi tienda</h1>
-        <span
-          className="rounded-full px-3 py-1 text-xs font-semibold"
-          style={{ ...TEXTO, backgroundColor: COLOR_ESTADO[estado].bg, color: COLOR_ESTADO[estado].text }}
-        >
-          {ETIQUETA_ESTADO_TIENDA[estado]}
-        </span>
-      </div>
+    <>
       <p className="mb-6" style={{ ...TEXTO, fontSize: "14px", color: "#666666" }}>
         Tu ficha y tus noticias ya funcionan sin tienda. Actívala cuando quieras vender en MuzikChile.
       </p>
 
-      {estado === "solicitada" && (
-        <Aviso fondo="#fffbeb" borde="#fde68a" color="#92400e">
-          Estamos revisando tu solicitud. Mientras tanto puedes seguir editando tus borradores.
-        </Aviso>
-      )}
-      {estado === "activa" && (
-        <Aviso fondo="#f0fdf4" borde="#bbf7d0" color="#166534">
-          Tu tienda está activa. Cada producto pasa por revisión antes de publicarse.
-        </Aviso>
-      )}
-      {(estado === "devuelta" || estado === "suspendida") && data.comentario && (
-        <Aviso fondo="#fff1f2" borde="#fecdd3" color="#9f1239">
-          <strong>{estado === "devuelta" ? "Qué hay que corregir:" : "Motivo de la suspensión:"}</strong> {data.comentario}
+      {estado === "devuelta" && data.comentario && (
+        <Aviso fondo="#fff1f2" borde="#fda4af" color="#9f1239">
+          <p className="mb-1" style={{ fontSize: "15px", fontWeight: 700 }}>Tu solicitud volvió con un comentario</p>
+          <p>{data.comentario}</p>
+          <p className="mt-2" style={{ fontSize: "13px" }}>Corrige lo indicado y vuelve a solicitar la activación.</p>
         </Aviso>
       )}
 
-      <section className="mb-6 rounded-xl border border-[#e8e8e8] bg-white p-6">
-        <h2 className="mb-3" style={{ ...TITULO, fontSize: "18px", color: "#111111" }}>Cómo funciona</h2>
-        <ul className="list-disc space-y-1.5 pl-5" style={{ ...TEXTO, fontSize: "14px", color: "#444444", lineHeight: 1.6 }}>
-          <li>Cobras directo en tu cuenta de Mercado Pago.</li>
-          <li>
-            La comisión de MuzikChile se descuenta automáticamente en cada venta. La de tu tienda hoy es{" "}
-            <strong>{data.comision.porcentaje}%</strong>
-            {data.comision.detalle ? ` (${data.comision.detalle})` : ""}.
-          </li>
-          <li>Necesitas una cuenta de Mercado Pago con identidad verificada y saldo para devoluciones.</li>
-          <li>Tú despachas los pedidos y defines el costo y el plazo.</li>
-          <li>Tú emites la boleta o factura de cada venta.</li>
-          <li>El comprador puede retractarse dentro de 10 días desde que recibe el producto, y la devolución sale de tu cuenta.</li>
-          <li>Por ahora solo se venden productos físicos.</li>
-        </ul>
-      </section>
+      <Tarjeta>
+        <ComoFunciona data={data} />
+      </Tarjeta>
 
-      <h2 className="mb-3" style={{ ...TITULO, fontSize: "18px", color: "#111111" }}>
-        {puedeSolicitar ? "Para activar tu tienda" : "Tu configuración"}
-      </h2>
+      <h2 className="mb-3 mt-6" style={{ ...TITULO, fontSize: "18px", color: "#111111" }}>Para activar tu tienda</h2>
 
       <div className="flex flex-col gap-4">
         <Paso listo={checklist.terminos} titulo="1. Acepta los términos para artistas">
-          <Terminos data={data} onCambio={refrescar} />
+          <Terminos data={data} onCambio={onCambio} />
         </Paso>
-
         <Paso listo={checklist.mp} titulo="2. Conecta tu cuenta de Mercado Pago">
           <ConexionMP />
         </Paso>
-
         <Paso listo={checklist.identidad} titulo="3. Declara tu identidad en Mercado Pago">
-          <Identidad data={data} onCambio={refrescar} />
+          <Identidad data={data} onCambio={onCambio} />
         </Paso>
-
         <Paso listo={checklist.despacho} titulo="4. Define despacho o retiro">
-          {/* La key vuelve a cargar el formulario si lo guardado cambia. */}
-          <FormDespacho key={JSON.stringify(data.despacho)} artistaId={data.artistaId} inicial={data.despacho} onCambio={refrescar} />
+          <AyudaDespacho />
+          <div className="mt-4">
+            {/* La key vuelve a cargar el formulario si lo guardado cambia. */}
+            <FormDespacho key={JSON.stringify(data.despacho)} artistaId={data.artistaId} inicial={data.despacho} onCambio={onCambio} />
+          </div>
         </Paso>
-
         <Paso listo={checklist.producto} titulo="5. Crea al menos un producto en borrador">
           <div className="mb-3"><QuePuedesVender /></div>
           <p className="mb-3" style={{ ...TEXTO, fontSize: "14px", color: "#666666" }}>
-            {estado === "activa"
-              ? "Lo que subas pasa a revisión antes de publicarse."
-              : "Tus productos se guardan como borrador. Cuando aprobemos tu tienda, pasan a revisión sin que tengas que reenviarlos."}
+            Tus productos se guardan como borrador. Cuando aprobemos tu tienda, pasan a revisión sin que tengas que reenviarlos.
           </p>
-          <Link
-            href="/panel/productos"
-            className="inline-flex h-10 items-center rounded-md border px-5 text-sm font-semibold"
-            style={{ ...TEXTO, borderColor: "#e8e8e8", color: "#444444", backgroundColor: "#ffffff" }}
-          >
-            Ir a mis productos
-          </Link>
+          <BotonEnlace href="/panel/productos">Ir a mis productos</BotonEnlace>
         </Paso>
       </div>
 
-      {puedeSolicitar && (
-        <div className="mt-6 rounded-xl border border-[#e8e8e8] bg-white p-6">
-          {faltan.length > 0 && (
-            <p className="mb-2" style={{ ...TEXTO, fontSize: "14px", color: "#666666" }}>
-              Falta: {faltan.map((k) => FALTA_CHECKLIST[k]).join(", ")}.
+      <div className="mt-6 rounded-xl border border-[#e8e8e8] bg-white p-6">
+        {faltan.length > 0 && (
+          <p className="mb-2" style={{ ...TEXTO, fontSize: "14px", color: "#666666" }}>
+            Falta: {faltan.map((k) => FALTA_CHECKLIST[k]).join(", ")}.
+          </p>
+        )}
+        <p className="mb-3" style={{ ...TEXTO, fontSize: "14px", color: "#666666" }}>
+          Revisamos tu solicitud y verás el resultado acá, en Mi tienda.
+        </p>
+        <button
+          type="button"
+          onClick={solicitar}
+          disabled={faltan.length > 0 || enviando}
+          className="h-11 w-full rounded-md text-sm font-semibold text-white"
+          style={{
+            ...TEXTO,
+            backgroundColor: faltan.length > 0 || enviando ? "#d4d4d4" : "#e8003d",
+            cursor: faltan.length > 0 || enviando ? "not-allowed" : "pointer",
+          }}
+        >
+          {enviando ? "Enviando…" : estado === "devuelta" ? "Volver a solicitar activación" : "Solicitar activación"}
+        </button>
+      </div>
+    </>
+  );
+}
+
+// ── solicitada: el checklist en solo lectura ─────────────────────────────────
+
+function VistaSolicitada({ data }: { data: PanelTienda }) {
+  const llaves = Object.keys(ETIQUETA_CHECKLIST) as (keyof ChecklistTienda)[];
+  return (
+    <>
+      <div className="mt-4" />
+      <Aviso fondo="#fffbeb" borde="#fde68a" color="#92400e">
+        <p style={{ fontSize: "15px", fontWeight: 700 }}>Tu solicitud está en revisión</p>
+        <p className="mt-1">Verás el resultado acá, en Mi tienda. Mientras tanto puedes seguir creando y editando borradores.</p>
+      </Aviso>
+
+      <Tarjeta titulo="Lo que enviaste">
+        <ul className="flex flex-col gap-2">
+          {llaves.map((k) => (
+            <li key={k} className="flex items-center gap-2.5" style={{ ...TEXTO, fontSize: "14px", color: "#444444" }}>
+              {data.checklist[k]
+                ? <CheckCircle2 size={17} aria-label="Listo" className="shrink-0" style={{ color: "#16a34a" }} />
+                : <CircleDashed size={17} aria-label="Pendiente" className="shrink-0" style={{ color: "#be123c" }} />}
+              {ETIQUETA_CHECKLIST[k]}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3" style={{ ...TEXTO, fontSize: "13px", color: "#666666" }}>
+          <TextoDespacho despacho={data.despacho} />
+        </p>
+      </Tarjeta>
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <BotonEnlace href="/panel/productos/nuevo">Crear un borrador</BotonEnlace>
+        <BotonEnlace href="/panel/productos">Ir a mis productos</BotonEnlace>
+      </div>
+
+      <div className="mt-6 flex flex-col gap-3">
+        <Plegable titulo="Cómo funciona"><ComoFunciona data={data} sinTitulo /></Plegable>
+        <Plegable titulo="¿Qué puedes vender?"><QuePuedesVender /></Plegable>
+      </div>
+    </>
+  );
+}
+
+// ── activa: el panel de la tienda ────────────────────────────────────────────
+
+function VistaActiva({ data, onCambio }: { data: PanelTienda; onCambio: () => void }) {
+  const accesos: { href: string; texto: string; contador?: number }[] = [
+    { href: "/panel/productos/nuevo", texto: "Subir producto" },
+    { href: "/panel/productos", texto: "Mis productos" },
+    { href: "/panel/despacho", texto: "Por despachar", contador: data.porDespachar },
+    { href: "/panel/cupones", texto: "Cupones" },
+    { href: "/panel/liquidaciones", texto: "Liquidaciones" },
+  ];
+
+  return (
+    <>
+      <p className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-1" style={{ ...TEXTO, fontSize: "14px", color: "#666666" }}>
+        {data.activaDesde && <span>Activa desde el {fecha(data.activaDesde)}</span>}
+        <a href={`/artista/${data.slug}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold underline">
+          Ver mi tienda pública <ExternalLink size={12} />
+        </a>
+      </p>
+
+      {!data.checklist.mp && (
+        <Aviso fondo="#fef2f2" borde="#fca5a5" color="#991b1b">
+          <p style={{ fontSize: "15px", fontWeight: 700 }}>Tu cuenta de Mercado Pago está desconectada</p>
+          <p className="mt-1">Tus productos aparecen como “Pronto disponible” y nadie puede comprarlos. Conéctala de nuevo más abajo.</p>
+        </Aviso>
+      )}
+
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {accesos.map((a) => (
+          <Link
+            key={a.href}
+            href={a.href}
+            className="flex min-h-14 items-center justify-center gap-2 rounded-xl border border-[#e8e8e8] bg-white p-3 text-center text-sm font-semibold hover:border-[#111111]"
+            style={{ ...TEXTO, color: "#111111" }}
+          >
+            {a.texto}
+            {!!a.contador && (
+              <span className="rounded-full px-2 py-0.5 text-xs font-bold text-white" style={{ backgroundColor: "#e8003d" }}>{a.contador}</span>
+            )}
+          </Link>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-4">
+        <Tarjeta titulo="Mercado Pago"><ConexionMP /></Tarjeta>
+
+        <Tarjeta titulo="Despacho y retiro">
+          <FormDespacho key={JSON.stringify(data.despacho)} artistaId={data.artistaId} inicial={data.despacho} onCambio={onCambio} />
+        </Tarjeta>
+
+        <Tarjeta titulo="Comisión">
+          <p style={{ ...TEXTO, fontSize: "14px", color: "#444444" }}>
+            La comisión de tu tienda hoy es <strong>{data.comision.porcentaje}%</strong>
+            {data.comision.detalle ? ` (${data.comision.detalle})` : ""}. Se descuenta automáticamente en cada venta.
+          </p>
+        </Tarjeta>
+
+        <Tarjeta titulo="Términos para artistas">
+          {!data.terminos.aceptadoAt && (
+            <p className="mb-3 rounded-lg border p-3" style={{ ...TEXTO, fontSize: "14px", backgroundColor: "#fffbeb", borderColor: "#fde68a", color: "#92400e" }}>
+              <strong>Hay una versión nueva de los términos.</strong>
+              {data.ultimaAceptacion ? ` Aceptaste la versión ${data.ultimaAceptacion.version} el ${fecha(data.ultimaAceptacion.aceptadoAt)}.` : ""}
+              {" "}Acéptala para seguir usando tu tienda.
             </p>
           )}
-          <p className="mb-3" style={{ ...TEXTO, fontSize: "14px", color: "#666666" }}>
-            Revisamos tu solicitud y verás el resultado acá, en Mi tienda.
+          <Terminos data={data} onCambio={onCambio} />
+        </Tarjeta>
+
+        <Plegable titulo="Cómo funciona"><ComoFunciona data={data} sinTitulo /></Plegable>
+        <Plegable titulo="¿Cómo le llega el producto a tu comprador?"><AyudaDespacho /></Plegable>
+        <Plegable titulo="¿Qué puedes vender?"><QuePuedesVender /></Plegable>
+      </div>
+    </>
+  );
+}
+
+// ── suspendida ───────────────────────────────────────────────────────────────
+
+function VistaSuspendida({ data }: { data: PanelTienda }) {
+  return (
+    <>
+      <div className="mt-4" />
+      <Aviso fondo="#fef2f2" borde="#fca5a5" color="#991b1b">
+        <p style={{ fontSize: "15px", fontWeight: 700 }}>Tu tienda está suspendida</p>
+        {data.comentario && <p className="mt-1"><strong>Motivo:</strong> {data.comentario}</p>}
+      </Aviso>
+
+      <div className="flex flex-col gap-4">
+        <Tarjeta titulo="Qué corregir">
+          <p style={{ ...TEXTO, fontSize: "14px", color: "#444444", lineHeight: 1.6 }}>
+            Corrige lo que indica el motivo y escríbenos a{" "}
+            <a href={`mailto:${CORREO_CONTACTO}`} className="font-semibold underline">{CORREO_CONTACTO}</a> contándonos qué hiciste.
+            Revisamos tu caso y, si está resuelto, reactivamos tu tienda.
           </p>
-          <button
-            type="button"
-            onClick={solicitar}
-            disabled={faltan.length > 0 || enviando}
-            className="h-11 w-full rounded-md text-sm font-semibold text-white"
-            style={{
-              ...TEXTO,
-              backgroundColor: faltan.length > 0 || enviando ? "#d4d4d4" : "#e8003d",
-              cursor: faltan.length > 0 || enviando ? "not-allowed" : "pointer",
-            }}
-          >
-            {enviando ? "Enviando…" : estado === "devuelta" ? "Volver a solicitar activación" : "Solicitar activación"}
-          </button>
-        </div>
-      )}
-    </div>
+        </Tarjeta>
+
+        <Tarjeta titulo="Tus pedidos ya pagados">
+          <p className="mb-3" style={{ ...TEXTO, fontSize: "14px", color: "#444444", lineHeight: 1.6 }}>
+            La suspensión no cancela lo que ya vendiste: debes cumplir los pedidos ya pagados.
+            {data.porDespachar > 0
+              ? ` Tienes ${data.porDespachar === 1 ? "1 pedido" : `${data.porDespachar} pedidos`} por despachar.`
+              : " Hoy no tienes pedidos por despachar."}
+          </p>
+          <BotonEnlace href="/panel/despacho">Ir a Por despachar</BotonEnlace>
+        </Tarjeta>
+      </div>
+    </>
+  );
+}
+
+// ── Piezas ───────────────────────────────────────────────────────────────────
+
+function ComoFunciona({ data, sinTitulo }: { data: PanelTienda; sinTitulo?: boolean }) {
+  return (
+    <>
+      {!sinTitulo && <h2 className="mb-3" style={{ ...TITULO, fontSize: "18px", color: "#111111" }}>Cómo funciona</h2>}
+      <ul className="list-disc space-y-1.5 pl-5" style={{ ...TEXTO, fontSize: "14px", color: "#444444", lineHeight: 1.6 }}>
+        <li>Cobras directo en tu cuenta de Mercado Pago.</li>
+        <li>
+          La comisión de MuzikChile se descuenta automáticamente en cada venta. La de tu tienda hoy es{" "}
+          <strong>{data.comision.porcentaje}%</strong>
+          {data.comision.detalle ? ` (${data.comision.detalle})` : ""}.
+        </li>
+        <li>Necesitas una cuenta de Mercado Pago con identidad verificada y saldo para devoluciones.</li>
+        <li>Tú despachas los pedidos y defines el costo y el plazo.</li>
+        <li>Tú emites la boleta o factura de cada venta.</li>
+        <li>El comprador puede retractarse dentro de 10 días desde que recibe el producto, y la devolución sale de tu cuenta.</li>
+        <li>Por ahora solo se venden productos físicos.</li>
+      </ul>
+    </>
+  );
+}
+
+function TextoDespacho({ despacho: d }: { despacho: DespachoTienda }) {
+  const conEnvio = d.despacho_modo === "envio" || d.despacho_modo === "ambos";
+  const conRetiro = d.despacho_modo === "retiro" || d.despacho_modo === "ambos";
+  return (
+    <>
+      {conEnvio && <>Envío: ${(d.despacho_costo ?? 0).toLocaleString("es-CL")}, {d.despacho_plazo_min} a {d.despacho_plazo_max} días hábiles. </>}
+      {conRetiro && <>Retiro: {d.retiro_detalle}.</>}
+    </>
   );
 }
 
@@ -193,6 +366,15 @@ function Aviso({ fondo, borde, color, children }: { fondo: string; borde: string
     <div role="status" className="mb-6 rounded-xl border p-4" style={{ ...TEXTO, fontSize: "14px", lineHeight: 1.6, backgroundColor: fondo, borderColor: borde, color }}>
       {children}
     </div>
+  );
+}
+
+function Tarjeta({ titulo, children }: { titulo?: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-[#e8e8e8] bg-white p-6">
+      {titulo && <h2 className="mb-3" style={{ ...TEXTO, fontSize: "15px", fontWeight: 700, color: "#111111" }}>{titulo}</h2>}
+      {children}
+    </section>
   );
 }
 
@@ -207,6 +389,30 @@ function Paso({ listo, titulo, children }: { listo: boolean; titulo: string; chi
       </div>
       {children}
     </section>
+  );
+}
+
+function Plegable({ titulo, children }: { titulo: string; children: React.ReactNode }) {
+  return (
+    <details className="group rounded-xl border border-[#e8e8e8] bg-white">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4" style={{ ...TEXTO, fontSize: "14px", fontWeight: 600, color: "#111111" }}>
+        {titulo}
+        <ChevronDown size={16} aria-hidden="true" className="shrink-0 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="px-4 pb-4">{children}</div>
+    </details>
+  );
+}
+
+function BotonEnlace({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex h-10 items-center rounded-md border px-5 text-sm font-semibold"
+      style={{ ...TEXTO, borderColor: "#e8e8e8", color: "#444444", backgroundColor: "#ffffff" }}
+    >
+      {children}
+    </Link>
   );
 }
 
@@ -351,7 +557,6 @@ function FormDespacho({ artistaId, inicial, onCambio }: { artistaId: string; ini
 
   return (
     <div className="flex flex-col gap-4" style={TEXTO}>
-      <AyudaDespacho />
       <div role="group" aria-label="Cómo entregas" className="flex w-fit overflow-hidden rounded-md border border-[#e8e8e8]">
         {opciones.map((o) => (
           <button

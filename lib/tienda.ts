@@ -33,15 +33,22 @@ export interface DespachoTienda {
 /** Respuesta de GET /api/panel/tienda. Nunca lleva tokens. */
 export interface PanelTienda {
   artistaId: string;
+  slug: string;
   estado: EstadoTienda;
+  /** Cuándo quedó activa (o se reactivó). Solo con la tienda activa. */
+  activaDesde: string | null;
   comentario: string | null;
   identidadDeclarada: boolean;
   despacho: DespachoTienda;
   checklist: ChecklistTienda;
   terminos: { version: string; aceptadoAt: string | null };
+  /** Su última aceptación, de cualquier versión: avisa cuando hay una nueva. */
+  ultimaAceptacion: { version: string; aceptadoAt: string } | null;
   comision: { porcentaje: number; detalle: string | null };
   /** Ya vendió algo: mantiene Cupones, Por despachar y Liquidaciones en el menú. */
   tieneOrdenes: boolean;
+  /** Líneas de pedido pagadas que aún no se despachan. */
+  porDespachar: number;
   conexion: { estado: string } | null;
 }
 

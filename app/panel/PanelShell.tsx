@@ -134,8 +134,9 @@ export default function PanelShell({ children }: { children: React.ReactNode }) 
   return (
     <>
       <HeaderPanel />
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen flex-col md:flex-row">
         <Sidebar
+          franjaMovil
           items={conVentas ? [...SIDEBAR_ITEMS, ...SIDEBAR_VENTAS] : SIDEBAR_ITEMS}
           footer={
             <button
@@ -156,7 +157,7 @@ export default function PanelShell({ children }: { children: React.ReactNode }) 
             </button>
           }
         />
-        <main className="flex-1 p-8 bg-white">
+        <main className="min-w-0 flex-1 bg-white p-4 md:p-8">
           {reconectar && (
             <div className="mb-6 flex items-start gap-3 rounded-xl border p-4" style={{ backgroundColor: "#fffbeb", borderColor: "#fcd34d" }}>
               <AlertTriangle size={18} className="mt-0.5 shrink-0" style={{ color: "#b45309" }} />
