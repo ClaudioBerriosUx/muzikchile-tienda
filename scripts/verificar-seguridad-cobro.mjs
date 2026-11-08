@@ -110,7 +110,14 @@ async function crearUsuario(sufijo, rol) {
   return { userId, cliente, email, password };
 }
 
-async function crearArtista(sufijo, extra = {}) {
+/**
+ * Vender exige tienda activa (commit 9): por defecto el artista nace con la
+ * tienda 'activa' y un envío sin costo, como una tienda ya aprobada (cobro
+ * sigue en 'centralizado': los casos de cobro lo deciden aparte).
+ * `{ tienda: "no_activa" }` la deja como recién creada; `despacho: false`,
+ * activa pero sin despacho.
+ */
+async function crearArtista(sufijo, extra = {}, { tienda = "activa", despacho = true } = {}) {
   const u = await crearUsuario(sufijo, "artista");
   const { data, error } = await admin
     .from("artistas")
@@ -118,6 +125,13 @@ async function crearArtista(sufijo, extra = {}) {
     .select("id")
     .single();
   if (error) throw new Error(`Artista ${sufijo}: ${error.message}`);
+  if (tienda !== "no_activa") {
+    const { error: e } = await admin.from("tiendas").update({
+      estado: tienda,
+      ...(despacho ? { despacho_modo: "envio", despacho_costo: 0, despacho_plazo_min: 1, despacho_plazo_max: 3 } : {}),
+    }).eq("artista_id", data.id);
+    if (e) throw new Error(`Tienda ${sufijo}: ${e.message}`);
+  }
   return { ...u, artistaId: data.id };
 }
 
@@ -284,7 +298,8 @@ function reglaCorreoSinLlave() {
 async function fase1(A, B, ADMIN) {
   console.log("\n── Fase 1 · columnas protegidas ──");
 
-  for (const [campo, valor] of [["comision", 0], ["es_founder", true], ["founder_hasta", "2099-12-31"], ["tienda_activa", true], ["verificado", true], ["cobros_activos", true], ["es_prueba", true]]) {
+  for (const [campo, valor] of [["comision", 0], ["es_founder", true], ["founder_hasta", "2099-12-31"], ["tienda_activa", false], ["verificado", true], ["cobros_activos", true], ["es_prueba", true]]) {
+    // tienda_activa: A nace con la tienda activa (crearArtista), así que el intento es apagarla.
     const { error } = await A.cliente.from("artistas").update({ [campo]: valor }).eq("id", A.artistaId);
     check(`(a) Artista cambia su propio ${campo} → rechazado`, error?.code === "42501", fmt(error));
   }
@@ -529,8 +544,8 @@ async function fase2(A, B, ADMIN) {
     // A queda normal y B pasa a ser de prueba, cada uno con un producto aprobado.
     const visible = await crearProducto(A.artistaId, "visible");
     const oculto  = await crearProducto(B.artistaId, "oculto");
-    await admin.from("artistas").update({ es_prueba: true, tienda_activa: true }).eq("id", B.artistaId);
-    await admin.from("artistas").update({ tienda_activa: true }).eq("id", A.artistaId);
+    // A y B tienen la tienda activa (crearArtista): B solo pasa a ser de prueba.
+    await admin.from("artistas").update({ es_prueba: true }).eq("id", B.artistaId);
 
     const { data: tienda, error } = await anon
       .from("productos")
@@ -557,7 +572,7 @@ async function fase2(A, B, ADMIN) {
     check("(ee3) Sitemap: la ficha de un artista de prueba no entra; la de uno normal sí",
       enSitemap.includes(A.artistaId) && !enSitemap.includes(B.artistaId), `ids=${JSON.stringify(enSitemap)}`);
 
-    await admin.from("artistas").update({ es_prueba: false, tienda_activa: false }).in("id", [A.artistaId, B.artistaId]);
+    await admin.from("artistas").update({ es_prueba: false }).in("id", [A.artistaId, B.artistaId]);
   }
 
   console.log("\n── Fase 2 · cupones ──");
@@ -669,7 +684,10 @@ async function despachoEnElCobro() {
   console.log(`\n── (de) Despacho · ${API} ──`);
   const E = await crearArtista("de-envio");
   const R = await crearArtista("de-retiro");
-  const S = await crearArtista("de-sin");
+  const S = await crearArtista("de-sin", {}, { despacho: false });
+  // Con despacho completo pero sin tienda activa: no venden ni se listan.
+  const N = await crearArtista("de-no-activa", {}, { tienda: "no_activa" });
+  const U = await crearArtista("de-suspendida", {}, { tienda: "suspendida" });
   for (const x of [E, R, S]) {
     await admin.from("artistas").update({ comision: 10, es_founder: false, founder_hasta: null }).eq("id", x.artistaId);
   }
@@ -684,6 +702,9 @@ async function despachoEnElCobro() {
   const PE2 = await crearProducto(E.artistaId, "de-e2", { precio: 5000 });
   const PR  = await crearProducto(R.artistaId, "de-r");
   const PS  = await crearProducto(S.artistaId, "de-s");
+  const PN  = await crearProducto(N.artistaId, "de-n");
+  const PU  = await crearProducto(U.artistaId, "de-u");
+  await admin.from("tiendas").update({ despacho_modo: "envio", despacho_costo: 2000, despacho_plazo_min: 1, despacho_plazo_max: 3 }).eq("artista_id", N.artistaId);
   const DIRECCION = { direccion: "Av. Prueba 123", ciudad: "Santiago", region: "Metropolitana de Santiago" };
   const comprador = (sufijo, extra = {}) => ({ nombre: "RLS Test", email: `${PREFIJO}-de-${sufijo}@example.com`, ...extra });
   const ordenesDe = async (grupo) => grupo
@@ -694,9 +715,51 @@ async function despachoEnElCobro() {
 
   {
     const r = await post("/api/checkout/cotizar", { items: [{ id: PS, cantidad: 1 }] });
-    const d = r.data?.despachos?.[0];
-    check("(de-1) Sin despacho definido: envío sin costo y sin plazo, como antes", r.status === 200 && r.data.envio === 0 && r.data.total === 10000
-      && d?.entrega === "envio" && d?.configurado === false && d?.plazo_max === null, JSON.stringify(r.data));
+    check("(de-1) Tienda activa sin despacho definido: ya no hay envío sin costo por defecto → 422 'disponibles pronto'",
+      r.status === 422 && /disponibles pronto/.test(r.data?.error ?? ""), JSON.stringify(r.data));
+  }
+  {
+    // Commit 9: vender exige tienda activa, aunque el despacho esté completo.
+    const rn = await post("/api/checkout/cotizar", { items: [{ id: PN, cantidad: 1 }] });
+    const ru = await post("/api/checkout/cotizar", { items: [{ id: PU, cantidad: 1 }] });
+    const mezcla = await post("/api/checkout/cotizar", { items: [{ id: PE1, cantidad: 1 }, { id: PN, cantidad: 1 }] });
+    check("(de-14) Tienda no activa o suspendida → cotizar 422 'disponibles pronto', también mezclada con una activa",
+      [rn, ru, mezcla].every((r) => r.status === 422 && /disponibles pronto/.test(r.data?.error ?? "")), JSON.stringify([rn.data, ru.data, mezcla.data]));
+    const p = await post("/api/mercadopago/crear-preferencia", { ...ACEPTA, items: [{ id: PN, cantidad: 1 }], comprador: comprador("no-activa", DIRECCION) });
+    const { count } = await admin.from("ordenes").select("id", { count: "exact", head: true }).eq("producto_id", PN);
+    check("(de-15) crear-preferencia de una tienda no activa → 422, sin órdenes", p.status === 422 && count === 0, `status=${p.status} órdenes=${count}`);
+    const prop = async (id, q = "") => (await fetch(`${API}/producto/${id}${q}`).then((x) => x.text())).match(/disponible\\?":(true|false)/)?.[1] ?? "sin prop";
+    const [fn, fu, fnc, fe] = [await prop(PN), await prop(PU), await prop(PN, "?compra=controlada"), await prop(PE1)];
+    check("(de-16) La ficha de una tienda no activa o suspendida abre por URL con 'Pronto disponible', también en compra controlada; una activa centralizada, disponible",
+      fn === "false" && fu === "false" && fnc === "false" && fe === "true", JSON.stringify({ fn, fu, fnc, fe }));
+  }
+  {
+    // artistas.tienda_activa sale de tiendas.estado (trigger): escribirla no sirve.
+    const leer = async () => Object.fromEntries(((await admin.from("artistas").select("id, tienda_activa").in("id", [E.artistaId, N.artistaId, U.artistaId])).data ?? []).map((a) => [a.id, a.tienda_activa]));
+    const antes = await leer();
+    await admin.from("artistas").update({ tienda_activa: true }).eq("id", N.artistaId);
+    await admin.from("artistas").update({ tienda_activa: false }).eq("id", E.artistaId);
+    const forzado = await leer();
+    await admin.from("tiendas").update({ estado: "activa" }).eq("artista_id", U.artistaId);
+    const reactivada = (await leer())[U.artistaId];
+    await admin.from("tiendas").update({ estado: "suspendida" }).eq("artista_id", U.artistaId);
+    const resuspendida = (await leer())[U.artistaId];
+    check("(de-17) tienda_activa = tiendas.estado 'activa': sigue al estado y no se puede forzar en artistas (ni con service role)",
+      antes[E.artistaId] === true && antes[N.artistaId] === false && antes[U.artistaId] === false
+        && forzado[N.artistaId] === false && forzado[E.artistaId] === true && reactivada === true && resuspendida === false,
+      JSON.stringify({ antes, forzado, reactivada, resuspendida }));
+  }
+  {
+    // Listados públicos (anon): /tienda, la ficha del artista y "más del artista".
+    const { data: tienda, error } = await anon.from("productos").select("id, artistas!inner(id)")
+      .eq("estado", "aprobado").eq("artistas.es_prueba", false).eq("artistas.tienda_activa", true)
+      .in("id", [PE1, PN, PU]);
+    const ids = (tienda ?? []).map((p) => p.id);
+    const { data: ficha } = await anon.from("productos").select("id, artistas!inner(tienda_activa)")
+      .eq("artista_id", N.artistaId).eq("estado", "aprobado").eq("artistas.tienda_activa", true);
+    const { data: directo } = await anon.from("productos").select("id").eq("id", PN).maybeSingle();
+    check("(de-18) Listados: los productos de una tienda no activa o suspendida no aparecen; por URL directa sí",
+      !error && ids.length === 1 && ids[0] === PE1 && (ficha ?? []).length === 0 && directo?.id === PN, error ? fmt(error) : JSON.stringify({ ids, ficha, directo }));
   }
   {
     const r = await post("/api/checkout/cotizar", { items: [{ id: PE1, cantidad: 2 }] });
@@ -765,23 +828,23 @@ async function despachoEnElCobro() {
   }
   {
     // Centralizado con dos artistas: un envío por cada uno que despacha.
-    const r = await post("/api/checkout/cotizar", { items: [{ id: PE1, cantidad: 1 }, { id: PR, cantidad: 1 }, { id: PS, cantidad: 1 }] });
+    const r = await post("/api/checkout/cotizar", { items: [{ id: PE1, cantidad: 1 }, { id: PR, cantidad: 1 }] });
     const porArtista = Object.fromEntries((r.data?.despachos ?? []).map((d) => [d.artista_id, d]));
-    check("(de-10) Carrito de varios artistas: un despacho por artista, cada uno con lo suyo", r.status === 200 && r.data.despachos.length === 3
-      && porArtista[E.artistaId]?.costo === 3990 && porArtista[R.artistaId]?.entrega === "retiro" && porArtista[S.artistaId]?.configurado === false
-      && r.data.envio === 3990 && r.data.total === 30000 + 3990, JSON.stringify(r.data));
+    check("(de-10) Carrito de varios artistas: un despacho por artista, cada uno con lo suyo", r.status === 200 && r.data.despachos.length === 2
+      && porArtista[E.artistaId]?.costo === 3990 && porArtista[R.artistaId]?.entrega === "retiro" && porArtista[R.artistaId]?.costo === 0
+      && r.data.envio === 3990 && r.data.total === 20000 + 3990, JSON.stringify(r.data));
   }
   {
     // La ficha recibe el despacho de la tienda (prop serializada en el HTML).
     const html = await fetch(`${API}/producto/${PE1}`).then((x) => x.text());
     const conDespacho = /despacho\\?":\{\\?"envio\\?":\{\\?"costo\\?":3990/.test(html) && html.includes(RETIRO);
     const sin = await fetch(`${API}/producto/${PS}`).then((x) => x.text());
-    check("(de-11) La ficha muestra el despacho de la tienda; sin definir, no", conDespacho && /configurado\\?":false/.test(sin), `con=${conDespacho}`);
+    check("(de-11) La ficha muestra el despacho de la tienda; sin definir, ninguna opción", conDespacho && /despacho\\?":\{\\?"envio\\?":null,\\?"retiro\\?":null/.test(sin), `con=${conDespacho}`);
   }
   {
     // El correo de contacto del vendedor: en la cotización, en la ficha y copiado en cada orden.
     const CONTACTO = `${PREFIJO}-de-contacto@example.com`;
-    const c = await post("/api/checkout/cotizar", { items: [{ id: PE1, cantidad: 1 }, { id: PS, cantidad: 1 }] });
+    const c = await post("/api/checkout/cotizar", { items: [{ id: PE1, cantidad: 1 }, { id: PR, cantidad: 1 }] });
     const porArtista = Object.fromEntries((c.data?.despachos ?? []).map((d) => [d.artista_id, d]));
     const html = await fetch(`${API}/producto/${PE1}`).then((x) => x.text());
     const r = await post("/api/mercadopago/crear-preferencia", { ...ACEPTA,
@@ -790,7 +853,7 @@ async function despachoEnElCobro() {
     });
     const ordenes = await ordenesDe(r.data?.external_reference);
     check("(de-12) Contacto del vendedor: en la cotización (sin definir, null), en la ficha y copiado en la orden",
-      porArtista[E.artistaId]?.contacto === CONTACTO && porArtista[S.artistaId]?.contacto === null && html.includes(CONTACTO)
+      porArtista[E.artistaId]?.contacto === CONTACTO && porArtista[R.artistaId]?.contacto === null && html.includes(CONTACTO)
         && r.status === 200 && ordenes.length === 1 && ordenes[0].vendedor_contacto === CONTACTO,
       `${JSON.stringify(c.data?.despachos)} · status=${r.status} ${JSON.stringify(ordenes)}`);
     // La copia no cambia si el artista cambia su contacto después.

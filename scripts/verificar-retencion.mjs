@@ -201,7 +201,9 @@ async function main() {
     console.log("\n── Baja y reversión (admin) ──");
     {
       const prodBaja = await crearProducto(bajaReciente.artistaId, "baja");
-      await admin.from("artistas").update({ baja_at: null, tienda_activa: true }).eq("id", bajaReciente.artistaId);
+      // tienda_activa sale de tiendas.estado (trigger): se activa la tienda, no el flag.
+      await admin.from("artistas").update({ baja_at: null }).eq("id", bajaReciente.artistaId);
+      await admin.from("tiendas").update({ estado: "activa" }).eq("artista_id", bajaReciente.artistaId);
       const { error } = await ADM.cliente.rpc("dar_de_baja_artista", { p_artista_id: bajaReciente.artistaId });
       const { data: a } = await admin.from("artistas").select("baja_at, tienda_activa").eq("id", bajaReciente.artistaId).single();
       const { data: p } = await admin.from("productos").select("estado").eq("id", prodBaja).single();

@@ -67,8 +67,6 @@ export interface DespachoCotizado {
   plazo_max: number | null;
   /** Indicaciones de retiro, si lo ofrece. */
   retiro_detalle: string | null;
-  /** false: la tienda no definió despacho (envío sin costo, sin plazo). */
-  configurado: boolean;
   /** Correo de contacto del artista para compradores (tiendas.contacto_email). */
   contacto: string | null;
 }
@@ -151,7 +149,7 @@ export async function cotizarCarrito(
 ): Promise<ResultadoCotizacion> {
   const { data: productos, error: prodError } = await supabase
     .from("productos")
-    .select("id, nombre, precio, stock, tipo, estado, imagenes, artista_id, artistas(nombre, comision, es_founder, founder_hasta, cobros_activos, cobro)")
+    .select("id, nombre, precio, stock, tipo, estado, imagenes, artista_id, artistas(nombre, comision, es_founder, founder_hasta, cobros_activos, cobro, tienda_activa)")
     .in("id", items.map((i) => i.id));
 
   if (prodError) {
@@ -168,6 +166,11 @@ export async function cotizarCarrito(
     const p = porId.get(item.id);
     if (!p || p.estado !== "aprobado" || !p.artistas) {
       return { ok: false, error: "Uno de los productos ya no está disponible. Revisa tu carrito." };
+    }
+    // Vender exige tienda activa (tiendas.estado, vía artistas.tienda_activa),
+    // también en la compra controlada.
+    if (!p.artistas.tienda_activa) {
+      return { ok: false, error: `Los productos de ${p.artistas.nombre} estarán disponibles pronto.` };
     }
     if (p.tipo === "fisico" && item.cantidad > p.stock) {
       return {
@@ -253,6 +256,10 @@ export async function cotizarCarrito(
     const o = opciones.get(artista_id)!;
     const artista_nombre = porId.get(base.find((l) => l.artista_id === artista_id)!.producto_id)!.artistas!.nombre;
     const disponibles = entregasDisponibles(o);
+    if (disponibles.length === 0) {
+      // No debería pasar: aprobar_tienda exige el despacho.
+      return { ok: false, error: `Los productos de ${artista_nombre} estarán disponibles pronto.` };
+    }
     const elegida = entregas[artista_id];
     if (elegida && !disponibles.includes(elegida)) {
       return {
@@ -274,7 +281,6 @@ export async function cotizarCarrito(
       plazo_min: o.envio?.plazo_min ?? null,
       plazo_max: o.envio?.plazo_max ?? null,
       retiro_detalle: o.retiro?.detalle ?? null,
-      configurado: o.configurado,
       contacto: o.contacto,
     });
   }

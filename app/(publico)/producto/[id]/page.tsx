@@ -66,7 +66,10 @@ export default async function ProductoPage({ params, searchParams }: Props) {
 
   const artista = { id: producto.artista_id, cobro: producto.artistas?.cobro ?? "centralizado" };
   const [cobro, despacho] = await Promise.all([
-    cobroDelProducto(artista, !!producto.artistas?.cobros_activos, compra === "controlada"),
+    cobroDelProducto(artista, {
+      tiendaActiva: !!producto.artistas?.tienda_activa,
+      cobrosActivos: !!producto.artistas?.cobros_activos,
+    }, compra === "controlada"),
     despachoDelProducto(producto.artista_id),
   ]);
   return <ProductoClient id={id} cobro={cobro} despacho={despacho} />;
@@ -87,13 +90,20 @@ async function despachoDelProducto(artistaId: string): Promise<OpcionesDespacho 
  * el botón: el que manda es cotizar, en el servidor. Si la configuración no se
  * puede leer, se muestra cerrado: el freno de ventas falla hacia no vender.
  */
-async function cobroDelProducto(artista: { id: string; cobro: string }, cobrosActivos: boolean, compraControlada: boolean): Promise<CobroProducto> {
+async function cobroDelProducto(
+  artista: { id: string; cobro: string },
+  { tiendaActiva, cobrosActivos }: { tiendaActiva: boolean; cobrosActivos: boolean },
+  compraControlada: boolean
+): Promise<CobroProducto> {
   try {
     const servicio = clienteServicio();
     const [config, ventas] = await Promise.all([leerConfigCobro(servicio), leerConfigVentas(servicio)]);
+    const directo = modoCobro(config, artista) === "marketplace";
     return {
-      directo: modoCobro(config, artista) === "marketplace",
-      disponible: cobrosActivos,
+      directo,
+      // Sin tienda activa no vende (cobre como cobre); en marketplace, además,
+      // necesita la cuenta de MP conectada. Mismo criterio que cotizar.
+      disponible: tiendaActiva && (!directo || cobrosActivos),
       cerrada: !ventas.abiertas && !compraControlada,
     };
   } catch (err) {

@@ -10,9 +10,8 @@ import type { Database } from "@/lib/supabase/types";
  * paga comisión (términos para artistas, punto 4).
  *
  * Una opción se ofrece solo si está completa, con el mismo criterio que
- * checklist_tienda. Una tienda sin ninguna opción completa (los artistas
- * anteriores al flujo de tiendas) se cobra como antes: envío sin costo y sin
- * plazo. El commit 9 lo cierra al exigir tienda activa para vender.
+ * checklist_tienda. Una tienda sin ninguna opción completa no ofrece nada y no
+ * vende: aprobar_tienda exige el despacho, y cotizar exige tienda activa.
  */
 
 export type Entrega = "envio" | "retiro";
@@ -20,8 +19,6 @@ export type Entrega = "envio" | "retiro";
 export interface OpcionesDespacho {
   envio: { costo: number; plazo_min: number | null; plazo_max: number | null } | null;
   retiro: { detalle: string } | null;
-  /** false: la tienda no tiene despacho definido y se usa el envío sin costo. */
-  configurado: boolean;
   /** Correo de contacto para compradores; null si la tienda no lo definió. */
   contacto: string | null;
 }
@@ -35,13 +32,9 @@ export function opcionesDespacho(t: FilaDespacho | null | undefined): OpcionesDe
   const conRetiro = (modo === "retiro" || modo === "ambos") && detalle !== "";
   const contacto = t?.contacto_email ?? null;
 
-  if (!conEnvio && !conRetiro) {
-    return { envio: { costo: 0, plazo_min: null, plazo_max: null }, retiro: null, configurado: false, contacto };
-  }
   return {
     envio: conEnvio ? { costo: t!.despacho_costo!, plazo_min: t!.despacho_plazo_min, plazo_max: t!.despacho_plazo_max } : null,
     retiro: conRetiro ? { detalle } : null,
-    configurado: true,
     contacto,
   };
 }

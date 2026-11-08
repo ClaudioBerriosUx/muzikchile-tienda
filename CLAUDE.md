@@ -172,6 +172,12 @@ despacho) y `terminos_artistas` (solo agregar filas). `estado` nunca se escribe 
 el navegador: cambia solo por `solicitar_tienda`, `aprobar_tienda`, `devolver_tienda` y
 `suspender_tienda` (service role, llamadas desde Route Handlers). `artistas.cobro` es
 el modo de cobro por artista; `aprobar_tienda` lo pasa a `marketplace`.
+**Vender exige tienda activa** (desde 2026-11-08): `artistas.tienda_activa` es siempre
+`tiendas.estado = 'activa'` (triggers de `20261108030000`; escribirla no hace nada).
+`cotizar` rechaza los productos de una tienda no activa, también en la compra
+controlada, y una tienda sin despacho no ofrece envío por defecto. Sus productos no
+se listan en `/tienda`, en la ficha del artista ni en "más del artista"; por URL
+directa la ficha abre con "Pronto disponible".
 
 **Devoluciones** (desde 2026-11-08): MuzikChile no gestiona los reembolsos. Retracto,
 garantía y reclamos van al artista, a `tiendas.contacto_email` (obligatorio en el
@@ -332,7 +338,8 @@ que `select("*")` falla con 42501; nombra las columnas. Los datos bancarios
 aparecen en `/tienda`, en las noticias (`traerNoticias`), en el sitemap ni en
 las métricas de `/admin`; su ficha, sus productos y sus notas abren solo por URL
 directa, con `noindex`. **Un listado público nuevo tiene que filtrar
-`es_prueba`** (con `artistas!inner(…)` + `.eq("artistas.es_prueba", false)`).
+`es_prueba`** (con `artistas!inner(…)` + `.eq("artistas.es_prueba", false)`), y uno de
+productos también `.eq("artistas.tienda_activa", true)`.
 
 ### Convenciones de estilo
 

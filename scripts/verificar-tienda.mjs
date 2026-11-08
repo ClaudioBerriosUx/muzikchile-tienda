@@ -471,6 +471,18 @@ async function propCobro(productoId) {
   return prop ? `${prop[1]}/${prop[2]}` : "sin prop";
 }
 
+/**
+ * Una tienda activa sin pasar por aprobar_tienda (service role): queda con el
+ * cobro que tenga (centralizado). Sirve para probar lo que no depende de la
+ * aprobación; vender exige tienda activa desde el commit 9.
+ */
+async function tiendaActivaDirecta(artistaId) {
+  const { error } = await admin.from("tiendas").update({
+    estado: "activa", despacho_modo: "envio", despacho_costo: 0, despacho_plazo_min: 1, despacho_plazo_max: 3,
+  }).eq("artista_id", artistaId);
+  if (error) throw new Error(`Tienda activa directa: ${fmt(error)}`);
+}
+
 async function cobroPorArtista(ADMIN) {
   console.log(`\n── Cómo cobra una tienda · ${API} ──`);
   const D = await crearUsuario("d", "artista");
@@ -481,7 +493,8 @@ async function cobroPorArtista(ADMIN) {
 
   {
     const r = await cotizar([{ id: PD, cantidad: 1 }]);
-    check("(k1) Antes de aprobar → cotiza 'centralizado'", r.status === 200 && r.data?.cobro === "centralizado", JSON.stringify(r));
+    check("(k1) Antes de aprobar → no vende: cotizar 422 'disponibles pronto' y la ficha no disponible",
+      r.status === 422 && /disponibles pronto/.test(r.data?.error ?? "") && (await propCobro(PD)).endsWith("/false"), JSON.stringify(r));
     check("(k2) Antes de aprobar → /api/mp/conexion dice 'centralizado'", (await modeloDe(D)) === "centralizado");
   }
 
@@ -496,6 +509,8 @@ async function cobroPorArtista(ADMIN) {
     check("(k4) Tienda aprobada → /api/mp/conexion dice 'marketplace'", (await modeloDe(D)) === "marketplace");
     check("(k5) Tienda aprobada → la ficha cobra directo y está disponible", (await propCobro(PD)) === "true/true", await propCobro(PD));
   }
+  // E: una tienda activa que sigue centralizada (no pasó por aprobar_tienda).
+  await tiendaActivaDirecta(E.artistaId);
   {
     const r = await cotizar([{ id: PE, cantidad: 1 }]);
     check("(k6) Otro artista sigue 'centralizado'", r.status === 200 && r.data?.cobro === "centralizado", JSON.stringify(r));
@@ -516,7 +531,9 @@ async function cobroPorArtista(ADMIN) {
   {
     const su = await rpc("suspender_tienda", { p_artista_id: D.artistaId, p_admin: ADMIN.userId, p_motivo: "prueba" });
     const r = await cotizar([{ id: PD, cantidad: 1 }]);
-    check("(k11) Suspendida: si se cotiza, nunca vuelve a 'centralizado'", !su.error && r.data?.cobro !== "centralizado", JSON.stringify(r));
+    check("(k11) Suspendida: no vende (422 'disponibles pronto') y nunca vuelve a 'centralizado'",
+      !su.error && r.status === 422 && /disponibles pronto/.test(r.data?.error ?? "") && r.data?.cobro !== "centralizado", JSON.stringify(r));
+    check("(k12) Suspendida: la ficha abre por URL con 'Pronto disponible'", (await propCobro(PD)) === "true/false", await propCobro(PD));
   }
 }
 
@@ -807,6 +824,7 @@ async function frenoDeVentas() {
 
   const H = await crearUsuario("h", "artista");
   const P = await sembrarProducto(H.artistaId, "aprobado");
+  await tiendaActivaDirecta(H.artistaId);
   const AUTORIZADO = `${PREFIJO}-yo@example.com`;
   const pagar = async (correo) => {
     const res = await fetch(`${API}/api/mercadopago/crear-preferencia`, {

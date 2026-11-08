@@ -89,7 +89,7 @@ function Stock({ stock, digital }: { stock: number; digital: boolean }) {
 
 /** Las líneas del recuadro de despacho; vacío si la tienda no lo definió. */
 function textoDespacho(d: OpcionesDespacho | null): string[] {
-  if (!d?.configurado) return [];
+  if (!d) return [];
   const lineas: string[] = [];
   if (d.envio) {
     const plazo = textoPlazo(d.envio.plazo_min, d.envio.plazo_max);
@@ -103,7 +103,7 @@ function textoDespacho(d: OpcionesDespacho | null): string[] {
 /**
  * Cómo cobra el artista (lib/cobro.ts), calculado en el servidor.
  * `directo`: cobra con su cuenta de MP y va solo en el pedido.
- * `disponible`: tiene la cuenta conectada (cobros_activos); si no, "Pronto disponible".
+ * `disponible`: tienda activa y, si cobra directo, cuenta conectada (cobros_activos); si no, "Pronto disponible".
  * `cerrada`: las ventas siguen cerradas (lib/ventas.ts); también "Pronto disponible".
  */
 export interface CobroProducto {
@@ -143,9 +143,11 @@ export default function ProductoClient({ id, cobro, despacho }: { id: string; co
     queryFn: async () => {
       const { data, error } = await supabase
         .from("productos")
-        .select("id, nombre, precio, imagenes, tipo, categorias(nombre)")
+        .select("id, nombre, precio, imagenes, tipo, categorias(nombre), artistas!inner(tienda_activa)")
         .eq("artista_id", producto!.artista_id)
         .eq("estado", "aprobado")
+        // Sin tienda activa, sus productos no se listan (sí abren por URL).
+        .eq("artistas.tienda_activa", true)
         .neq("id", id)
         .limit(4);
       if (error) throw error;
@@ -182,7 +184,7 @@ export default function ProductoClient({ id, cobro, despacho }: { id: string; co
   const imagenes   = producto.imagenes ?? [];
   const imagenActiva = imagenes[imagenIdx] ?? null;
   const sinStock   = producto.stock === 0;
-  const pronto     = cobro.cerrada || (cobro.directo && !cobro.disponible);
+  const pronto     = cobro.cerrada || !cobro.disponible;
   const digital    = producto.tipo === "digital";
   const zonas      = producto.zonas_envio ?? [];
   const lineasDespacho = textoDespacho(despacho);

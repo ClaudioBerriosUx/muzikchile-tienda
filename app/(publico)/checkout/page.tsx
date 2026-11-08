@@ -34,7 +34,6 @@ interface Despacho {
   plazo_min: number | null;
   plazo_max: number | null;
   retiro_detalle: string | null;
-  configurado: boolean;
   contacto: string | null;
 }
 

@@ -146,9 +146,11 @@ export default function ArtistaClient({ slug, noticias }: { slug: string; notici
     queryFn: async () => {
       const { data, error } = await supabase
         .from("productos")
-        .select("*, categorias(nombre)")
+        .select("*, categorias(nombre), artistas!inner(tienda_activa)")
         .eq("artista_id", artista!.id)
-        .eq("estado", "aprobado");
+        .eq("estado", "aprobado")
+        // Sin tienda activa: "aún no abre su tienda", aunque tenga aprobados.
+        .eq("artistas.tienda_activa", true);
       if (error) throw error;
       return (data ?? []) as unknown as Producto[];
     },

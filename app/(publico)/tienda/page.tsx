@@ -133,6 +133,8 @@ function HomePageContent() {
         .eq("estado", "aprobado")
         // Los productos de un artista de prueba solo se abren por URL directa.
         .eq("artistas.es_prueba", false)
+        // Ni los de una tienda no activa o suspendida (abren por URL, sin venta).
+        .eq("artistas.tienda_activa", true)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as unknown as Producto[];
