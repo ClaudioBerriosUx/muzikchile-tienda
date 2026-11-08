@@ -186,7 +186,13 @@ function Detalle({ tienda, onCambio }: { tienda: TiendaAdmin; onCambio: () => vo
       });
       const cuerpo = await res.json().catch(() => null);
       if (!res.ok) throw new Error(cuerpo?.error ?? "No pudimos aplicar el cambio.");
-      toast.success(mensaje);
+      // El cambio ya quedó; el correo al artista puede fallar aparte.
+      if (cuerpo?.correo === "fallido") {
+        toast.success(mensaje);
+        toast.warning(`No se pudo enviar el correo a ${tienda.nombre}: avísale a mano. El sistema lo reintenta mañana.`, { duration: Infinity });
+      } else {
+        toast.success(`${mensaje} Le avisamos por correo.`);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "No pudimos aplicar el cambio.");
     } finally {

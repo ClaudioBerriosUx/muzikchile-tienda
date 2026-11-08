@@ -4,6 +4,7 @@ import { comisionEfectiva, founderVigente, textoFounder } from "@/lib/comision";
 import { clienteServicio } from "@/lib/mp/conexiones";
 import { VERSION_TERMINOS_ARTISTAS } from "@/lib/terminos";
 import type { ChecklistTienda, DespachoTienda, EstadoTienda, TiendaAdmin } from "@/lib/tienda";
+import { enviarCorreoTienda } from "@/lib/correo/tienda";
 
 export const dynamic = "force-dynamic";
 
@@ -116,7 +117,13 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ tiendas });
 }
 
-/** POST { accion: 'aprobar' | 'devolver' | 'suspender', artista_id, texto? } */
+/**
+ * POST { accion: 'aprobar' | 'devolver' | 'suspender', artista_id, texto? }
+ *
+ * Después del cambio le avisa al artista por correo (lib/correo/tienda.ts) y
+ * devuelve cómo salió en `correo`: si falló, la bandeja pide avisar a mano. Un
+ * correo que falla no deshace el cambio; el cron lo reintenta.
+ */
 export async function POST(req: NextRequest) {
   const admin = await adminDeLaSesion();
   if (admin instanceof NextResponse) return admin;
@@ -151,5 +158,11 @@ export async function POST(req: NextRequest) {
     console.error("[admin tiendas] acción:", JSON.stringify(error));
     return NextResponse.json({ error: "No pudimos aplicar el cambio. Intenta de nuevo." }, { status: 500 });
   }
-  return NextResponse.json({ estado: data });
+
+  const tipo = ({ aprobar: "tienda_aprobada", devolver: "tienda_devuelta", suspender: "tienda_suspendida" } as const)[body.accion as "aprobar" | "devolver" | "suspender"];
+  const correo = await enviarCorreoTienda(servicio, artistaId, tipo).catch((err) => {
+    console.error("[admin tiendas] correo:", err instanceof Error ? err.message : err);
+    return "fallido" as const;
+  });
+  return NextResponse.json({ estado: data, correo });
 }

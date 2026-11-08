@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { clienteServicio } from "@/lib/mp/conexiones";
 import { enviarCorreosDeCompra } from "@/lib/correo/compra";
 import { MAX_INTENTOS } from "@/lib/correo/enviar";
+import { enviarCorreoTienda, esTipoCorreoTienda } from "@/lib/correo/tienda";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,9 @@ export const dynamic = "force-dynamic";
  *      el webhook confirmó el pago pero no alcanzó a mandar los correos.
  *      enviarCorreosDeCompra es idempotente: lo que ya salió no se repite, y lo
  *      que falló se reintenta hasta MAX_INTENTOS veces.
- *   2. Retención: borra el registro de correos de más de 2 años (política de
+ *   2. Correos de tienda que no salieron en los últimos 10 días: se reintentan
+ *      si la tienda sigue en el estado que describen (si no, ya no aplican).
+ *   3. Retención: borra el registro de correos de más de 2 años (política de
  *      privacidad v1.1).
  *
  * 10 días es el plazo de retracto: después, una confirmación tardía ya no evita
@@ -60,7 +63,28 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 2. Retención.
+  // 2. Correos de tienda pendientes.
+  const { data: deTienda } = await servicio
+    .from("correos")
+    .select("tipo, referencia")
+    .like("tipo", "tienda_%")
+    .in("estado", ["pendiente", "fallido"])
+    .lt("intentos", MAX_INTENTOS)
+    .gte("created_at", desde);
+  for (const c of deTienda ?? []) {
+    if (!esTipoCorreoTienda(c.tipo)) continue;
+    try {
+      const r = await enviarCorreoTienda(servicio, c.referencia.split(":")[0], c.tipo);
+      if (r === "enviado") resumen.enviados++;
+      else if (r === "fallido") resumen.fallidos++;
+      else if (r === "buzon_local") resumen.buzon_local++;
+    } catch (err) {
+      resumen.errores++;
+      console.error("[cron correos] correo de tienda sin procesar:", c.referencia, err instanceof Error ? err.message : err);
+    }
+  }
+
+  // 3. Retención.
   const limite = new Date();
   limite.setFullYear(limite.getFullYear() - ANOS_RETENCION);
   const { count: borrados, error: errBorrar } = await servicio

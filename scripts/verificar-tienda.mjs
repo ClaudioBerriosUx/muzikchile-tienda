@@ -28,6 +28,7 @@ import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { frenarSiEsProduccion } from "./freno-produccion.mjs";
 import { VERSION_TERMINOS_ARTISTAS, VERSION_TERMINOS_COMPRADORES } from "../lib/terminos.ts";
+import { existsSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
 
 frenarSiEsProduccion();
 
@@ -112,9 +113,22 @@ async function completarChecklist(u) {
   await rpc("aceptar_terminos_artista", { p_artista_id: u.artistaId, p_user_id: u.userId, p_version: VERSION });
 }
 
+/** Los correos de un artista en supabase/.temp/correos/ (buzón local de dev:pruebas). */
+function borrarDelBuzon(artistaId) {
+  const dir = "supabase/.temp/correos";
+  if (!existsSync(dir)) return;
+  for (const archivo of readdirSync(dir)) {
+    if (archivo.includes(`--${artistaId}_`)) unlinkSync(`${dir}/${archivo}`);
+  }
+}
+
 async function limpiar() {
   const { data: artistas } = await admin.from("artistas").select("id").like("slug", `${FAMILIA}%`);
   const ids = (artistas ?? []).map((a) => a.id);
+  for (const id of ids) {
+    await admin.from("correos").delete().like("referencia", `${id}:%`);
+    borrarDelBuzon(id);
+  }
   if (ids.length) {
     await admin.from("productos").delete().in("artista_id", ids);
     await admin.from("artistas").delete().in("id", ids);
@@ -671,6 +685,89 @@ async function bandejaDelAdmin(ADMIN, ARTISTA) {
   }
 }
 
+// ── Correos de tienda (--api) ────────────────────────────────────────────────
+// lib/correo/tienda.ts: la solicitud le llega a MuzikChile; aprobar, devolver y
+// suspender, al artista. dev:pruebas no tiene RESEND_API_KEY: van al buzón local.
+
+async function correosDeTienda(ADMIN) {
+  console.log(`\n── Correos de tienda · ${API} ──`);
+  const H = await crearUsuario("q", "artista");
+  await completarChecklist(H);
+  // completarChecklist acepta una versión de prueba; las rutas exigen la vigente.
+  await rpc("aceptar_terminos_artista", { p_artista_id: H.artistaId, p_user_id: H.userId, p_version: VERSION_TERMINOS_ARTISTAS });
+  await sembrarProducto(H.artistaId, "borrador");
+  const cookieAdmin = await cookieDe(ADMIN);
+  const cookieH = await cookieDe(H);
+  const solicitar = async () => {
+    const res = await fetch(`${API}/api/panel/tienda/solicitar`, { method: "POST", headers: { Cookie: cookieH } });
+    return { status: res.status, data: await res.json().catch(() => null) };
+  };
+  const actuar = async (body) => {
+    const res = await fetch(`${API}/api/admin/tiendas`, {
+      method: "POST", headers: { "Content-Type": "application/json", Cookie: cookieAdmin }, body: JSON.stringify({ ...body, artista_id: H.artistaId }),
+    });
+    return { status: res.status, data: await res.json().catch(() => null) };
+  };
+  const filas = async (tipo) =>
+    (await admin.from("correos").select("tipo, referencia, destinatario, estado, intentos").eq("tipo", tipo).like("referencia", `${H.artistaId}:%`).order("created_at")).data ?? [];
+  const buzon = (tipo, referencia) => {
+    try { return JSON.parse(readFileSync(`supabase/.temp/correos/${tipo}--${referencia.replace(/[^a-zA-Z0-9-]/g, "_")}.json`, "utf8")); } catch { return null; }
+  };
+  const ultimo = async (tipo) => { const f = (await filas(tipo)).at(-1); return { fila: f, correo: f ? buzon(tipo, f.referencia) : null }; };
+
+  {
+    const r = await solicitar();
+    const { fila, correo } = await ultimo("tienda_solicitud");
+    check("(q1) Solicitar → correo a MuzikChile (hola@) con el artista y la bandeja",
+      r.status === 200 && r.data?.correo === "buzon_local" && fila?.destinatario === "hola@muzikchile.cl"
+        && correo?.texto.includes(`Tienda q pidió activar su tienda`) && correo?.texto.includes("/admin/tiendas"), JSON.stringify({ r, fila }));
+  }
+  {
+    const r = await actuar({ accion: "devolver", texto: 'Falta <b>la foto</b> & la talla' });
+    const { fila, correo } = await ultimo("tienda_devuelta");
+    check("(q2) Devolver → correo al artista con el comentario, escapado en el HTML",
+      r.status === 200 && r.data?.correo === "buzon_local" && fila?.destinatario === H.email
+        && correo?.texto.includes('"Falta <b>la foto</b> & la talla"') && correo?.html.includes("Falta &lt;b&gt;la foto&lt;/b&gt; &amp; la talla") && !correo?.html.includes("<b>la foto"),
+      JSON.stringify({ r, fila }));
+  }
+  {
+    const r = await solicitar();
+    check("(q3) Una segunda solicitud es otro correo (no se confunde con la primera)", r.data?.correo === "buzon_local" && (await filas("tienda_solicitud")).length === 2);
+  }
+  {
+    const r = await actuar({ accion: "aprobar" });
+    const { fila, correo } = await ultimo("tienda_aprobada");
+    check("(q4) Aprobar → correo al artista: tienda activa, revisión de productos y piloto",
+      r.data?.correo === "buzon_local" && fila?.destinatario === H.email && correo?.asunto === "Tu tienda en MuzikChile está activa"
+        && correo?.texto.includes("pasa por revisión") && correo?.texto.includes("habilite las compras"), JSON.stringify({ r, fila }));
+  }
+  {
+    const r = await actuar({ accion: "suspender", texto: "Tres reclamos sin respuesta" });
+    const { fila, correo } = await ultimo("tienda_suspendida");
+    check("(q5) Suspender → correo al artista con el motivo, los pedidos pagados y cómo reactivar",
+      r.data?.correo === "buzon_local" && fila?.destinatario === H.email && correo?.texto.includes('Motivo: "Tres reclamos sin respuesta"')
+        && correo?.texto.includes("cumplir igual los pedidos ya pagados") && correo?.texto.includes("revisamos la reactivación"), JSON.stringify({ r, fila }));
+  }
+  {
+    const r = await actuar({ accion: "aprobar" });
+    check("(q6) Reactivar → otro correo de tienda activa", r.data?.correo === "buzon_local" && (await filas("tienda_aprobada")).length === 2);
+  }
+  {
+    // Cron: reintenta un correo de tienda que falló si la tienda sigue en ese
+    // estado; uno que ya no describe la tienda (devuelta, y hoy está activa) no.
+    const CRON = process.env.CRON_SECRET;
+    const aprobada = (await filas("tienda_aprobada")).at(-1);
+    await admin.from("correos").update({ estado: "fallido", intentos: 1, ultimo_error: "prueba" }).eq("tipo", "tienda_aprobada").eq("referencia", aprobada.referencia);
+    const devuelta = (await filas("tienda_devuelta")).at(-1);
+    await admin.from("correos").update({ estado: "fallido", intentos: 1, ultimo_error: "prueba" }).eq("tipo", "tienda_devuelta").eq("referencia", devuelta.referencia);
+    const res = await fetch(`${API}/api/cron/correos`, { headers: { authorization: `Bearer ${CRON}` } });
+    const tras = Object.fromEntries((await admin.from("correos").select("tipo, estado, intentos").in("referencia", [aprobada.referencia, devuelta.referencia])).data?.map((f) => [f.tipo, f]) ?? []);
+    check("(q7) El cron reintenta el correo de tienda que sigue vigente y salta el que ya no aplica",
+      !!CRON && res.status === 200 && tras.tienda_aprobada?.estado === "buzon_local" && tras.tienda_aprobada?.intentos === 2
+        && tras.tienda_devuelta?.estado === "fallido" && tras.tienda_devuelta?.intentos === 1, JSON.stringify(tras));
+  }
+}
+
 // ── Freno de ventas (--api) ──────────────────────────────────────────────────
 
 async function frenoDeVentas() {
@@ -755,6 +852,7 @@ async function main() {
       await cobroPorArtista(ADMIN);
       await rutasDelPanel();
       await bandejaDelAdmin(ADMIN, B);
+      await correosDeTienda(ADMIN);
       await frenoDeVentas();
     }
     else console.log("\n── Cómo cobra una tienda: sin --api no se prueba ──");

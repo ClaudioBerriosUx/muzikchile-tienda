@@ -185,7 +185,7 @@ function VistaSolicitada({ data }: { data: PanelTienda }) {
       <div className="mt-4" />
       <Aviso fondo="#fffbeb" borde="#fde68a" color="#92400e">
         <p style={{ fontSize: "15px", fontWeight: 700 }}>Tu solicitud está en revisión</p>
-        <p className="mt-1">Verás el resultado acá, en Mi tienda. Mientras tanto puedes seguir creando y editando borradores.</p>
+        <p className="mt-1">Te avisamos por correo cuando la revisemos, y verás el resultado acá, en Mi tienda. Mientras tanto puedes seguir creando y editando borradores.</p>
       </Aviso>
 
       <Tarjeta titulo="Lo que enviaste">

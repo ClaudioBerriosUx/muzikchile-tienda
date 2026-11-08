@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { artistaDeLaSesion, clienteServicio } from "@/lib/mp/conexiones";
 import { VERSION_TERMINOS_ARTISTAS } from "@/lib/terminos";
+import { enviarCorreoTienda } from "@/lib/correo/tienda";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,9 @@ export const dynamic = "force-dynamic";
  *
  * POST: la cookie de sesión es SameSite=Lax, así que otro sitio no puede
  * disparar esto a nombre del artista.
+ *
+ * Después avisa a MuzikChile por correo (tienda_solicitud). Si el correo falla,
+ * la solicitud igual queda hecha: se ve en la bandeja y el cron lo reintenta.
  */
 export async function POST() {
   const servicio = clienteServicio();
@@ -27,5 +31,9 @@ export async function POST() {
     console.error("[tienda] solicitar:", JSON.stringify(error));
     return NextResponse.json({ error: "No pudimos enviar tu solicitud. Intenta de nuevo." }, { status: 500 });
   }
-  return NextResponse.json({ estado: data });
+  const correo = await enviarCorreoTienda(servicio, sesion.artistaId, "tienda_solicitud").catch((err) => {
+    console.error("[tienda] correo de solicitud:", err instanceof Error ? err.message : err);
+    return "fallido" as const;
+  });
+  return NextResponse.json({ estado: data, correo });
 }
