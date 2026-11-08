@@ -204,6 +204,9 @@ export function armarNuevaVenta(grupoId: string, ls: Linea[], correoArtista: str
   ];
   const paraTi = productos - comision + envio;
   const aviso = "Usa los datos del comprador solo para despachar y responder sobre este pedido.";
+  // MP cobra al vendedor su propia comisión de procesamiento, que no conocemos.
+  const PARA_TI = "Para ti, antes de la comisión de Mercado Pago";
+  const notaMp = "Mercado Pago descuenta además su comisión de procesamiento, según las condiciones de tu cuenta con ellos.";
 
   const html = marco(`Nueva venta · Pedido ${num}`, [
     p(`Hola ${esc(nombreArtista(ls))},`),
@@ -213,7 +216,8 @@ export function armarNuevaVenta(grupoId: string, ls: Linea[], correoArtista: str
     h2("Entrega"),
     p(e.html),
     h2("Montos"),
-    tablaMontos(montos, ["Para ti", clp(paraTi)]),
+    tablaMontos(montos, [PARA_TI, clp(paraTi)]),
+    p(esc(notaMp), true),
     boton(`${BASE_URL}/panel/despacho`, "Ver en Por despachar"),
     p(esc(aviso), true),
   ].join("\n"));
@@ -223,7 +227,7 @@ export function armarNuevaVenta(grupoId: string, ls: Linea[], correoArtista: str
     `Tienes una venta pagada (pedido ${num}, ${fecha}). Despáchala dentro del plazo que informaste: lo que vio el comprador al pagar te obliga.`,
     `QUÉ DESPACHAR\n${ls.map((l) => `- ${l.cantidad} × ${nombreProducto(l)}`).join("\n")}`,
     `ENTREGA\n${e.texto}`,
-    `MONTOS\n${montos.map(([a, b]) => `${a}: ${b}`).join("\n")}\nPara ti: ${clp(paraTi)}`,
+    `MONTOS\n${montos.map(([a, b]) => `${a}: ${b}`).join("\n")}\n${PARA_TI}: ${clp(paraTi)}\n${notaMp}`,
     `Ver en Por despachar: ${BASE_URL}/panel/despacho`,
     aviso,
   ].join("\n\n");

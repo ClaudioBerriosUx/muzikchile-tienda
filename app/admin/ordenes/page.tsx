@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { formatCLP } from "@/lib/constants";
 import { textoPlazo } from "@/lib/checkout/despacho";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 
 /**
  * El tipo sale del select (sin cast): así una columna mal escrita no compila.
@@ -75,6 +78,11 @@ export default function OrdenesPage() {
   const [seleccionada,  setSeleccionada]  = useState<Orden | null>(null);
   const [nuevoEstado,   setNuevoEstado]   = useState("");
   const [actualizando,  setActualizando]  = useState(false);
+  // Reembolso total del pedido (/api/admin/mp/reembolsar). El resultado se
+  // guarda con su grupo para no mostrarlo en otro pedido.
+  const [confirmarReembolso, setConfirmarReembolso] = useState(false);
+  const [reembolsando,       setReembolsando]       = useState(false);
+  const [resultadoReembolso, setResultadoReembolso] = useState<{ grupo: string; ok: boolean; texto: string } | null>(null);
 
   const { data: ordenes = [] } = useQuery({
     queryKey: ["admin-ordenes"],
@@ -82,6 +90,41 @@ export default function OrdenesPage() {
   });
 
   const grupoSeleccionado = seleccionada?.grupo_id ?? null;
+  // Todas las líneas del pedido: el reembolso es del pago entero, no de una línea.
+  const lineasPedido = grupoSeleccionado ? ordenes.filter((o) => o.grupo_id === grupoSeleccionado) : [];
+  const totalPedido = lineasPedido.reduce((acc, o) => acc + o.monto_artista + o.comision_monto + (o.envio_monto ?? 0), 0);
+  const puedeReembolsar = lineasPedido.length > 0 && lineasPedido.every((o) => o.estado === "pagado");
+
+  const reembolsar = async () => {
+    if (!grupoSeleccionado) return;
+    setReembolsando(true);
+    let resultado: { ok: boolean; texto: string };
+    try {
+      const res = await fetch("/api/admin/mp/reembolsar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ grupo: grupoSeleccionado }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        resultado = {
+          ok: true,
+          texto: `Mercado Pago aceptó el reembolso: pago ${data?.payment_id}, ${formatCLP(Number(data?.mp?.amount ?? totalPedido))}, estado "${data?.mp?.status ?? "—"}". ` +
+            `El pedido pasa a "reembolsado" cuando Mercado Pago avise al webhook: recarga en un minuto.`,
+        };
+      } else if (data?.mp_status) {
+        resultado = { ok: false, texto: `Mercado Pago no hizo el reembolso (${data.mp_status}): ${data.mp?.message ?? data.mp?.error ?? "sin detalle"}.` };
+      } else {
+        resultado = { ok: false, texto: data?.error ?? `Error ${res.status}` };
+      }
+    } catch {
+      resultado = { ok: false, texto: "Error de conexión: no sabemos si Mercado Pago recibió el pedido. Revisa el pago en Mercado Pago antes de reintentar." };
+    }
+    setResultadoReembolso({ grupo: grupoSeleccionado, ...resultado });
+    setReembolsando(false);
+    setConfirmarReembolso(false);
+    queryClient.invalidateQueries({ queryKey: ["admin-ordenes"] });
+  };
   const { data: correos = [] } = useQuery({
     queryKey: ["admin-ordenes-correos", grupoSeleccionado],
     queryFn: () => traerCorreos(supabase, grupoSeleccionado!),
@@ -269,6 +312,69 @@ export default function OrdenesPage() {
                 </p>
               </div>
             )}
+
+            {grupoSeleccionado && (puedeReembolsar || resultadoReembolso?.grupo === grupoSeleccionado) && (
+              <div className="mb-3">
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "11px", color: "#999999", textTransform: "uppercase" }}>Reembolso</p>
+                {puedeReembolsar && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmarReembolso(true)}
+                    className="mt-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold"
+                    style={{ borderColor: "#b91c1c", color: "#b91c1c", fontFamily: "var(--font-body)" }}
+                  >
+                    Reembolsar {formatCLP(totalPedido)}
+                  </button>
+                )}
+                {resultadoReembolso?.grupo === grupoSeleccionado && (
+                  <p
+                    role="status"
+                    className="mt-2 rounded-md p-2.5"
+                    style={{
+                      fontFamily: "var(--font-body)", fontSize: "13px", lineHeight: 1.5,
+                      backgroundColor: resultadoReembolso.ok ? "#dcfce7" : "#fee2e2",
+                      color: resultadoReembolso.ok ? "#166534" : "#991b1b",
+                    }}
+                  >
+                    {resultadoReembolso.texto}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <Dialog open={confirmarReembolso} onOpenChange={(abierto) => { if (!reembolsando) setConfirmarReembolso(abierto); }}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle style={{ fontFamily: "var(--font-titulo)" }}>
+                    ¿Reembolsar {formatCLP(totalPedido)} a {seleccionada.comprador_nombre}?
+                  </DialogTitle>
+                  <DialogDescription>
+                    No se puede deshacer. Mercado Pago devuelve el pago completo del pedido{" "}
+                    {(grupoSeleccionado ?? "").slice(0, 8).toUpperCase()} ({lineasPedido.length}{" "}
+                    {lineasPedido.length === 1 ? "producto" : "productos"}, envío incluido) al medio con que pagó.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmarReembolso(false)}
+                    disabled={reembolsando}
+                    className="rounded-md border border-[#d4d4d4] px-4 py-2 text-sm"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={reembolsar}
+                    disabled={reembolsando}
+                    className="rounded-md px-4 py-2 text-sm font-semibold text-white"
+                    style={{ backgroundColor: reembolsando ? "#d4d4d4" : "#b91c1c" }}
+                  >
+                    {reembolsando ? "Reembolsando..." : "Sí, reembolsar"}
+                  </button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
 
             {grupoSeleccionado && (
               <div className="mb-3">

@@ -923,10 +923,10 @@ async function correosDeCompra(A, ADMIN) {
     check("(co-7) Nueva venta con envío: qué despachar, a quién, plazo comprometido y montos solo de ese artista",
       !!vE && vE.para === E.email && vE.texto.includes("2 × ") && vE.texto.includes("Av. Prueba 123, Santiago, Metropolitana de Santiago")
         && vE.texto.includes(COMPRADOR) && vE.texto.includes("Plazo comprometido: 2 a 5 días hábiles desde el pago")
-        && vE.texto.includes("Para ti: $21.990") && !vE.texto.includes("co-r"), vE ? vE.texto.slice(0, 500) : "sin archivo");
+        && vE.texto.includes("Para ti, antes de la comisión de Mercado Pago: $21.990") && vE.texto.includes("Mercado Pago descuenta además su comisión") && !vE.texto.includes("co-r"), vE ? vE.texto.slice(0, 500) : "sin archivo");
     check("(co-8) Nueva venta con retiro: las indicaciones y el correo del comprador para coordinar, sin dirección",
       !!vR && vR.para === R.email && vR.texto.includes("Retiro. Indicaste: Feria del disco, domingos") && vR.texto.includes(`Escríbele a ${COMPRADOR}`)
-        && !vR.texto.includes("Av. Prueba") && vR.texto.includes("Para ti: $9.000"), vR ? vR.texto.slice(0, 500) : "sin archivo");
+        && !vR.texto.includes("Av. Prueba") && vR.texto.includes("Para ti, antes de la comisión de Mercado Pago: $9.000"), vR ? vR.texto.slice(0, 500) : "sin archivo");
 
     check("(co-9) Un pedido sin pagar no manda nada", (await correosDe(GP)).length === 0);
     check("(co-10) Un pedido reembolsado no manda nada", (await correosDe(GR)).length === 0);
@@ -1070,10 +1070,28 @@ async function reembolsos(A, B, ADMIN) {
     check("(rb-9) Admin: grupo inválido → 400; inexistente → 404", r1.status === 400 && r2.status === 404, `inválido=${r1.status} inexistente=${r2.status}`);
   }
   {
+    // gCentral está 'pagado' pero sin mercadopago_id (lo insertó la prueba, no un pago).
     const r1 = await reembolsar({ grupo: gCentral }, cookieAdmin);
     const r2 = await reembolsar({ grupo: gMkPend }, cookieAdmin);
-    check("(rb-10) Admin: pedido centralizado → 422; marketplace sin pagar → 422 (no se llama a MP)",
-      r1.status === 422 && r2.status === 422, `centralizado=${r1.status} ${r1.data?.error} · pendiente=${r2.status} ${r2.data?.error}`);
+    check("(rb-10) Admin: pedido sin pago de MP → 422; marketplace sin pagar → 422 (no se llama a MP)",
+      r1.status === 422 && /pago de Mercado Pago registrado/.test(r1.data?.error ?? "") && r2.status === 422 && /no está pagado/.test(r2.data?.error ?? ""), `sin pago=${r1.status} ${r1.data?.error} · pendiente=${r2.status} ${r2.data?.error}`);
+  }
+  {
+    // Centralizado pagado: se pide a MP con el token de MuzikChile. El pago no
+    // existe (id inventado) y el token es de prueba, así que MP lo rechaza (hoy
+    // 401 "Unauthorized use of live credentials"); la ruta devuelve su respuesta tal cual.
+    const g = await crearGrupo(A.artistaId, [{ producto: P, cantidad: 1 }], "pagado");
+    await admin.from("ordenes").update({ mercadopago_id: "1" }).eq("grupo_id", g);
+    const r = await reembolsar({ grupo: g }, cookieAdmin);
+    check("(rb-11) Admin: centralizado pagado → se pide a MP con el token de MuzikChile y devuelve su respuesta (pago inexistente → 502)",
+      r.status === 502 && r.data?.mp_status >= 400 && r.data?.payment_id === "1" && !!r.data?.mp, JSON.stringify(r));
+  }
+  {
+    const g = await crearGrupo(A.artistaId, [{ producto: P, cantidad: 1 }], "pagado");
+    await admin.from("ordenes").update({ mercadopago_id: "2", liquidado: true }).eq("grupo_id", g);
+    const r = await reembolsar({ grupo: g }, cookieAdmin);
+    check("(rb-12) Admin: centralizado ya liquidado al artista → 422, no se llama a MP",
+      r.status === 422 && /liquid/.test(r.data?.error ?? "") && r.data?.mp_status === undefined, JSON.stringify(r));
   }
 }
 
