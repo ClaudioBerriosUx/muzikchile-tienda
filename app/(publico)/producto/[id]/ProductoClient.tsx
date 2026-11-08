@@ -400,6 +400,14 @@ export default function ProductoClient({ id, cobro, despacho }: { id: string; co
                 artista={{ nombre: artista.nombre, slug: artista.slug, fotoUrl: artista.foto_url, verificado: artista.verificado }}
               />
             )}
+
+            {artista && despacho?.contacto && (
+              <p className="m-0 break-words text-[13px] leading-[1.55] text-tema-texto-2">
+                Vendido por {artista.nombre} · contacto:{" "}
+                <a href={`mailto:${despacho.contacto}`} className="text-tema-azul-texto underline hover:text-tema-azul-texto-hover">{despacho.contacto}</a>
+                . Retractos, garantías y reclamos se dirigen al artista.
+              </p>
+            )}
           </div>
         </div>
 

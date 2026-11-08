@@ -676,6 +676,7 @@ async function despachoEnElCobro() {
   const RETIRO = `Metro Baquedano ${PREFIJO}`;
   await admin.from("tiendas").update({
     despacho_modo: "ambos", despacho_costo: 3990, despacho_plazo_min: 2, despacho_plazo_max: 5, retiro_detalle: RETIRO,
+    contacto_email: `${PREFIJO}-de-contacto@example.com`,
   }).eq("artista_id", E.artistaId);
   await admin.from("tiendas").update({ despacho_modo: "retiro", retiro_detalle: "Feria del disco, domingos" }).eq("artista_id", R.artistaId);
 
@@ -687,7 +688,7 @@ async function despachoEnElCobro() {
   const comprador = (sufijo, extra = {}) => ({ nombre: "RLS Test", email: `${PREFIJO}-de-${sufijo}@example.com`, ...extra });
   const ordenesDe = async (grupo) => grupo
     ? (await admin.from("ordenes")
-        .select("producto_id, monto_artista, comision_monto, envio_monto, entrega, entrega_plazo_min, entrega_plazo_max, entrega_detalle, direccion_envio, ciudad_envio, region_envio")
+        .select("producto_id, monto_artista, comision_monto, envio_monto, entrega, entrega_plazo_min, entrega_plazo_max, entrega_detalle, direccion_envio, ciudad_envio, region_envio, vendedor_contacto")
         .eq("grupo_id", grupo)).data ?? []
     : [];
 
@@ -777,6 +778,27 @@ async function despachoEnElCobro() {
     const sin = await fetch(`${API}/producto/${PS}`).then((x) => x.text());
     check("(de-11) La ficha muestra el despacho de la tienda; sin definir, no", conDespacho && /configurado\\?":false/.test(sin), `con=${conDespacho}`);
   }
+  {
+    // El correo de contacto del vendedor: en la cotización, en la ficha y copiado en cada orden.
+    const CONTACTO = `${PREFIJO}-de-contacto@example.com`;
+    const c = await post("/api/checkout/cotizar", { items: [{ id: PE1, cantidad: 1 }, { id: PS, cantidad: 1 }] });
+    const porArtista = Object.fromEntries((c.data?.despachos ?? []).map((d) => [d.artista_id, d]));
+    const html = await fetch(`${API}/producto/${PE1}`).then((x) => x.text());
+    const r = await post("/api/mercadopago/crear-preferencia", { ...ACEPTA,
+      items: [{ id: PE2, cantidad: 1 }],
+      comprador: comprador("contacto", DIRECCION),
+    });
+    const ordenes = await ordenesDe(r.data?.external_reference);
+    check("(de-12) Contacto del vendedor: en la cotización (sin definir, null), en la ficha y copiado en la orden",
+      porArtista[E.artistaId]?.contacto === CONTACTO && porArtista[S.artistaId]?.contacto === null && html.includes(CONTACTO)
+        && r.status === 200 && ordenes.length === 1 && ordenes[0].vendedor_contacto === CONTACTO,
+      `${JSON.stringify(c.data?.despachos)} · status=${r.status} ${JSON.stringify(ordenes)}`);
+    // La copia no cambia si el artista cambia su contacto después.
+    await admin.from("tiendas").update({ contacto_email: `${PREFIJO}-de-otro@example.com` }).eq("artista_id", E.artistaId);
+    const [o] = await ordenesDe(r.data?.external_reference);
+    check("(de-13) Cambiar el contacto de la tienda no toca la copia de una orden ya creada", o?.vendedor_contacto === CONTACTO, JSON.stringify(o));
+    await admin.from("tiendas").update({ contacto_email: CONTACTO }).eq("artista_id", E.artistaId);
+  }
 }
 
 // ── Términos para compradores (te) ───────────────────────────────────────────
@@ -844,6 +866,8 @@ async function correosDeCompra(A, ADMIN) {
   const PE = await crearProducto(E.artistaId, "co-e", { nombre: `${PREFIJO}-co <b>Polera</b> & "negra"` });
   const PR = await crearProducto(R.artistaId, "co-r");
   const COMPRADOR = `${PREFIJO}-co-comprador@example.com`;
+  // E tiene contacto copiado en la orden; R no (orden anterior a esa columna).
+  const CONTACTO_E = `${PREFIJO}-co-contacto@example.com`;
   const ahora = new Date().toISOString();
   const grupos = [];
 
@@ -857,7 +881,7 @@ async function correosDeCompra(A, ADMIN) {
     };
     const { error } = await admin.from("ordenes").insert([
       { ...comun, artista_id: E.artistaId, producto_id: PE, cantidad: 2, precio_unitario: 10000, monto_artista: 18000, comision_monto: 2000,
-        envio_monto: 3990, entrega: "envio", entrega_plazo_min: 2, entrega_plazo_max: 5,
+        envio_monto: 3990, entrega: "envio", entrega_plazo_min: 2, entrega_plazo_max: 5, vendedor_contacto: CONTACTO_E,
         direccion_envio: "Av. Prueba 123", ciudad_envio: "Santiago", region_envio: "Metropolitana de Santiago" },
       { ...comun, artista_id: R.artistaId, producto_id: PR, cantidad: 1, precio_unitario: 10000, monto_artista: 9000, comision_monto: 1000,
         envio_monto: 0, entrega: "retiro", entrega_detalle: "Feria del disco, domingos" },
@@ -928,6 +952,15 @@ async function correosDeCompra(A, ADMIN) {
       !!vR && vR.para === R.email && vR.texto.includes("Retiro. Indicaste: Feria del disco, domingos") && vR.texto.includes(`Escríbele a ${COMPRADOR}`)
         && !vR.texto.includes("Av. Prueba") && vR.texto.includes("Para ti, antes de la comisión de Mercado Pago: $9.000"), vR ? vR.texto.slice(0, 500) : "sin archivo");
 
+    check("(co-15) Confirmación: contacto del vendedor y, para retracto y reclamos, primero el artista y hola@ de respaldo",
+      !!c && c.texto.includes(`Contacto del vendedor: ${CONTACTO_E}`) && c.html.includes(CONTACTO_E)
+        && c.texto.includes("escribe primero al artista que te vendió") && c.texto.includes(`RLS Test co-envio: ${CONTACTO_E}`)
+        && c.texto.includes("Si no te responde en 5 días hábiles") && c.texto.includes("SERNAC")
+        && c.texto.split("Contacto del vendedor:").length === 2, c ? c.texto.slice(0, 1600) : "sin archivo");
+    check("(co-16) Nueva venta: recuerda que el artista atiende retractos y reclamos, con su contacto y el plazo",
+      !!vE && vE.texto.includes("RETRACTOS Y RECLAMOS") && vE.texto.includes(`a tu correo de contacto, ${CONTACTO_E}`)
+        && vE.texto.includes("máximo 5 días hábiles") && vE.texto.includes("lo reembolsamos desde MuzikChile")
+        && !!vR && vR.texto.includes("RETRACTOS Y RECLAMOS") && !vR.texto.includes("a tu correo de contacto"), vE ? vE.texto.slice(-700) : "sin archivo");
     check("(co-9) Un pedido sin pagar no manda nada", (await correosDe(GP)).length === 0);
     check("(co-10) Un pedido reembolsado no manda nada", (await correosDe(GR)).length === 0);
     {
@@ -1066,13 +1099,13 @@ async function reembolsos(A, B, ADMIN) {
   }
   {
     const r1 = await reembolsar({ grupo: "no-es-uuid" }, cookieAdmin);
-    const r2 = await reembolsar({ grupo: crypto.randomUUID() }, cookieAdmin);
+    const r2 = await reembolsar({ grupo: crypto.randomUUID(), motivo: "retracto" }, cookieAdmin);
     check("(rb-9) Admin: grupo inválido → 400; inexistente → 404", r1.status === 400 && r2.status === 404, `inválido=${r1.status} inexistente=${r2.status}`);
   }
   {
     // gCentral está 'pagado' pero sin mercadopago_id (lo insertó la prueba, no un pago).
-    const r1 = await reembolsar({ grupo: gCentral }, cookieAdmin);
-    const r2 = await reembolsar({ grupo: gMkPend }, cookieAdmin);
+    const r1 = await reembolsar({ grupo: gCentral, motivo: "retracto" }, cookieAdmin);
+    const r2 = await reembolsar({ grupo: gMkPend, motivo: "no_despachado" }, cookieAdmin);
     check("(rb-10) Admin: pedido sin pago de MP → 422; marketplace sin pagar → 422 (no se llama a MP)",
       r1.status === 422 && /pago de Mercado Pago registrado/.test(r1.data?.error ?? "") && r2.status === 422 && /no está pagado/.test(r2.data?.error ?? ""), `sin pago=${r1.status} ${r1.data?.error} · pendiente=${r2.status} ${r2.data?.error}`);
   }
@@ -1082,14 +1115,44 @@ async function reembolsos(A, B, ADMIN) {
     // 401 "Unauthorized use of live credentials"); la ruta devuelve su respuesta tal cual.
     const g = await crearGrupo(A.artistaId, [{ producto: P, cantidad: 1 }], "pagado");
     await admin.from("ordenes").update({ mercadopago_id: "1" }).eq("grupo_id", g);
-    const r = await reembolsar({ grupo: g }, cookieAdmin);
+    const r = await reembolsar({ grupo: g, motivo: "otro", detalle: "prueba" }, cookieAdmin);
     check("(rb-11) Admin: centralizado pagado → se pide a MP con el token de MuzikChile y devuelve su respuesta (pago inexistente → 502)",
       r.status === 502 && r.data?.mp_status >= 400 && r.data?.payment_id === "1" && !!r.data?.mp, JSON.stringify(r));
+    const { data: filas } = await admin.from("ordenes").select("reembolso_motivo, reembolso_pedido_at").eq("grupo_id", g);
+    check("(rb-14) Si MP no hace el reembolso, el motivo no queda guardado",
+      r.data?.motivo_guardado === false && (filas ?? []).every((f) => f.reembolso_motivo === null && f.reembolso_pedido_at === null), JSON.stringify(filas));
+  }
+  {
+    // El motivo se exige antes de leer el pedido o llamar a MP.
+    const g = await crearGrupo(A.artistaId, [{ producto: P, cantidad: 1 }], "pagado");
+    await admin.from("ordenes").update({ mercadopago_id: "3" }).eq("grupo_id", g);
+    const casos = await Promise.all([
+      reembolsar({ grupo: g }, cookieAdmin),
+      reembolsar({ grupo: g, motivo: "porque_si" }, cookieAdmin),
+      reembolsar({ grupo: g, motivo: "otro" }, cookieAdmin),
+      reembolsar({ grupo: g, motivo: "otro", detalle: "   " }, cookieAdmin),
+      reembolsar({ grupo: g, motivo: "retracto", detalle: "x".repeat(501) }, cookieAdmin),
+      reembolsar({ grupo: g, motivo: "retracto", detalle: 5 }, cookieAdmin),
+    ]);
+    check("(rb-13) Sin motivo, motivo inventado, \"otro\" sin detalle, detalle largo o no texto → 400, sin llamar a MP",
+      casos.every((c) => c.status === 400 && c.data?.mp_status === undefined), casos.map((c) => `${c.status} ${c.data?.error}`).join(" · "));
+  }
+  {
+    // La base también lo exige, venga de donde venga la escritura.
+    const g = await crearGrupo(A.artistaId, [{ producto: P, cantidad: 1 }], "pagado");
+    const { error: e1 } = await admin.from("ordenes").update({ reembolso_motivo: "otro", reembolso_pedido_at: new Date().toISOString() }).eq("grupo_id", g);
+    const { error: e2 } = await admin.from("ordenes").update({ reembolso_motivo: "retracto" }).eq("grupo_id", g);
+    const { error: e3 } = await admin.from("ordenes").update({ reembolso_motivo: "capricho", reembolso_pedido_at: new Date().toISOString() }).eq("grupo_id", g);
+    const { error: e4 } = await admin.from("ordenes").update({ reembolso_parcial_monto: 0, reembolso_parcial_at: new Date().toISOString() }).eq("grupo_id", g);
+    const { error: e5 } = await admin.from("ordenes").update({ reembolso_parcial_monto: 1000 }).eq("grupo_id", g);
+    const { error: ok } = await admin.from("ordenes").update({ reembolso_motivo: "otro", reembolso_detalle: "prueba", reembolso_pedido_at: new Date().toISOString() }).eq("grupo_id", g);
+    check("(rb-15) CHECK: \"otro\" sin detalle, motivo sin fecha, motivo inventado, parcial 0 o sin fecha → rechazado; completo → permitido",
+      [e1, e2, e3, e4, e5].every((e) => e?.code === "23514") && !ok, [e1, e2, e3, e4, e5, ok].map(fmt).join(" · "));
   }
   {
     const g = await crearGrupo(A.artistaId, [{ producto: P, cantidad: 1 }], "pagado");
     await admin.from("ordenes").update({ mercadopago_id: "2", liquidado: true }).eq("grupo_id", g);
-    const r = await reembolsar({ grupo: g }, cookieAdmin);
+    const r = await reembolsar({ grupo: g, motivo: "otro", detalle: "prueba" }, cookieAdmin);
     check("(rb-12) Admin: centralizado ya liquidado al artista → 422, no se llama a MP",
       r.status === 422 && /liquid/.test(r.data?.error ?? "") && r.data?.mp_status === undefined, JSON.stringify(r));
   }

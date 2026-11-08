@@ -19,6 +19,7 @@ export interface ChecklistTienda {
   identidad: boolean;
   mp: boolean;
   despacho: boolean;
+  contacto: boolean;
   producto: boolean;
 }
 
@@ -40,6 +41,10 @@ export interface PanelTienda {
   comentario: string | null;
   identidadDeclarada: boolean;
   despacho: DespachoTienda;
+  /** Correo de contacto para compradores (tiendas.contacto_email). */
+  contactoEmail: string | null;
+  /** El correo de su cuenta: se sugiere como contacto, editable. */
+  correoCuenta: string | null;
   checklist: ChecklistTienda;
   terminos: { version: string; aceptadoAt: string | null };
   /** Su última aceptación, de cualquier versión: avisa cuando hay una nueva. */
@@ -66,6 +71,7 @@ export interface TiendaAdmin {
   resueltaAt: string | null;
   identidadDeclaradaAt: string | null;
   despacho: DespachoTienda;
+  contactoEmail: string | null;
   checklist: ChecklistTienda;
   terminos: { version: string; aceptadoAt: string | null };
   comision: { porcentaje: number; detalle: string | null };
@@ -73,11 +79,18 @@ export interface TiendaAdmin {
   productos: { id: string; nombre: string; estado: string }[];
 }
 
+/**
+ * Formato del correo de contacto: el mismo que el CHECK de
+ * tiendas.contacto_email (migración 20261108020000).
+ */
+export const FORMATO_CORREO = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
 /** Cómo se llama cada ítem del checklist cuando falta. */
 export const FALTA_CHECKLIST: Record<keyof ChecklistTienda, string> = {
   terminos:  "aceptar los términos",
   identidad: "declarar tu identidad de Mercado Pago",
   mp:        "conectar Mercado Pago",
   despacho:  "definir despacho o retiro",
+  contacto:  "escribir tu correo de contacto para compradores",
   producto:  "crear un producto en borrador",
 };

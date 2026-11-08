@@ -109,6 +109,7 @@ async function completarChecklist(u) {
   await admin.from("artistas").update({ cobros_activos: true }).eq("id", u.artistaId);
   await admin.from("tiendas").update({
     identidad_mp_declarada: true, despacho_modo: "envio", despacho_costo: 3000, despacho_plazo_min: 2, despacho_plazo_max: 5,
+    contacto_email: `${PREFIJO}-contacto@example.com`,
   }).eq("artista_id", u.artistaId);
   await rpc("aceptar_terminos_artista", { p_artista_id: u.artistaId, p_user_id: u.userId, p_version: VERSION });
 }
@@ -251,6 +252,17 @@ async function casos(A, B, ADMIN) {
     check("(b4) Costo negativo, modo inventado o plazo al revés → rechazado por CHECK",
       e1?.code === "23514" && e2?.code === "23514" && e3?.code === "23514", `${fmt(e1)} · ${fmt(e2)} · ${fmt(e3)}`);
   }
+  {
+    const correo = `${PREFIJO}-contacto-a@example.com`;
+    const { error } = await A.cliente.from("tiendas").update({ contacto_email: correo }).eq("artista_id", A.artistaId);
+    check("(b5) Define su correo de contacto para compradores → permitido", !error && (await tienda(A.artistaId)).contacto_email === correo, fmt(error));
+    const { error: e1 } = await A.cliente.from("tiendas").update({ contacto_email: "sin-arroba" }).eq("artista_id", A.artistaId);
+    const { error: e2 } = await A.cliente.from("tiendas").update({ contacto_email: `${"x".repeat(250)}@a.cl` }).eq("artista_id", A.artistaId);
+    check("(b6) Correo sin formato o de más de 254 caracteres → rechazado por CHECK",
+      e1?.code === "23514" && e2?.code === "23514" && (await tienda(A.artistaId)).contacto_email === correo, `${fmt(e1)} · ${fmt(e2)}`);
+    const { data: upd, error: e3 } = await B.cliente.from("tiendas").update({ contacto_email: "ajeno@example.com" }).eq("artista_id", A.artistaId).select("artista_id");
+    check("(b7) Otro artista cambia el contacto de A → 0 filas", !e3 && upd.length === 0 && (await tienda(A.artistaId)).contacto_email === correo, fmt(e3));
+  }
 
   console.log("\n── Lectura ──");
   {
@@ -294,7 +306,7 @@ async function casos(A, B, ADMIN) {
     const r = await rpc("solicitar_tienda", { p_artista_id: C.artistaId, p_version: VERSION });
     const faltan = r.error?.message ?? "";
     check("(e1) Sin checklist → rechazado y dice qué falta",
-      r.error?.code === "22023" && ["despacho", "identidad", "mp", "producto", "terminos"].every((k) => faltan.includes(k)), fmt(r.error));
+      r.error?.code === "22023" && ["contacto", "despacho", "identidad", "mp", "producto", "terminos"].every((k) => faltan.includes(k)), fmt(r.error));
     check("(e2) Sigue 'no_activa'", (await tienda(C.artistaId)).estado === "no_activa");
   }
   await completarChecklist(C);
@@ -305,6 +317,16 @@ async function casos(A, B, ADMIN) {
   {
     const r = await rpc("solicitar_tienda", { p_artista_id: C.artistaId, p_version: "9.9-prueba" });
     check("(e4) Con términos aceptados en otra versión → falta 'terminos'", /terminos/.test(r.error?.message ?? ""), fmt(r.error));
+  }
+  {
+    // Sin correo de contacto no se solicita: el comprador no sabría a quién escribir.
+    const antes = (await tienda(C.artistaId)).contacto_email;
+    await admin.from("tiendas").update({ contacto_email: null }).eq("artista_id", C.artistaId);
+    const c = await rpc("checklist_tienda", { p_artista_id: C.artistaId, p_version: VERSION });
+    const r = await rpc("solicitar_tienda", { p_artista_id: C.artistaId, p_version: VERSION });
+    check("(e4b) Sin correo de contacto → el checklist lo marca y la solicitud dice 'contacto'",
+      c.data?.contacto === false && /incompleto: contacto, producto$/.test(r.error?.message ?? ""), `${JSON.stringify(c.data)} · ${fmt(r.error)}`);
+    await admin.from("tiendas").update({ contacto_email: antes }).eq("artista_id", C.artistaId);
   }
   const borrador = await sembrarProducto(C.artistaId, "borrador");
   const aprobadoAjeno = await sembrarProducto(B.artistaId, "borrador");
@@ -533,6 +555,7 @@ async function rutasDelPanel() {
     check("(m7) Sin ventas, tieneOrdenes es false y no hay nada por despachar", d?.tieneOrdenes === false && d?.porDespachar === 0);
     check("(m7a) Trae su slug; sin tienda activa, sin fecha de activación", d?.slug === `${PREFIJO}-f` && d?.activaDesde === null, JSON.stringify(d));
     check("(m7b) Sin aceptaciones, ultimaAceptacion es null", d?.ultimaAceptacion === null);
+    check("(m7c) Sin contacto definido, sugiere el correo de su cuenta", d?.contactoEmail === null && d?.correoCuenta === `${PREFIJO}-f@example.com`, JSON.stringify({ c: d?.contactoEmail, cuenta: d?.correoCuenta }));
   }
   {
     await admin.from("artistas").update({ es_founder: true, founder_hasta: null }).eq("id", F.artistaId);
@@ -557,6 +580,7 @@ async function rutasDelPanel() {
     await admin.from("artistas").update({ cobros_activos: true }).eq("id", F.artistaId);
     await F.cliente.from("tiendas").update({
       identidad_mp_declarada: true, despacho_modo: "retiro", retiro_detalle: "Metro Baquedano",
+      contacto_email: `${PREFIJO}-tienda-f@example.com`,
     }).eq("artista_id", F.artistaId);
     const { error } = await F.cliente.from("productos").insert({
       artista_id: F.artistaId, nombre: `${PREFIJO}-panel`, precio: 5000, stock: 1, tipo: "fisico", imagenes: [], estado: "borrador",

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { clienteServicio, tokenVigente } from "@/lib/mp/conexiones";
+import { esMotivoReembolso } from "@/lib/reembolsos";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +20,15 @@ const UUID = /^[0-9a-f-]{36}$/i;
  * (órdenes 'reembolsado', stock, cupón) lo aplica el webhook cuando MP avisa
  * el pago 'refunded', igual que si el artista reembolsara desde su panel.
  *
- * Body: `{ grupo }` (external_reference del pedido). Devuelve el status y el
- * cuerpo de MP tal cual, para diagnosticar.
+ * Es una herramienta de emergencia: el reembolso normal lo hace el artista
+ * desde su panel de Mercado Pago (términos para artistas, punto 9). Por eso
+ * exige un motivo, que queda en las órdenes del pedido con fecha y admin
+ * cuando MP acepta el reembolso.
+ *
+ * Body: `{ grupo, motivo, detalle? }` (grupo = external_reference del pedido;
+ * motivo: retracto | defectuoso | no_despachado | otro, y con "otro" el
+ * detalle es obligatorio). Devuelve el status y el cuerpo de MP tal cual, para
+ * diagnosticar.
  *
  * Seguridad: el rol se comprueba acá, con la sesión de las cookies (mismo
  * patrón que /api/revalidar-noticias).
@@ -47,6 +55,21 @@ export async function POST(req: NextRequest) {
   const grupo = body && typeof body === "object" && "grupo" in body ? body.grupo : null;
   if (typeof grupo !== "string" || !UUID.test(grupo)) {
     return NextResponse.json({ error: "Falta el grupo (external_reference) del pedido" }, { status: 400 });
+  }
+  const motivo = body && typeof body === "object" && "motivo" in body ? body.motivo : null;
+  const detalleCrudo = body && typeof body === "object" && "detalle" in body ? body.detalle : null;
+  if (typeof motivo !== "string" || !esMotivoReembolso(motivo)) {
+    return NextResponse.json({ error: "Elige el motivo del reembolso" }, { status: 400 });
+  }
+  if (detalleCrudo != null && typeof detalleCrudo !== "string") {
+    return NextResponse.json({ error: "El detalle tiene que ser texto" }, { status: 400 });
+  }
+  const detalle = detalleCrudo?.trim() || null;
+  if (motivo === "otro" && !detalle) {
+    return NextResponse.json({ error: "Con el motivo \"otro\", escribe el detalle" }, { status: 400 });
+  }
+  if (detalle && detalle.length > 500) {
+    return NextResponse.json({ error: "El detalle admite hasta 500 caracteres" }, { status: 400 });
   }
 
   const servicio = clienteServicio();
@@ -98,5 +121,24 @@ export async function POST(req: NextRequest) {
   const mp = await mpRes.json().catch(() => null);
   (mpRes.ok ? console.log : console.error)("[reembolsar] respuesta de MP:", orden.mercadopago_id, mpRes.status, JSON.stringify(mp));
 
-  return NextResponse.json({ payment_id: orden.mercadopago_id, mp_status: mpRes.status, mp }, { status: mpRes.ok ? 200 : 502 });
+  // El motivo queda solo si MP aceptó: un intento fallido no reembolsó nada.
+  let motivoGuardado = false;
+  if (mpRes.ok) {
+    const { error: errMotivo } = await servicio
+      .from("ordenes")
+      .update({
+        reembolso_motivo: motivo,
+        reembolso_detalle: detalle,
+        reembolso_pedido_at: new Date().toISOString(),
+        reembolso_pedido_por: user.id,
+      })
+      .eq("grupo_id", grupo);
+    if (errMotivo) console.error("[reembolsar] MP aceptó, pero no se guardó el motivo:", grupo, JSON.stringify(errMotivo));
+    motivoGuardado = !errMotivo;
+  }
+
+  return NextResponse.json(
+    { payment_id: orden.mercadopago_id, mp_status: mpRes.status, mp, motivo_guardado: motivoGuardado },
+    { status: mpRes.ok ? 200 : 502 }
+  );
 }

@@ -105,7 +105,7 @@ Header y Footer. No importes `<Header/>` a mano en una página.
 | `/panel/**` | rol: `artista` | Dashboard del artista |
 | `/panel/tienda` | rol: `artista` | Mi tienda: estado, comisión, checklist (términos, Mercado Pago, identidad, despacho, borrador) y solicitud. `/panel/cobros` redirige acá |
 | `/panel/despacho` | rol: `artista` | Pedidos pagados/enviados con nombre, email y dirección del comprador. RLS (`artista_lee_sus_ordenes_pagadas`): el artista solo lee órdenes pagado/enviado/entregado/reembolsado |
-| `/admin/tiendas` | rol: `admin` | Bandeja de tiendas: checklist en vivo, aprobar, devolver, suspender y reactivar. `tienda_activa` y `artistas.cobro` se cambian solo acá |
+| `/admin/tiendas` | rol: `admin` | Bandeja de tiendas: checklist en vivo, aprobar, devolver, suspender y reactivar. `tienda_activa` y `artistas.cobro` se cambian solo acá |
 | `/admin/**` | rol: `admin` | Panel de administración |
 
 `/contacto` es una página simple con `CORREO_CONTACTO` (`lib/site.ts`).
@@ -172,6 +172,12 @@ despacho) y `terminos_artistas` (solo agregar filas). `estado` nunca se escribe 
 el navegador: cambia solo por `solicitar_tienda`, `aprobar_tienda`, `devolver_tienda` y
 `suspender_tienda` (service role, llamadas desde Route Handlers). `artistas.cobro` es
 el modo de cobro por artista; `aprobar_tienda` lo pasa a `marketplace`.
+
+**Devoluciones** (desde 2026-11-08): MuzikChile no gestiona los reembolsos. Retracto,
+garantía y reclamos van al artista, a `tiendas.contacto_email` (obligatorio en el
+checklist, público, copiado en `ordenes.vendedor_contacto` al pagar), y él reembolsa
+desde su cuenta de MP. MuzikChile es el respaldo: el botón del admin es de emergencia
+y exige motivo (`lib/reembolsos.ts`).
 
 **Retención** (plazos de la política de privacidad): cron diario
 `/api/cron/retencion` → `aplicar_retencion()` (solo service role). Órdenes de
@@ -259,8 +265,10 @@ escrito en el código.
   vez por pago** (lock en `pagos_mp.revertido_at`). Es el mismo camino venga
   de donde venga el reembolso: `/api/admin/mp/reembolsar` (marketplace, con el
   token del artista), el panel de MP del artista o el de MuzikChile. Un
-  reembolso parcial no revierte nada (queda en el log). `reembolsado` no se
-  elige a mano en `/admin/ordenes`.
+  reembolso parcial no revierte nada: queda en `ordenes.reembolso_parcial_monto`
+  y se ve en `/admin/ordenes`. Un aviso sin `?grupo=` con el `user_id` de un
+  artista conectado se consulta con su token. `reembolsado` no se elige a mano
+  en `/admin/ordenes`.
 
 ### Correos transaccionales
 

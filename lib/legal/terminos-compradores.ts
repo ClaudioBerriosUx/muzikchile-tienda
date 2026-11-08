@@ -11,12 +11,18 @@ import { VERSION_TERMINOS_COMPRADORES } from "@/lib/terminos";
  * Los párrafos son texto plano. {correo} y {privacidad} se reemplazan al
  * mostrarlos: enlaces en la página, texto en el correo.
  *
+ * Enfoque (decisión de Claudio, 2026-11-08): retractos, garantías y reclamos
+ * van primero al artista vendedor, a su correo de contacto, y el artista
+ * reembolsa desde su cuenta de Mercado Pago. MuzikChile es el respaldo si el
+ * artista no responde en 5 días hábiles.
+ *
  * Dudas para el abogado (también en su documento): si el envío de vuelta en un
- * retracto se puede trasladar al comprador, y el plazo de 6 meses de la
- * garantía legal.
+ * retracto se puede trasladar al comprador, el plazo de 6 meses de la garantía
+ * legal, la responsabilidad de la plataforma como intermediaria (art. 43) y si
+ * el paso previo de 5 días hábiles es compatible con el retracto.
  */
 
-export const ACTUALIZADO_TERMINOS_COMPRADORES = "7 de noviembre de 2026";
+export const ACTUALIZADO_TERMINOS_COMPRADORES = "8 de noviembre de 2026";
 
 export interface SeccionTerminos {
   id: string;
@@ -37,11 +43,12 @@ export const SECCIONES_TERMINOS_COMPRADORES: SeccionTerminos[] = [
     parrafos: [
       "MuzikChile es una plataforma operada por Claudio Berrios, persona natural, contacto {correo}.",
       "En MuzikChile cada artista vende sus propios productos. El vendedor y proveedor de cada producto es el " +
-        "artista que lo publica: su nombre aparece en la ficha, en el checkout y en tu correo de confirmación. El " +
-        "artista responde por el producto, su descripción, el despacho, el retracto y la garantía legal.",
-      "MuzikChile publica las tiendas, conecta el pago con Mercado Pago y facilita el contacto entre tú y el " +
-        "artista y, cuando corresponde, el reembolso, con su herramienta de Mercado Pago. MuzikChile no compra, " +
-        "vende ni despacha los productos.",
+        "artista que lo publica: su nombre y su correo de contacto aparecen en la ficha, en el checkout y en tu " +
+        "correo de confirmación. El artista responde por el producto, su descripción, el despacho, el retracto y la " +
+        "garantía legal, y te atiende directamente.",
+      "MuzikChile publica las tiendas y conecta el pago con Mercado Pago. Tu pago va a la cuenta de Mercado Pago " +
+        "del artista, y si corresponde un reembolso, el artista lo hace desde esa cuenta. MuzikChile no compra, " +
+        "vende ni despacha los productos, pero te respalda si el artista no te responde (punto 7).",
     ],
   },
   {
@@ -72,7 +79,7 @@ export const SECCIONES_TERMINOS_COMPRADORES: SeccionTerminos[] = [
         "el plazo de entrega en días hábiles. Ves esas condiciones en la ficha y en el checkout antes de pagar, y " +
         "quedan en tu correo de confirmación. El artista está obligado a cumplirlas.",
       "El plazo se cuenta desde que se aprueba el pago. Si tu pedido no llega dentro del plazo o llega dañado, " +
-        "escríbenos a {correo} con tu número de pedido.",
+        "escribe al artista, a su correo de contacto, con tu número de pedido (punto 7).",
       "Si eliges retiro, el artista coordina contigo el retiro por correo, según las indicaciones que viste antes " +
         "de pagar.",
     ],
@@ -83,12 +90,13 @@ export const SECCIONES_TERMINOS_COMPRADORES: SeccionTerminos[] = [
     parrafos: [
       "Puedes retractarte de tu compra, sin expresar causa, dentro de 10 días desde que recibes el producto " +
         "(art. 3 bis de la Ley 19.496). Si no recibiste la confirmación escrita de tu compra, el plazo es de 90 días.",
-      "Para ejercerlo, escribe a {correo} dentro del plazo, con tu número de pedido. Debes devolver el producto " +
-        "sin deterioro imputable a ti y con su embalaje original. El costo de enviar el producto de vuelta lo " +
-        "asume el artista: te indicamos cómo devolverlo.",
+      "Para ejercerlo, escribe al artista que te vendió, a su correo de contacto, dentro del plazo y con tu número " +
+        "de pedido. Basta con que tu aviso salga dentro del plazo. Debes devolver el producto sin deterioro " +
+        "imputable a ti y con su embalaje original. El costo de enviar el producto de vuelta lo asume el artista, " +
+        "que te indica cómo devolverlo.",
       "Recibes de vuelta todo lo que pagaste, incluido el envío, lo antes posible y siempre dentro de 45 días " +
-        "desde tu aviso, sin retención de gastos. El reembolso lo paga el artista y vuelve al medio con que " +
-        "pagaste, por Mercado Pago.",
+        "desde tu aviso, sin retención de gastos. El artista te reembolsa desde su cuenta de Mercado Pago, al medio " +
+        "con que pagaste.",
       "Durante el piloto ningún producto está excluido del derecho de retracto.",
     ],
   },
@@ -98,18 +106,23 @@ export const SECCIONES_TERMINOS_COMPRADORES: SeccionTerminos[] = [
     parrafos: [
       "Si el producto tiene fallas o defectos, o no corresponde a lo que compraste, puedes elegir entre su " +
         "reparación gratuita, su cambio o la devolución de lo pagado, dentro de 6 meses desde que lo recibes " +
-        "(garantía legal, Ley 19.496). Escribe a {correo} con tu número de pedido y una foto del problema. El " +
-        "responsable de la garantía es el artista vendedor.",
+        "(garantía legal, Ley 19.496). El responsable de la garantía es el artista vendedor: escríbele a su correo " +
+        "de contacto con tu número de pedido y una foto del problema.",
     ],
   },
   {
     id: "reclamos",
     titulo: "7. Reclamos y contacto",
     parrafos: [
-      "Para retractos, garantías, pedidos que no llegan o cualquier reclamo, escribe a {correo} con tu número de " +
-        "pedido. El vendedor es el artista: MuzikChile recibe tu mensaje, coordina la solución con el artista y, " +
-        "cuando corresponde, facilita el reembolso con su herramienta de Mercado Pago.",
-      "Si no quedas conforme, puedes recurrir al Servicio Nacional del Consumidor (SERNAC).",
+      "Para retractos, garantías, pedidos que no llegan o cualquier reclamo, escribe primero al artista que te " +
+        "vendió, a su correo de contacto (está en la ficha del producto, en el checkout y en tu correo de " +
+        "confirmación), con tu número de pedido. El artista debe responderte en un máximo de 5 días hábiles.",
+      "Si el artista no te responde en ese plazo, o su respuesta no resuelve tu caso, escríbenos a {correo} con tu " +
+        "número de pedido. MuzikChile contacta al artista para que cumpla y puede suspender su tienda. Este paso " +
+        "no cambia ni alarga los plazos de tus derechos: el plazo de retracto se cumple con tu primer aviso al " +
+        "artista.",
+      "En cualquier momento puedes recurrir al Servicio Nacional del Consumidor (SERNAC). Nada de este punto " +
+        "limita los derechos que la ley te da.",
     ],
   },
   {

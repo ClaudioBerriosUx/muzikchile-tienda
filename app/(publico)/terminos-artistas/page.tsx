@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 /** Fecha de esta versión. Actualizarla junto con VERSION_TERMINOS_ARTISTAS. */
-const ACTUALIZADO = "7 de noviembre de 2026";
+const ACTUALIZADO = "8 de noviembre de 2026";
 
 export default function TerminosArtistasPage() {
   const correo = (
@@ -84,7 +84,8 @@ export default function TerminosArtistasPage() {
         <Seccion titulo="3. Activar tu tienda">
           <P>
             Debes aceptar estos términos, conectar tu propia cuenta de Mercado Pago, declarar que tiene tu identidad
-            verificada, definir despacho o retiro y crear al menos un producto en borrador. Revisamos cada solicitud
+            verificada, definir despacho o retiro, indicar un correo de contacto para compradores y crear al menos un
+            producto en borrador. Revisamos cada solicitud
             y podemos aprobarla o devolverla con un comentario. Aprobarla no publica tus productos: cada uno pasa por
             revisión. Durante el piloto, además, tus productos solo se abren a la venta cuando MuzikChile habilite
             las compras del público.
@@ -140,17 +141,34 @@ export default function TerminosArtistasPage() {
           </P>
         </Seccion>
 
-        <Seccion titulo="9. Retracto">
+        <Seccion titulo="9. Retracto, garantía y reclamos">
+          <P>
+            Tú atiendes a tus compradores. Los retractos, garantías, pedidos que no llegan y cualquier reclamo de tus
+            pedidos te llegan a ti, al <B>correo de contacto para compradores</B> que indicas en Mi tienda. Ese correo
+            es público: se muestra en la ficha de tus productos, en el checkout y en el correo de confirmación de cada
+            compra. Mantenlo vigente y revísalo.
+          </P>
+          <P>
+            Debes responder cada mensaje de un comprador en un máximo de 5 días hábiles. Si no respondes, el comprador
+            puede escribir a {correo}: te contactaremos para que cumplas, y no responder o no cumplir es causal de
+            suspensión de tu tienda (punto 11).
+          </P>
           <P>
             El comprador puede retractarse dentro de 10 días desde la recepción, conforme al art. 3 bis de la Ley
             19.496. Si no recibió la confirmación escrita que exige la ley, ese plazo puede extenderse a 90 días. Debe
             devolver el producto sin deterioro imputable a él y con su embalaje original.
           </P>
           <P>
-            Debes devolver el dinero desde tu cuenta de Mercado Pago lo antes posible y siempre dentro de 45 días desde
-            el aviso, sin retener gastos. El costo de que el comprador te devuelva el producto lo asumes tú. Las
-            exclusiones del retracto solo valen en los casos que permite la ley y si se informaron claramente antes del
-            pago.
+            Si corresponde devolver el dinero, por retracto, garantía o un pedido no despachado, lo reembolsas tú desde
+            tu cuenta de Mercado Pago, en el detalle del pago, lo antes posible y siempre dentro de los plazos legales:
+            en un retracto, dentro de 45 días desde el aviso del comprador y sin retener gastos. El costo de que el
+            comprador te devuelva el producto lo asumes tú. Las exclusiones del retracto solo valen en los casos que
+            permite la ley y si se informaron claramente antes del pago.
+          </P>
+          <P>
+            Si no reembolsas lo que corresponde, MuzikChile puede hacerlo por ti desde su herramienta de Mercado Pago,
+            como medida de emergencia. La garantía legal la cumples tú: reparación, cambio o devolución del dinero, a
+            elección del comprador, según la Ley 19.496.
           </P>
         </Seccion>
 
@@ -168,8 +186,9 @@ export default function TerminosArtistasPage() {
 
         <Seccion titulo="11. Suspensión">
           <P>
-            Podemos suspender tu tienda si incumples el despacho, acumulas reclamos reiterados, vendes productos
-            prohibidos o infringes estos términos. Te avisaremos por correo con el motivo y 5 días hábiles para
+            Podemos suspender tu tienda si incumples el despacho, no respondes a tus compradores dentro de 5 días
+            hábiles, no reembolsas lo que corresponde, acumulas reclamos reiterados, vendes productos prohibidos o
+            infringes estos términos. Te avisaremos por correo con el motivo y 5 días hábiles para
             corregir.
           </P>
           <P>

@@ -210,6 +210,8 @@ export async function POST(request: Request) {
       entrega_plazo_min:   envio ? d.plazo_min : null,
       entrega_plazo_max:   envio ? d.plazo_max : null,
       entrega_detalle:     envio ? null : d.retiro_detalle,
+      // El correo de contacto que vio el comprador: a él dirige retractos y reclamos.
+      vendedor_contacto:   d.contacto,
       // La versión aceptada en el checkout: la confirmación lleva su copia.
       terminos_version:      VERSION_TERMINOS_COMPRADORES,
       terminos_aceptados_at: terminosAceptadosAt,

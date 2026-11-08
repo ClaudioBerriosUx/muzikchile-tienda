@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     .from("tiendas")
     .select(`
       artista_id, estado, comentario_moderacion, identidad_mp_declarada, identidad_mp_declarada_at,
-      despacho_modo, despacho_costo, despacho_plazo_min, despacho_plazo_max, retiro_detalle,
+      despacho_modo, despacho_costo, despacho_plazo_min, despacho_plazo_max, retiro_detalle, contacto_email,
       solicitada_at, resuelta_at,
       artistas!inner(nombre, slug, es_prueba, es_editorial, cobro, comision, es_founder, founder_hasta, baja_at)
     `)
@@ -96,6 +96,7 @@ export async function GET(req: NextRequest) {
         despacho_plazo_max: f.despacho_plazo_max,
         retiro_detalle: f.retiro_detalle,
       },
+      contactoEmail: f.contacto_email,
       checklist: checklists[i].data as unknown as ChecklistTienda,
       terminos: {
         version: VERSION_TERMINOS_ARTISTAS,

@@ -22,23 +22,27 @@ export interface OpcionesDespacho {
   retiro: { detalle: string } | null;
   /** false: la tienda no tiene despacho definido y se usa el envío sin costo. */
   configurado: boolean;
+  /** Correo de contacto para compradores; null si la tienda no lo definió. */
+  contacto: string | null;
 }
 
-export type FilaDespacho = Pick<Database["public"]["Tables"]["tiendas"]["Row"], "despacho_modo" | "despacho_costo" | "despacho_plazo_min" | "despacho_plazo_max" | "retiro_detalle">;
+export type FilaDespacho = Pick<Database["public"]["Tables"]["tiendas"]["Row"], "despacho_modo" | "despacho_costo" | "despacho_plazo_min" | "despacho_plazo_max" | "retiro_detalle" | "contacto_email">;
 
 export function opcionesDespacho(t: FilaDespacho | null | undefined): OpcionesDespacho {
   const modo = t?.despacho_modo ?? null;
   const conEnvio = (modo === "envio" || modo === "ambos") && t?.despacho_costo != null && t.despacho_plazo_max != null;
   const detalle = t?.retiro_detalle?.trim() ?? "";
   const conRetiro = (modo === "retiro" || modo === "ambos") && detalle !== "";
+  const contacto = t?.contacto_email ?? null;
 
   if (!conEnvio && !conRetiro) {
-    return { envio: { costo: 0, plazo_min: null, plazo_max: null }, retiro: null, configurado: false };
+    return { envio: { costo: 0, plazo_min: null, plazo_max: null }, retiro: null, configurado: false, contacto };
   }
   return {
     envio: conEnvio ? { costo: t!.despacho_costo!, plazo_min: t!.despacho_plazo_min, plazo_max: t!.despacho_plazo_max } : null,
     retiro: conRetiro ? { detalle } : null,
     configurado: true,
+    contacto,
   };
 }
 
@@ -54,7 +58,7 @@ export async function leerDespachos(
 ): Promise<Map<string, OpcionesDespacho> | null> {
   const { data, error } = await supabase
     .from("tiendas")
-    .select("artista_id, despacho_modo, despacho_costo, despacho_plazo_min, despacho_plazo_max, retiro_detalle")
+    .select("artista_id, despacho_modo, despacho_costo, despacho_plazo_min, despacho_plazo_max, retiro_detalle, contacto_email")
     .in("artista_id", artistaIds);
   if (error) {
     console.error("[despacho] error consultando tiendas:", JSON.stringify(error));

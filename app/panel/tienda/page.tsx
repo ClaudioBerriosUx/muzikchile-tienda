@@ -14,6 +14,7 @@ import { CORREO_CONTACTO } from "@/lib/site";
 import {
   ETIQUETA_ESTADO_TIENDA,
   FALTA_CHECKLIST,
+  FORMATO_CORREO,
   type ChecklistTienda,
   type DespachoTienda,
   type EstadoTienda,
@@ -36,6 +37,7 @@ const ETIQUETA_CHECKLIST: Record<keyof ChecklistTienda, string> = {
   mp:        "Mercado Pago conectado",
   identidad: "Identidad de Mercado Pago declarada",
   despacho:  "Despacho o retiro definido",
+  contacto:  "Correo de contacto para compradores",
   producto:  "Al menos un producto en borrador",
 };
 
@@ -140,7 +142,10 @@ function VistaChecklist({ data, onCambio }: { data: PanelTienda; onCambio: () =>
             <FormDespacho key={JSON.stringify(data.despacho)} artistaId={data.artistaId} inicial={data.despacho} onCambio={onCambio} />
           </div>
         </Paso>
-        <Paso listo={checklist.producto} titulo="5. Crea al menos un producto en borrador">
+        <Paso listo={checklist.contacto} titulo="5. Escribe tu correo de contacto para compradores">
+          <FormContacto key={data.contactoEmail ?? ""} data={data} onCambio={onCambio} />
+        </Paso>
+        <Paso listo={checklist.producto} titulo="6. Crea al menos un producto en borrador">
           <div className="mb-3"><QuePuedesVender /></div>
           <p className="mb-3" style={{ ...TEXTO, fontSize: "14px", color: "#666666" }}>
             Tus productos se guardan como borrador. Cuando aprobemos tu tienda, pasan a revisión sin que tengas que reenviarlos.
@@ -202,6 +207,11 @@ function VistaSolicitada({ data }: { data: PanelTienda }) {
         <p className="mt-3" style={{ ...TEXTO, fontSize: "13px", color: "#666666" }}>
           <TextoDespacho despacho={data.despacho} />
         </p>
+        {data.contactoEmail && (
+          <p className="mt-1" style={{ ...TEXTO, fontSize: "13px", color: "#666666" }}>
+            Contacto para compradores: {data.contactoEmail}
+          </p>
+        )}
       </Tarjeta>
 
       <div className="mt-4 flex flex-wrap gap-3">
@@ -265,6 +275,10 @@ function VistaActiva({ data, onCambio }: { data: PanelTienda; onCambio: () => vo
 
         <Tarjeta titulo="Despacho y retiro">
           <FormDespacho key={JSON.stringify(data.despacho)} artistaId={data.artistaId} inicial={data.despacho} onCambio={onCambio} />
+        </Tarjeta>
+
+        <Tarjeta titulo="Contacto para compradores">
+          <FormContacto key={data.contactoEmail ?? ""} data={data} onCambio={onCambio} />
         </Tarjeta>
 
         <Tarjeta titulo="Comisión">
@@ -505,6 +519,68 @@ function Identidad({ data, onCambio }: { data: PanelTienda; onCambio: () => void
 }
 
 const CAMPO = "w-full rounded-md border border-[#e8e8e8] px-3 py-2.5 text-sm focus:border-[#e8003d] focus:outline-none";
+
+function FormContacto({ data, onCambio }: { data: PanelTienda; onCambio: () => void }) {
+  const [correo, setCorreo] = useState(data.contactoEmail ?? data.correoCuenta ?? "");
+  const [guardando, setGuardando] = useState(false);
+  const limpio = correo.trim().toLowerCase();
+  const sinCambios = limpio === (data.contactoEmail ?? "");
+
+  const guardar = async () => {
+    if (!FORMATO_CORREO.test(limpio) || limpio.length > 254) { toast.error("Revisa el correo: no parece válido."); return; }
+    setGuardando(true);
+    const supabase = createClient();
+    const { data: filas, error } = await supabase
+      .from("tiendas")
+      .update({ contacto_email: limpio })
+      .eq("artista_id", data.artistaId)
+      .select("artista_id");
+    setGuardando(false);
+    if (error || !filas?.length) {
+      toast.error("No pudimos guardar el correo. Intenta de nuevo.");
+      return;
+    }
+    toast.success("Correo de contacto guardado");
+    onCambio();
+  };
+
+  return (
+    <div className="flex flex-col gap-3" style={TEXTO}>
+      <p style={{ fontSize: "14px", color: "#444444" }}>
+        Tus compradores te escriben acá por retractos, garantías y reclamos de sus pedidos. Puede ser distinto del
+        correo de tu cuenta. <strong>Es público:</strong> se muestra en la ficha de tus productos, en el checkout y en
+        el correo de confirmación de cada compra. Respondes en máximo 5 días hábiles.
+      </p>
+      <label className="text-sm" style={{ color: "#444444" }}>
+        Correo de contacto para compradores
+        <input
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          maxLength={254}
+          value={correo}
+          onChange={(e) => setCorreo(e.target.value)}
+          placeholder="tienda@tubanda.cl"
+          className={`${CAMPO} mt-1.5 sm:max-w-sm`}
+        />
+        {!data.contactoEmail && data.correoCuenta && correo.trim() === data.correoCuenta && (
+          <span className="mt-1 block text-xs" style={{ color: "#666666" }}>
+            Te sugerimos el correo de tu cuenta. Cámbialo si prefieres otro.
+          </span>
+        )}
+      </label>
+      <button
+        type="button"
+        onClick={guardar}
+        disabled={guardando || sinCambios}
+        className="h-10 w-fit rounded-md px-5 text-sm font-semibold text-white"
+        style={{ backgroundColor: guardando || sinCambios ? "#d4d4d4" : "#111111", cursor: guardando || sinCambios ? "not-allowed" : "pointer" }}
+      >
+        {guardando ? "Guardando…" : "Guardar correo"}
+      </button>
+    </div>
+  );
+}
 
 function FormDespacho({ artistaId, inicial, onCambio }: { artistaId: string; inicial: DespachoTienda; onCambio: () => void }) {
   const [modo, setModo] = useState<DespachoTienda["despacho_modo"]>(inicial.despacho_modo);

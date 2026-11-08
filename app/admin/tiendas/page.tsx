@@ -33,6 +33,7 @@ const ETIQUETA_CHECKLIST: Record<keyof ChecklistTienda, string> = {
   identidad: "Identidad de Mercado Pago declarada",
   mp:        "Mercado Pago conectado",
   despacho:  "Despacho o retiro definido",
+  contacto:  "Correo de contacto para compradores",
   producto:  "Al menos un producto en borrador",
 };
 
@@ -273,6 +274,12 @@ function Detalle({ tienda, onCambio }: { tienda: TiendaAdmin; onCambio: () => vo
             {conRetiro && <li>Retiro: {d.retiro_detalle}</li>}
           </ul>
         )}
+      </Bloque>
+
+      <Bloque titulo="Contacto para compradores">
+        <p style={{ ...TEXTO, fontSize: "14px", color: tienda.contactoEmail ? "#444444" : "#666666" }}>
+          {tienda.contactoEmail ?? "Sin definir."}
+        </p>
       </Bloque>
 
       <Bloque titulo="Términos">

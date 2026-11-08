@@ -419,9 +419,16 @@ export type Database = {
           mp_preference_id: string | null
           precio_unitario: number
           producto_id: string | null
+          reembolso_detalle: string | null
+          reembolso_motivo: string | null
+          reembolso_parcial_at: string | null
+          reembolso_parcial_monto: number | null
+          reembolso_pedido_at: string | null
+          reembolso_pedido_por: string | null
           region_envio: string | null
           terminos_aceptados_at: string | null
           terminos_version: string | null
+          vendedor_contacto: string | null
         }
         Insert: {
           artista_id?: string | null
@@ -453,9 +460,16 @@ export type Database = {
           mp_preference_id?: string | null
           precio_unitario?: number
           producto_id?: string | null
+          reembolso_detalle?: string | null
+          reembolso_motivo?: string | null
+          reembolso_parcial_at?: string | null
+          reembolso_parcial_monto?: number | null
+          reembolso_pedido_at?: string | null
+          reembolso_pedido_por?: string | null
           region_envio?: string | null
           terminos_aceptados_at?: string | null
           terminos_version?: string | null
+          vendedor_contacto?: string | null
         }
         Update: {
           artista_id?: string | null
@@ -487,9 +501,16 @@ export type Database = {
           mp_preference_id?: string | null
           precio_unitario?: number
           producto_id?: string | null
+          reembolso_detalle?: string | null
+          reembolso_motivo?: string | null
+          reembolso_parcial_at?: string | null
+          reembolso_parcial_monto?: number | null
+          reembolso_pedido_at?: string | null
+          reembolso_pedido_por?: string | null
           region_envio?: string | null
           terminos_aceptados_at?: string | null
           terminos_version?: string | null
+          vendedor_contacto?: string | null
         }
         Relationships: [
           {
@@ -736,6 +757,7 @@ export type Database = {
         Row: {
           artista_id: string
           comentario_moderacion: string | null
+          contacto_email: string | null
           created_at: string
           despacho_costo: number | null
           despacho_modo: string | null
@@ -753,6 +775,7 @@ export type Database = {
         Insert: {
           artista_id: string
           comentario_moderacion?: string | null
+          contacto_email?: string | null
           created_at?: string
           despacho_costo?: number | null
           despacho_modo?: string | null
@@ -770,6 +793,7 @@ export type Database = {
         Update: {
           artista_id?: string
           comentario_moderacion?: string | null
+          contacto_email?: string | null
           created_at?: string
           despacho_costo?: number | null
           despacho_modo?: string | null

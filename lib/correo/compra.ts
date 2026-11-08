@@ -27,7 +27,7 @@ async function cargarPedido(servicio: SupabaseClient<Database>, grupoId: string)
     servicio
       .from("ordenes")
       // Un solo literal: concatenado, el cliente de Supabase pierde el tipo de las columnas.
-      .select("id, artista_id, cantidad, precio_unitario, monto_artista, comision_monto, envio_monto, estado, created_at, comprador_nombre, comprador_email, direccion_envio, ciudad_envio, region_envio, entrega, entrega_plazo_min, entrega_plazo_max, entrega_detalle, terminos_version, terminos_aceptados_at, productos(nombre), artistas(nombre, user_id)")
+      .select("id, artista_id, cantidad, precio_unitario, monto_artista, comision_monto, envio_monto, estado, created_at, comprador_nombre, comprador_email, direccion_envio, ciudad_envio, region_envio, entrega, entrega_plazo_min, entrega_plazo_max, entrega_detalle, vendedor_contacto, cobro, terminos_version, terminos_aceptados_at, productos(nombre), artistas(nombre, user_id)")
       .eq("grupo_id", grupoId)
       .order("created_at"),
     servicio
@@ -58,6 +58,8 @@ function porArtista(lineas: Linea[]): Map<string, Linea[]> {
 const cobrado = (l: Linea) => Number(l.monto_artista) + Number(l.comision_monto);
 const nombreProducto = (l: Linea) => l.productos?.nombre ?? "Producto";
 const nombreArtista = (ls: Linea[]) => ls[0].artistas?.nombre ?? "El artista";
+/** El correo de contacto que vio el comprador al pagar (copia en la orden). */
+const contacto = (ls: Linea[]) => ls[0].vendedor_contacto?.trim() || null;
 
 /** "Envío a …, llega en 2 a 5 días hábiles" o "Retiro: …", en HTML y en texto. */
 function entrega(ls: Linea[], para: "comprador" | "artista"): { html: string; texto: string } {
@@ -116,11 +118,13 @@ export function armarConfirmacion(grupoId: string, { lineas, pago }: Pedido): Ar
     const e = entrega(ls, "comprador");
     bloquesHtml.push(
       h2(`Vendido por ${nombreArtista(ls)}`) +
+        (contacto(ls) ? p(`Contacto del vendedor: <strong>${esc(contacto(ls))}</strong>`) : "") +
         tablaMontos(ls.map((l) => [`${l.cantidad} × ${esc(nombreProducto(l))}`, clp(cobrado(l))])) +
         p(e.html)
     );
     bloquesTexto.push(
       `VENDIDO POR ${nombreArtista(ls).toUpperCase()}\n` +
+        (contacto(ls) ? `Contacto del vendedor: ${contacto(ls)}\n` : "") +
         ls.map((l) => `- ${l.cantidad} × ${nombreProducto(l)}: ${clp(cobrado(l))}`).join("\n") +
         `\n${e.texto}`
     );
@@ -139,10 +143,23 @@ export function armarConfirmacion(grupoId: string, { lineas, pago }: Pedido): Ar
     .map((s) => `${s.titulo.toUpperCase()}\n${s.parrafos.map(conTexto).join("\n")}`)
     .join("\n\n");
 
+  // A quién escribir: el artista vendedor, a su correo de contacto. Un pedido
+  // sin contacto copiado (anterior a esa columna) va directo a MuzikChile.
+  const vendedores = [...porArtista(lineas).values()].map((ls) => ({ nombre: nombreArtista(ls), contacto: contacto(ls) }));
+  const conContacto = vendedores.filter((v) => v.contacto);
+  const aQuien = conContacto.length === 0
+    ? `escribe a ${CORREO_CONTACTO}`
+    : vendedores.length === 1
+      ? `escribe primero a ${conContacto[0].nombre}, el artista que te vendió, a ${conContacto[0].contacto}`
+      : `escribe primero al artista que te vendió ese producto, a su correo de contacto (${conContacto.map((v) => `${v.nombre}: ${v.contacto}`).join("; ")})`;
+  const respaldo = conContacto.length === 0
+    ? ""
+    : ` El artista te responde y, si corresponde, te reembolsa desde su cuenta de Mercado Pago. Si no te responde en 5 días ` +
+      `hábiles, escríbenos a ${CORREO_CONTACTO} con tu número de pedido: lo contactamos y podemos suspender su tienda.`;
   const retracto =
     `Puedes retractarte dentro de 10 días desde que recibes tu pedido, sin expresar causa, y recibes de vuelta todo ` +
-    `lo pagado, incluido el envío. Para ejercerlo, para la garantía o para cualquier reclamo, escribe a ${CORREO_CONTACTO} ` +
-    `con tu número de pedido. Cada producto lo vende su artista; MuzikChile coordina con él y facilita el reembolso.`;
+    `lo pagado, incluido el envío. Para ejercerlo, para la garantía o para cualquier reclamo, ${aQuien}, con tu número ` +
+    `de pedido.${respaldo} Siempre puedes recurrir al SERNAC.`;
 
   const html = marco(`Confirmación de compra · Pedido ${num}`, [
     p(`Hola ${esc(primera.comprador_nombre)},`),
@@ -204,6 +221,17 @@ export function armarNuevaVenta(grupoId: string, ls: Linea[], correoArtista: str
   ];
   const paraTi = productos - comision + envio;
   const aviso = "Usa los datos del comprador solo para despachar y responder sobre este pedido.";
+  // El artista atiende retractos y reclamos (términos para artistas). En
+  // marketplace reembolsa desde su cuenta de MP; en centralizado el pago entró
+  // a MuzikChile y lo reembolsamos nosotros.
+  const tuContacto = contacto(ls);
+  const reclamos =
+    `Tú atiendes los retractos, garantías y reclamos de este pedido. El comprador te escribirá` +
+    `${tuContacto ? ` a tu correo de contacto, ${tuContacto}` : ""}. Respóndele en máximo 5 días hábiles. ` +
+    (ls[0].cobro === "marketplace"
+      ? "Si corresponde devolver el dinero, reembólsalo desde tu cuenta de Mercado Pago, en el detalle de este pago, dentro de los plazos legales. "
+      : `Si corresponde devolver el dinero, avísanos a ${CORREO_CONTACTO} y lo reembolsamos desde MuzikChile. `) +
+    "Si no respondes, el comprador puede escribirnos y podemos suspender tu tienda.";
   // MP cobra al vendedor su propia comisión de procesamiento, que no conocemos.
   const PARA_TI = "Para ti, antes de la comisión de Mercado Pago";
   const notaMp = "Mercado Pago descuenta además su comisión de procesamiento, según las condiciones de tu cuenta con ellos.";
@@ -218,6 +246,8 @@ export function armarNuevaVenta(grupoId: string, ls: Linea[], correoArtista: str
     h2("Montos"),
     tablaMontos(montos, [PARA_TI, clp(paraTi)]),
     p(esc(notaMp), true),
+    h2("Retractos y reclamos"),
+    p(esc(reclamos)),
     boton(`${BASE_URL}/panel/despacho`, "Ver en Por despachar"),
     p(esc(aviso), true),
   ].join("\n"));
@@ -228,6 +258,7 @@ export function armarNuevaVenta(grupoId: string, ls: Linea[], correoArtista: str
     `QUÉ DESPACHAR\n${ls.map((l) => `- ${l.cantidad} × ${nombreProducto(l)}`).join("\n")}`,
     `ENTREGA\n${e.texto}`,
     `MONTOS\n${montos.map(([a, b]) => `${a}: ${b}`).join("\n")}\n${PARA_TI}: ${clp(paraTi)}\n${notaMp}`,
+    `RETRACTOS Y RECLAMOS\n${reclamos}`,
     `Ver en Por despachar: ${BASE_URL}/panel/despacho`,
     aviso,
   ].join("\n\n");

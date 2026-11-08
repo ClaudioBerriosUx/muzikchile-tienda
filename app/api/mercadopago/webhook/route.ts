@@ -31,7 +31,12 @@ const UUID = /^[0-9a-f-]{36}$/i;
  * cupón, una sola vez por pago. Es el mismo camino venga de donde venga el
  * reembolso: la ruta /api/admin/mp/reembolsar, el panel de MP del artista o el
  * de MuzikChile; lo que manda es el estado del pago en MP. Un reembolso
- * parcial deja el pago en 'approved': no se revierte nada, queda en el log.
+ * parcial deja el pago en 'approved': no se revierte nada, y el monto queda en
+ * ordenes.reembolso_parcial_monto para revisarlo en /admin/ordenes.
+ *
+ * Un aviso sin ?grupo= (llega a la URL de la aplicación) que trae el user_id
+ * de un artista conectado se consulta con el token de ese artista, y solo se
+ * procesa si calza con una orden marketplace suya y de esa cuenta.
  *
  * Desvinculación (mp-connect, application.deauthorized): procesarDesvinculacion
  * confirma con MP antes de pasar la conexión del artista a 'reconectar'.
@@ -129,6 +134,34 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Sin ?grupo=: el aviso llegó a la URL de la aplicación, no a la de la
+    // preferencia (p. ej. un reembolso hecho por el artista en su panel). Si
+    // trae el user_id de un artista conectado, el pago es de su cuenta y se
+    // consulta con su token; después se exige que calce con una orden
+    // marketplace de ese artista y esa cuenta.
+    let delAviso: { artistaId: string; mpUserId: number } | null = null;
+    if (!directo && !grupoAviso) {
+      const mpUserId = Number(body.user_id);
+      if (Number.isSafeInteger(mpUserId) && mpUserId > 0) {
+        const { data: conexion, error: conexionError } = await supabase
+          .from("mp_conexiones")
+          .select("artista_id")
+          .eq("mp_user_id", mpUserId)
+          .maybeSingle();
+        if (conexionError) return reintentar();
+        if (conexion) {
+          const vendedor = await tokenVigente(supabase, conexion.artista_id);
+          if (!vendedor.ok) {
+            // El camino principal es el aviso con ?grupo=; este es el respaldo.
+            console.error("[webhook] aviso sin ?grupo= de un artista sin token vigente:", paymentId, mpUserId, vendedor.motivo);
+            return ok();
+          }
+          token = vendedor.accessToken;
+          delAviso = { artistaId: conexion.artista_id, mpUserId };
+        }
+      }
+    }
+
     const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -141,6 +174,28 @@ export async function POST(req: NextRequest) {
     const pago = await mpRes.json();
     const grupoId: unknown = pago.external_reference;
     if (typeof grupoId !== "string" || !UUID.test(grupoId)) return ok();
+
+    if (delAviso) {
+      const { data: orden, error: ordenError } = await supabase
+        .from("ordenes")
+        .select("artista_id, cobro, mp_collector_id")
+        .eq("grupo_id", grupoId)
+        .limit(1)
+        .maybeSingle();
+      if (ordenError) return reintentar();
+      const calza =
+        orden?.cobro === "marketplace" &&
+        orden.artista_id === delAviso.artistaId &&
+        Number(orden.mp_collector_id) === delAviso.mpUserId;
+      if (!calza) {
+        console.error(
+          "[webhook] aviso sin ?grupo= que no calza con una orden marketplace del artista; no se procesa:",
+          JSON.stringify({ paymentId, grupoId, mpUserId: delAviso.mpUserId, cobro: orden?.cobro ?? null })
+        );
+        return ok();
+      }
+      directo = { grupo: grupoId, collectorId: delAviso.mpUserId };
+    }
 
     // El pago tiene que ser de ese pedido y haber entrado a la cuenta del
     // artista: un ?grupo= ajeno no sirve para confirmar otra cosa.
@@ -202,11 +257,23 @@ export async function POST(req: NextRequest) {
           }
         });
       }
-      if (Number(pago.transaction_amount_refunded) > 0) {
+      const reembolsado = Number(pago.transaction_amount_refunded);
+      if (reembolsado > 0) {
         console.error(
           "[webhook] reembolso parcial: el pago sigue aprobado, no se revierte nada:",
-          JSON.stringify({ paymentId, grupoId, reembolsado: pago.transaction_amount_refunded, total: pagado })
+          JSON.stringify({ paymentId, grupoId, reembolsado, total: pagado })
         );
+        // Queda a la vista en /admin/ordenes. Solo cambia si el monto cambió:
+        // la fecha es la del primer aviso con ese monto.
+        const { error } = await supabase
+          .from("ordenes")
+          .update({ reembolso_parcial_monto: reembolsado, reembolso_parcial_at: new Date().toISOString() })
+          .eq("grupo_id", grupoId)
+          .or(`reembolso_parcial_monto.is.null,reembolso_parcial_monto.neq.${reembolsado}`);
+        if (error) {
+          console.error("[webhook] no se pudo anotar el reembolso parcial:", grupoId, JSON.stringify(error));
+          return reintentar();
+        }
       }
     } else if (pago.status === "refunded" || pago.status === "charged_back") {
       const { data: resultado, error: rpcError } = await supabase.rpc("revertir_pago", {
@@ -239,6 +306,16 @@ export async function POST(req: NextRequest) {
         .eq("grupo_id", grupoId)
         .eq("estado", "pendiente");
       if (error) return reintentar();
+      // Un pago ya confirmado que MP informa 'cancelled' (p. ej. una devolución
+      // con el dinero aún a liberar) no se revierte solo: queda para revisar.
+      const { data: pagadas } = await supabase
+        .from("ordenes")
+        .select("id")
+        .eq("grupo_id", grupoId)
+        .in("estado", ["pagado", "enviado", "entregado"]);
+      if (pagadas?.length) {
+        console.error("[webhook] pago confirmado que MP informa como", pago.status, "; revisar a mano:", paymentId, grupoId);
+      }
     }
 
     return ok();

@@ -35,6 +35,7 @@ interface Despacho {
   plazo_max: number | null;
   retiro_detalle: string | null;
   configurado: boolean;
+  contacto: string | null;
 }
 
 /** Respuesta de /api/checkout/cotizar: los montos que de verdad se cobran. */
@@ -446,6 +447,12 @@ export default function CheckoutPage() {
                             onElegir={() => setEntregas((e) => ({ ...e, [d.artista_id]: op }))}
                           />
                         ))}
+                        {d.contacto && (
+                          <p className="m-0 break-words text-[13px] leading-[1.55] text-tema-texto-2">
+                            Vendido por {d.artista_nombre} · contacto:{" "}
+                            <a href={`mailto:${d.contacto}`} className="text-tema-azul-texto underline hover:text-tema-azul-texto-hover">{d.contacto}</a>
+                          </p>
+                        )}
                       </fieldset>
                     ))}
                   </div>
@@ -555,7 +562,8 @@ export default function CheckoutPage() {
                   )}
                   <p id="chk-retracto" className="m-0 text-[13px] leading-[1.55] text-tema-texto-2">
                     <strong className="font-bold text-tema-texto-claro">Derecho de retracto:</strong> tienes 10 días desde que
-                    recibes tu pedido para devolverlo sin expresar causa, y recibes de vuelta todo lo pagado, incluido el envío.{" "}
+                    recibes tu pedido para devolverlo sin expresar causa, y recibes de vuelta todo lo pagado, incluido el envío.
+                    Se lo pides al artista que te vende, a su correo de contacto.{" "}
                     <Link href="/terminos#retracto" target="_blank" className="text-tema-azul-texto underline hover:text-tema-azul-texto-hover">
                       Cómo funciona
                     </Link>

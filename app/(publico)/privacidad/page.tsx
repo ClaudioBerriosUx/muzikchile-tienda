@@ -91,7 +91,9 @@ export default function PrivacidadPage() {
             guarda cifrada). Tu perfil público: nombre artístico, biografía, ciudad, región, géneros,
             foto y enlaces a tus redes. Tu RUT y tus datos bancarios (banco, tipo y número de cuenta)
             para pagarte. Si conectas tu cuenta de Mercado Pago: su identificador, nombre de usuario y
-            correo, más los permisos que nos entrega Mercado Pago, que guardamos cifrados. También
+            correo, más los permisos que nos entrega Mercado Pago, que guardamos cifrados. Si activas tu
+            tienda, el correo de contacto para compradores que indiques, que es público: se muestra en la
+            ficha de tus productos, en el checkout y en el correo de confirmación de cada compra. También
             registramos la fecha de tu invitación y de tus inicios de sesión.
           </P>
           <P>

@@ -69,6 +69,8 @@ export interface DespachoCotizado {
   retiro_detalle: string | null;
   /** false: la tienda no definió despacho (envío sin costo, sin plazo). */
   configurado: boolean;
+  /** Correo de contacto del artista para compradores (tiendas.contacto_email). */
+  contacto: string | null;
 }
 
 export interface Cotizacion {
@@ -273,6 +275,7 @@ export async function cotizarCarrito(
       plazo_max: o.envio?.plazo_max ?? null,
       retiro_detalle: o.retiro?.detalle ?? null,
       configurado: o.configurado,
+      contacto: o.contacto,
     });
   }
 
