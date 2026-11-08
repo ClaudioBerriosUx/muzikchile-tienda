@@ -48,6 +48,7 @@ import { createServerClient } from "@supabase/ssr";
 import { comisionEfectiva, founderVigente, textoFounder } from "../lib/comision.ts";
 import { cifrar } from "../lib/mp/cifrado.ts";
 import { frenarSiEsProduccion } from "./freno-produccion.mjs";
+import { VERSION_TERMINOS_COMPRADORES } from "../lib/terminos.ts";
 
 frenarSiEsProduccion();
 
@@ -67,6 +68,8 @@ const FAMILIA = "rlstest-";
 const PREFIJO = `${FAMILIA}${Date.now()}`;
 const CUPON_FAMILIA = "RLSTEST-";
 // Con envío, crear-preferencia exige dirección (commit 7).
+// Con los términos para compradores aceptados, en su versión vigente (commit 8a).
+const ACEPTA = { acepta_terminos: true, terminos_version: VERSION_TERMINOS_COMPRADORES };
 const DIRECCION_PRUEBA = { direccion: "Av. Prueba 123", ciudad: "Santiago", region: "Metropolitana de Santiago" };
 const CUPON = (s) => `${CUPON_FAMILIA}${Date.now()}-${s}`.toUpperCase();
 
@@ -589,7 +592,7 @@ async function api(A, B) {
   {
     // Founder vencido ayer: tiene que cobrar su comisión (10%), no 0%.
     await admin.from("artistas").update({ es_founder: true, founder_hasta: "2020-01-01" }).eq("id", A.artistaId);
-    const r = await post("/api/mercadopago/crear-preferencia", {
+    const r = await post("/api/mercadopago/crear-preferencia", { ...ACEPTA,
       items: [{ id: P, cantidad: 2, precio: 1 }],
       comprador: { nombre: "RLS Test", email: `${PREFIJO}-comprador@example.com`, ...DIRECCION_PRUEBA },
       cupon_codigo: cA.codigo,
@@ -680,13 +683,13 @@ async function despachoEnElCobro() {
     check("(de-5) Envío a una tienda que solo ofrece retiro → 422 de la entrega", r.status === 422 && r.data?.campo === "entrega", JSON.stringify(r.data));
   }
   {
-    const r = await post("/api/mercadopago/crear-preferencia", { items: [{ id: PE1, cantidad: 1 }], comprador: comprador("sin-dir") });
+    const r = await post("/api/mercadopago/crear-preferencia", { ...ACEPTA, items: [{ id: PE1, cantidad: 1 }], comprador: comprador("sin-dir") });
     const { count } = await admin.from("ordenes").select("id", { count: "exact", head: true }).eq("comprador_email", `${PREFIJO}-de-sin-dir@example.com`);
     check("(de-6) crear-preferencia con envío y sin dirección → 400, sin órdenes", r.status === 400 && r.data?.campo === "direccion" && count === 0, JSON.stringify(r.data));
   }
   {
     // Dos productos del mismo artista: un solo envío, en una línea, sin comisión.
-    const r = await post("/api/mercadopago/crear-preferencia", {
+    const r = await post("/api/mercadopago/crear-preferencia", { ...ACEPTA,
       items: [{ id: PE1, cantidad: 2 }, { id: PE2, cantidad: 1 }],
       comprador: comprador("envio", DIRECCION),
     });
@@ -713,7 +716,7 @@ async function despachoEnElCobro() {
   }
   {
     // Retiro: no pide dirección y, si llega, no la guarda.
-    const r = await post("/api/mercadopago/crear-preferencia", {
+    const r = await post("/api/mercadopago/crear-preferencia", { ...ACEPTA,
       items: [{ id: PE1, cantidad: 1 }],
       comprador: comprador("retiro", DIRECCION),
       entregas: { [E.artistaId]: "retiro" },
@@ -737,6 +740,43 @@ async function despachoEnElCobro() {
     const conDespacho = /despacho\\?":\{\\?"envio\\?":\{\\?"costo\\?":3990/.test(html) && html.includes(RETIRO);
     const sin = await fetch(`${API}/producto/${PS}`).then((x) => x.text());
     check("(de-11) La ficha muestra el despacho de la tienda; sin definir, no", conDespacho && /configurado\\?":false/.test(sin), `con=${conDespacho}`);
+  }
+}
+
+// ── Términos para compradores (te) ───────────────────────────────────────────
+// crear-preferencia exige aceptar la versión vigente y la guarda en cada orden.
+
+async function terminosEnElCobro() {
+  console.log(`\n── (te) Términos para compradores · ${API} ──`);
+  const T = await crearArtista("te");
+  const P = await crearProducto(T.artistaId, "te");
+  const comprador = (sufijo) => ({ nombre: "RLS Test", email: `${PREFIJO}-te-${sufijo}@example.com`, ...DIRECCION_PRUEBA });
+  const ordenesDe = async (sufijo) =>
+    (await admin.from("ordenes").select("terminos_version, terminos_aceptados_at").eq("comprador_email", `${PREFIJO}-te-${sufijo}@example.com`)).data ?? [];
+
+  for (const [caso, sufijo, extra] of [
+    ["sin aceptar", "sin", {}],
+    ["con acepta_terminos: false", "falso", { acepta_terminos: false, terminos_version: VERSION_TERMINOS_COMPRADORES }],
+    ["con acepta_terminos: \"true\" (texto)", "texto", { acepta_terminos: "true", terminos_version: VERSION_TERMINOS_COMPRADORES }],
+    ["con una versión vieja", "vieja", { acepta_terminos: true, terminos_version: "0.1" }],
+  ]) {
+    const r = await post("/api/mercadopago/crear-preferencia", { items: [{ id: P, cantidad: 1 }], comprador: comprador(sufijo), ...extra });
+    check(`(te) crear-preferencia ${caso} → 400 de los términos, sin órdenes`,
+      r.status === 400 && r.data?.campo === "terminos" && (await ordenesDe(sufijo)).length === 0, JSON.stringify(r.data));
+  }
+  {
+    const desde = Date.now();
+    const r = await post("/api/mercadopago/crear-preferencia", { ...ACEPTA, items: [{ id: P, cantidad: 1 }], comprador: comprador("ok") });
+    const [o] = await ordenesDe("ok");
+    const hora = o ? new Date(o.terminos_aceptados_at).getTime() : 0;
+    check("(te) Aceptando la versión vigente: la orden guarda la versión y la hora del servidor",
+      r.status === 200 && o?.terminos_version === VERSION_TERMINOS_COMPRADORES && hora >= desde - 5000 && hora <= Date.now() + 5000,
+      `status=${r.status} ${r.data?.error ?? ""} ${JSON.stringify(o)}`);
+  }
+  {
+    const html = await fetch(`${API}/terminos`).then((x) => x.text());
+    check("(te) /terminos responde con la versión vigente, el retracto y noindex",
+      html.includes(`Versión ${VERSION_TERMINOS_COMPRADORES}`) && html.includes('id="retracto"') && /<meta name="robots" content="noindex/.test(html));
   }
 }
 
@@ -1022,7 +1062,7 @@ async function marketplace(A, B, ADMIN) {
     {
       // Token del artista falso: MP lo rechaza. Lo que importa es que NO se
       // cobre con el token de MuzikChile (eso daría 200) y que no queden órdenes.
-      const r = await post("/api/mercadopago/crear-preferencia", {
+      const r = await post("/api/mercadopago/crear-preferencia", { ...ACEPTA,
         items: [{ id: PA, cantidad: 1 }],
         comprador: { nombre: "RLS Test", email: `${PREFIJO}-comprador@example.com`, ...DIRECCION_PRUEBA },
       });
@@ -1036,7 +1076,7 @@ async function marketplace(A, B, ADMIN) {
       const { error: e1 } = await admin.from("mp_conexiones").update({
         access_token_cifrado: cifrarConOtraLlave("APP_USR-falso-access"),
       }).eq("artista_id", A.artistaId);
-      const r = await post("/api/mercadopago/crear-preferencia", {
+      const r = await post("/api/mercadopago/crear-preferencia", { ...ACEPTA,
         items: [{ id: PA, cantidad: 1 }],
         comprador: { nombre: "RLS Test", email: `${PREFIJO}-comprador@example.com`, ...DIRECCION_PRUEBA },
       });
@@ -1169,6 +1209,7 @@ async function main() {
     if (FASE2) await fase2(A, B, ADMIN);
     if (API) await api(A, B);
     if (API) await despachoEnElCobro();
+    if (API) await terminosEnElCobro();
     if (API) await marketplace(A, B, ADMIN);
     if (API) await renovacion(A, B, ADMIN);
   } catch (err) {

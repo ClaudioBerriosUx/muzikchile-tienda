@@ -5,6 +5,7 @@ import { cotizarCarrito, normalizarItems } from "@/lib/checkout/cotizar";
 import { normalizarEntregas } from "@/lib/checkout/despacho";
 import { tokenVigente } from "@/lib/mp/conexiones";
 import { leerConfigVentas, MENSAJE_VENTAS_CERRADAS, puedeComprar } from "@/lib/ventas";
+import { VERSION_TERMINOS_COMPRADORES } from "@/lib/terminos";
 
 interface CompradorBody {
   nombre: string;
@@ -16,7 +17,9 @@ interface CompradorBody {
 }
 
 /**
- * Body: `{ items: [{ id, cantidad }], comprador, cupon_codigo?, entregas? }`.
+ * Body: `{ items: [{ id, cantidad }], comprador, cupon_codigo?, entregas?,
+ * acepta_terminos, terminos_version }`. Sin aceptar la versión vigente de los
+ * términos para compradores no se crea nada; la aceptación queda en cada orden.
  * Precio, stock, cupón, comisión y despacho salen de la base
  * (lib/checkout/cotizar.ts); si el cliente manda `precio` o `nombre`, se ignoran.
  * El envío va como un ítem más de la preferencia, sin comisión, y cada orden
@@ -53,6 +56,15 @@ export async function POST(request: Request) {
     if (!ventas || !puedeComprar(ventas, comprador.email)) {
       return NextResponse.json({ error: MENSAJE_VENTAS_CERRADAS, ventas_cerradas: true }, { status: 403 });
     }
+
+    // Términos para compradores: la versión vigente, aceptada en el checkout.
+    if (body?.acepta_terminos !== true || body?.terminos_version !== VERSION_TERMINOS_COMPRADORES) {
+      return NextResponse.json(
+        { error: "Para comprar tienes que aceptar los términos y condiciones vigentes.", campo: "terminos" },
+        { status: 400 }
+      );
+    }
+    const terminosAceptadosAt = new Date().toISOString();
 
     const codigo = typeof body?.cupon_codigo === "string" ? body.cupon_codigo : null;
     const resultado = await cotizarCarrito(supabase, items, codigo, entregas);
@@ -198,6 +210,9 @@ export async function POST(request: Request) {
       entrega_plazo_min:   envio ? d.plazo_min : null,
       entrega_plazo_max:   envio ? d.plazo_max : null,
       entrega_detalle:     envio ? null : d.retiro_detalle,
+      // La versión aceptada en el checkout: la confirmación lleva su copia.
+      terminos_version:      VERSION_TERMINOS_COMPRADORES,
+      terminos_aceptados_at: terminosAceptadosAt,
       // Centralizado: los defaults de la columna ('centralizado', sin collector).
       ...(directo ? { cobro: "marketplace", mp_collector_id: directo.collectorId } : {}),
       };

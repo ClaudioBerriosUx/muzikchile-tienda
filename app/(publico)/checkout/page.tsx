@@ -15,6 +15,7 @@ import { formatCLP, REGIONES_CHILE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { BotonQuitar, FOCO, MiniaturaItem, Monto, Stepper } from "@/components/tienda/carrito-ui";
 import { textoPlazo, type Entrega } from "@/lib/checkout/despacho";
+import { VERSION_TERMINOS_COMPRADORES } from "@/lib/terminos";
 
 interface Cupon {
   codigo: string;
@@ -174,6 +175,9 @@ export default function CheckoutPage() {
   const [buscandoCupon,  setBuscandoCupon]  = useState(false);
   const [metodoPago,     setMetodoPago]     = useState<"mercadopago" | "webpay">("mercadopago");
   const [pagando,        setPagando]        = useState(false);
+  // Términos para compradores: obligatorio para pagar; el servidor lo vuelve a exigir.
+  const [aceptaTerminos, setAceptaTerminos] = useState(false);
+  const [faltaAceptar,   setFaltaAceptar]   = useState(false);
   const [hidratado,      setHidratado]      = useState(false);
 
   const { register, handleSubmit, setError, formState: { errors } } = useForm<FormData>({
@@ -253,6 +257,12 @@ export default function CheckoutPage() {
   const onSubmit = async (comprador: FormData) => {
     if (metodoPago !== "mercadopago") { toast.info("WebPay estará disponible próximamente"); return; }
     if (!cotizacion) { toast.error("Estamos calculando tu pedido. Intenta en un momento."); return; }
+    if (!aceptaTerminos) {
+      setFaltaAceptar(true);
+      document.getElementById("chk-terminos")?.focus();
+      toast.error("Para comprar, acepta los términos y condiciones.");
+      return;
+    }
     if (hayEnvio) {
       const requeridos = [
         ["direccion", 5, "Ingresa tu dirección completa"],
@@ -274,6 +284,8 @@ export default function CheckoutPage() {
           comprador: hayEnvio ? comprador : { nombre: comprador.nombre, email: comprador.email, telefono: comprador.telefono },
           cupon_codigo: cuponAplicado?.codigo ?? null,
           entregas: Object.fromEntries(despachos.map((d) => [d.artista_id, d.entrega])),
+          acepta_terminos: aceptaTerminos,
+          terminos_version: VERSION_TERMINOS_COMPRADORES,
         }),
       });
       const data = await res.json();
@@ -281,6 +293,8 @@ export default function CheckoutPage() {
         // El cupón pudo vencer o agotarse entre que se aplicó y se pagó.
         if (data.campo === "cupon") setCuponAplicado(null);
         if (data.campo === "entrega") setEntregas({});
+        // Versión de términos vieja (página abierta antes de un cambio): hay que recargar.
+        if (data.campo === "terminos") { setAceptaTerminos(false); setFaltaAceptar(true); }
         toast.error(data.error ?? "Error al procesar el pago");
         return;
       }
@@ -516,6 +530,37 @@ export default function CheckoutPage() {
                     <span className="rounded-md border border-tema-borde-campo px-2 py-[3px] text-[10px] font-bold uppercase tracking-[0.12em] text-tema-texto-claro">Próximamente</span>
                   </div>
                 </fieldset>
+
+                <div className="flex flex-col gap-2.5">
+                  <label htmlFor="chk-terminos" className="flex cursor-pointer items-start gap-2.5 text-sm leading-[1.5] text-tema-texto">
+                    <input
+                      id="chk-terminos"
+                      type="checkbox"
+                      checked={aceptaTerminos}
+                      onChange={(e) => { setAceptaTerminos(e.target.checked); if (e.target.checked) setFaltaAceptar(false); }}
+                      aria-invalid={faltaAceptar || undefined}
+                      aria-describedby={faltaAceptar ? "chk-terminos-error" : "chk-retracto"}
+                      className="mt-0.5 h-[18px] w-[18px] shrink-0 cursor-pointer accent-tema-azul-texto"
+                    />
+                    <span>
+                      Acepto los{" "}
+                      <Link href="/terminos" target="_blank" className="font-bold text-tema-azul-texto underline hover:text-tema-azul-texto-hover">
+                        términos y condiciones
+                      </Link>
+                      . Cada producto lo vende su artista.
+                    </span>
+                  </label>
+                  {faltaAceptar && (
+                    <p id="chk-terminos-error" className="m-0 text-[13px] text-tema-rojo-texto">Acepta los términos para continuar.</p>
+                  )}
+                  <p id="chk-retracto" className="m-0 text-[13px] leading-[1.55] text-tema-texto-2">
+                    <strong className="font-bold text-tema-texto-claro">Derecho de retracto:</strong> tienes 10 días desde que
+                    recibes tu pedido para devolverlo sin expresar causa, y recibes de vuelta todo lo pagado, incluido el envío.{" "}
+                    <Link href="/terminos#retracto" target="_blank" className="text-tema-azul-texto underline hover:text-tema-azul-texto-hover">
+                      Cómo funciona
+                    </Link>
+                  </p>
+                </div>
 
                 <button type="submit" disabled={pagando} className={cn(botonPagar, "hidden lg:flex")}>
                   {pagando ? "Procesando..." : `Ir a pagar ${formatCLP(total)}`}

@@ -381,6 +381,8 @@ export type Database = {
           precio_unitario: number
           producto_id: string | null
           region_envio: string | null
+          terminos_aceptados_at: string | null
+          terminos_version: string | null
         }
         Insert: {
           artista_id?: string | null
@@ -413,6 +415,8 @@ export type Database = {
           precio_unitario?: number
           producto_id?: string | null
           region_envio?: string | null
+          terminos_aceptados_at?: string | null
+          terminos_version?: string | null
         }
         Update: {
           artista_id?: string | null
@@ -445,6 +449,8 @@ export type Database = {
           precio_unitario?: number
           producto_id?: string | null
           region_envio?: string | null
+          terminos_aceptados_at?: string | null
+          terminos_version?: string | null
         }
         Relationships: [
           {

@@ -27,6 +27,7 @@ const REDES = [
  * devoluciones" (/despachos) se sacaron para el lanzamiento porque daban 404.
  */
 const LEGALES = [
+  { label: "Términos y condiciones", href: "/terminos" },
   { label: "Política de privacidad", href: "/privacidad" },
   { label: "Contacto", href: "/contacto" },
 ];

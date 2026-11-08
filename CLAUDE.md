@@ -88,6 +88,7 @@ Header y Footer. No importes `<Header/>` a mano en una página.
 | `/tienda` | público | Catálogo con filtros (categoría, región, tipo, orden, búsqueda) |
 | `/noticias`, `/noticias/[slug]` | público | Feed de publicaciones y nota individual |
 | `/privacidad` | público | Política de privacidad (borrador, pendiente revisión legal) |
+| `/terminos` | público, `noindex` (piloto), enlazada en footer y checkout | Términos para compradores. Texto en `lib/legal/terminos-compradores.ts` (también va en el correo de confirmación); versión en `lib/terminos.ts` |
 | `/terminos-artistas` | público, `noindex`, sin enlaces | Borrador para revisión legal; versión en `lib/terminos.ts` |
 | `/producto/[id]` | público | Ficha de producto |
 | `/artista/[slug]` | público | Ficha del artista (SSR con `generateMetadata`) |
@@ -103,8 +104,8 @@ Header y Footer. No importes `<Header/>` a mano en una página.
 | `/admin/**` | rol: `admin` | Panel de administración |
 
 `/contacto` es una página simple con `CORREO_CONTACTO` (`lib/site.ts`).
-`/convocatorias`, `/artistas`, `/terminos` y `/despachos` **no existen** y se
-sacaron del Header y el Footer; al crearlas, se vuelven a enlazar.
+`/convocatorias`, `/artistas` y `/despachos` **no existen** y se sacaron del
+Header y el Footer; al crearlas, se vuelven a enlazar.
 
 ### Dominio y redirects
 
@@ -228,6 +229,10 @@ escrito en el código.
   preferencia y en `ordenes.envio_monto` de una sola línea del artista. Cada
   orden guarda la copia de la entrega informada (`entrega`, plazo, detalle de
   retiro): lo informado obliga al artista.
+- **Términos para compradores**: `crear-preferencia` exige `acepta_terminos: true`
+  y `terminos_version` igual a `VERSION_TERMINOS_COMPRADORES`, y guarda versión y
+  hora en cada orden. Si cambias el texto de `lib/legal/terminos-compradores.ts`,
+  sube esa versión.
 - `POST /api/checkout/cotizar` — lo que muestra el checkout (misma función).
 - `POST /api/mercadopago/crear-preferencia` — cotiza, lee `mp_access_token` y
   `mp_modo` de `app_settings`, crea la preferencia e inserta una fila

@@ -27,7 +27,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { createServerClient } from "@supabase/ssr";
 import { frenarSiEsProduccion } from "./freno-produccion.mjs";
-import { VERSION_TERMINOS_ARTISTAS } from "../lib/terminos.ts";
+import { VERSION_TERMINOS_ARTISTAS, VERSION_TERMINOS_COMPRADORES } from "../lib/terminos.ts";
 
 frenarSiEsProduccion();
 
@@ -691,7 +691,12 @@ async function frenoDeVentas() {
     const res = await fetch(`${API}/api/mercadopago/crear-preferencia`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ items: [{ id: P, cantidad: 1 }], comprador: { nombre: "Prueba", email: correo } }),
+      body: JSON.stringify({
+        items: [{ id: P, cantidad: 1 }],
+        comprador: { nombre: "Prueba", email: correo, direccion: "Av. Prueba 123", ciudad: "Santiago", region: "Metropolitana de Santiago" },
+        acepta_terminos: true,
+        terminos_version: VERSION_TERMINOS_COMPRADORES,
+      }),
     });
     return { status: res.status, data: await res.json().catch(() => null) };
   };

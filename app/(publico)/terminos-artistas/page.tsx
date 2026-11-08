@@ -148,7 +148,7 @@ export default function TerminosArtistasPage() {
           </P>
           <P>
             Debes devolver el dinero desde tu cuenta de Mercado Pago lo antes posible y siempre dentro de 45 días desde
-            el aviso, sin retener gastos. Si la ley pone a cargo del vendedor el envío de vuelta, lo asumes tú. Las
+            el aviso, sin retener gastos. El costo de que el comprador te devuelva el producto lo asumes tú. Las
             exclusiones del retracto solo valen en los casos que permite la ley y si se informaron claramente antes del
             pago.
           </P>
