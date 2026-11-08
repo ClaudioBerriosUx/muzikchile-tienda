@@ -1,8 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import type { Database } from "@/lib/supabase/types";
 import { clienteServicio, procesarDesvinculacion, tokenVigente } from "@/lib/mp/conexiones";
 import { revisarFirma } from "@/lib/mp/firma";
+import { enviarCorreosDeCompra } from "@/lib/correo/compra";
 
 export const dynamic = "force-dynamic";
 
@@ -188,7 +189,19 @@ export async function POST(req: NextRequest) {
       if (resultado === "sin_ordenes") {
         console.error("[webhook] pago registrado sin órdenes por confirmar:", paymentId, grupoId);
       }
-      // resultado === "procesado" → acá irán los correos (una sola vez por pago).
+      // Una sola vez por pago: confirmación al comprador (art. 12 A) y "nueva
+      // venta" a cada artista. Va después de responder, para no demorar a MP;
+      // si falla, el pago ya está confirmado y el cron /api/cron/correos lo reintenta.
+      if (resultado === "procesado") {
+        after(async () => {
+          try {
+            const r = await enviarCorreosDeCompra(clienteServicio(), grupoId);
+            console.log("[webhook] correos de compra:", grupoId, JSON.stringify(r));
+          } catch (err) {
+            console.error("[webhook] correos de compra fallaron; los reintenta el cron:", grupoId, err instanceof Error ? err.message : err);
+          }
+        });
+      }
       if (Number(pago.transaction_amount_refunded) > 0) {
         console.error(
           "[webhook] reembolso parcial: el pago sigue aprobado, no se revierte nada:",

@@ -39,6 +39,9 @@ Copia `.env.example` → `.env.local`:
 - `MP_WEBHOOK_SECRET` — clave secreta de los webhooks de MP (una o varias separadas
   por coma). Solo en Production. Nunca va al log: `lib/mp/firma.ts` anota solo
   qué clave coincidió, por posición.
+- `RESEND_API_KEY` — correos transaccionales (`lib/correo/`). Solo en Production.
+  Sin ella, en producción los correos quedan `fallido`; fuera de producción van a
+  `supabase/.temp/correos/`. `npm run dev:pruebas` la deja vacía siempre.
 
 ## Arquitectura general
 
@@ -187,17 +190,20 @@ queries. Los clientes de `lib/supabase/{client,server}.ts` están tipados con
 ```bash
 npx supabase migration new descripcion_del_cambio   # 1. crear
 #                                                     2. escribir el SQL
-npx supabase db push --linked                       # 3. aplicar (--linked: ver abajo)
-npx supabase gen types typescript --linked > lib/supabase/types.ts   # 4. regenerar
+npx supabase db push --remote                       # 3. aplicar (ver abajo)
+cmd /c "npx supabase gen types typescript --remote > lib/supabase/types.ts"   # 4. regenerar
 ```
 
 **El paso 4 no es opcional, y va en el mismo commit que la migración.** Nada de
 tocar el esquema desde el editor SQL del dashboard sin reflejarlo en una
 migración. Ver `supabase/README-migraciones.md`.
 
-`db push` va **siempre con `--linked`**: el CLI avisa (2026-10-24) que en su
-próxima versión apuntará por defecto a la base local. Lo corre Claudio (pide la
-contraseña de la base).
+Lo corre Claudio, en PowerShell 5, con un `SUPABASE_ACCESS_TOKEN` temporal (el
+login de la CLI de esta máquina responde 403). Desde 2026-11-07: **`--remote`, no
+`--linked`**, y la redirección de `gen types` envuelta en `cmd /c` (el `>` de
+PowerShell 5 escribe UTF-16). Primero `db push --remote --dry-run`: tiene que
+mostrar solo las migraciones nuevas. Una migración que solo agrega va **antes**
+del push del código que la usa.
 
 `supabase/migrations/` contiene **solo** archivos `<timestamp>_nombre.sql`:
 cualquier otra cosa ahí hace que el CLI emita un warning de "Skipping migration"
@@ -253,6 +259,24 @@ escrito en el código.
   token del artista), el panel de MP del artista o el de MuzikChile. Un
   reembolso parcial no revierte nada (queda en el log). `reembolsado` no se
   elige a mano en `/admin/ordenes`.
+
+### Correos transaccionales
+
+`lib/correo/enviar.ts` manda por la API de Resend (`noreply@muzikchile.cl`,
+respuesta a hola@) y anota cada correo en la tabla `correos` (tipo, referencia,
+destinatario, estado; sin el cuerpo). **(tipo, referencia) es único: cada correo
+sale una sola vez.** Todo se arma desde la base, nunca desde un aviso.
+
+- `confirmacion_compra` (al comprador) y `nueva_venta` (a cada artista):
+  `lib/correo/compra.ts`. Los dispara el webhook con `after()` cuando
+  `confirmar_pago` devuelve "procesado". La confirmación es la del **art. 12 A**:
+  lleva copia íntegra de los términos de la versión aceptada
+  (`terminosCompradores(version)`); al subir de versión, la anterior se guarda
+  ahí, o esas órdenes no se pueden confirmar.
+- `/api/cron/correos` (diario): reintenta lo de los pagos de los últimos 10 días
+  (hasta 5 intentos; los agotados se ven en `/admin/ordenes`) y borra el registro
+  de más de 2 años.
+- Todo lo que escribe un usuario pasa por `esc()` (`lib/correo/plantilla.ts`).
 
 ### Freno de ventas (piloto)
 

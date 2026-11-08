@@ -22,6 +22,33 @@ async function traerOrdenes(supabase: ReturnType<typeof createClient>) {
 }
 type Orden = Awaited<ReturnType<typeof traerOrdenes>>[number];
 
+/**
+ * Correos del pedido (tabla `correos`, solo lectura para admin): la
+ * confirmación al comprador (referencia = grupo_id) y la "nueva venta" a cada
+ * artista (grupo_id:artista_id). Un fallido con 5 intentos ya no se reintenta:
+ * hay que avisar a mano.
+ */
+async function traerCorreos(supabase: ReturnType<typeof createClient>, grupoId: string) {
+  const { data, error } = await supabase
+    .from("correos")
+    .select("tipo, referencia, destinatario, estado, intentos, ultimo_error, enviado_at")
+    .in("tipo", ["confirmacion_compra", "nueva_venta"])
+    .or(`referencia.eq.${grupoId},referencia.like.${grupoId}:*`);
+  if (error) throw error;
+  return data;
+}
+
+const ETIQUETA_CORREO: Record<string, string> = {
+  confirmacion_compra: "Confirmación al comprador",
+  nueva_venta: "Nueva venta al artista",
+};
+const ESTADO_CORREO: Record<string, string> = {
+  enviado: "Enviado",
+  fallido: "Falló",
+  pendiente: "Pendiente",
+  buzon_local: "Sin enviar (fuera de producción)",
+};
+
 // 'reembolsado' lo pone el webhook (revertir_pago) cuando MP informa un pago
 // reembolsado o con contracargo.
 const ESTADOS = ["todos", "pendiente", "pagado", "enviado", "entregado", "reembolsado"];
@@ -52,6 +79,13 @@ export default function OrdenesPage() {
   const { data: ordenes = [] } = useQuery({
     queryKey: ["admin-ordenes"],
     queryFn: () => traerOrdenes(supabase),
+  });
+
+  const grupoSeleccionado = seleccionada?.grupo_id ?? null;
+  const { data: correos = [] } = useQuery({
+    queryKey: ["admin-ordenes-correos", grupoSeleccionado],
+    queryFn: () => traerCorreos(supabase, grupoSeleccionado!),
+    enabled: !!grupoSeleccionado,
   });
 
   const filtradas = useMemo(() => {
@@ -233,6 +267,33 @@ export default function OrdenesPage() {
                 <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#111111", marginTop: "2px" }}>
                   {[seleccionada.direccion_envio, seleccionada.ciudad_envio, seleccionada.region_envio].filter(Boolean).join(", ")}
                 </p>
+              </div>
+            )}
+
+            {grupoSeleccionado && (
+              <div className="mb-3">
+                <p style={{ fontFamily: "var(--font-body)", fontSize: "11px", color: "#999999", textTransform: "uppercase" }}>Correos del pedido</p>
+                {correos.length === 0 ? (
+                  <p style={{ fontFamily: "var(--font-body)", fontSize: "14px", color: "#111111", marginTop: "2px" }}>
+                    {seleccionada.estado === "pendiente" ? "Se envían al confirmarse el pago." : "Ninguno registrado."}
+                  </p>
+                ) : (
+                  <ul className="mt-1 flex flex-col gap-1.5">
+                    {correos.map((c) => (
+                      <li key={`${c.tipo}-${c.referencia}`} style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#111111" }}>
+                        <span style={{ fontWeight: 600 }}>{ETIQUETA_CORREO[c.tipo] ?? c.tipo}:</span>{" "}
+                        <span style={{ color: c.estado === "fallido" ? "#b91c1c" : "#111111" }}>
+                          {ESTADO_CORREO[c.estado] ?? c.estado}
+                          {c.estado === "fallido" && ` (${c.intentos} intento${c.intentos === 1 ? "" : "s"}${c.intentos >= 5 ? ", avisar a mano" : ""})`}
+                        </span>
+                        {c.destinatario && <span style={{ color: "#666666" }}> · {c.destinatario}</span>}
+                        {c.estado === "fallido" && c.ultimo_error && (
+                          <span className="block" style={{ color: "#666666", fontSize: "12px" }}>{c.ultimo_error}</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
 

@@ -193,6 +193,45 @@ export type Database = {
           },
         ]
       }
+      correos: {
+        Row: {
+          created_at: string
+          destinatario: string | null
+          enviado_at: string | null
+          estado: string
+          id: string
+          intentos: number
+          referencia: string
+          resend_id: string | null
+          tipo: string
+          ultimo_error: string | null
+        }
+        Insert: {
+          created_at?: string
+          destinatario?: string | null
+          enviado_at?: string | null
+          estado?: string
+          id?: string
+          intentos?: number
+          referencia: string
+          resend_id?: string | null
+          tipo: string
+          ultimo_error?: string | null
+        }
+        Update: {
+          created_at?: string
+          destinatario?: string | null
+          enviado_at?: string | null
+          estado?: string
+          id?: string
+          intentos?: number
+          referencia?: string
+          resend_id?: string | null
+          tipo?: string
+          ultimo_error?: string | null
+        }
+        Relationships: []
+      }
       cupones: {
         Row: {
           activo: boolean

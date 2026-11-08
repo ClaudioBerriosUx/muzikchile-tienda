@@ -81,7 +81,7 @@ function ExitoContent() {
       pedido={numeroOrden}
       titulo={textos.titulo}
       texto={textos.texto}
-      nota="MercadoPago te envía el comprobante del pago a tu correo. Guarda el número de pedido por si necesitas escribirnos."
+      nota="Te enviamos la confirmación de tu compra a tu correo, con el detalle, la entrega y los términos que aceptaste. Mercado Pago te manda aparte el comprobante del pago. Guarda el número de pedido por si necesitas escribirnos."
       detalle={payment_id ? `Payment ID: ${payment_id}` : null}
     >
       <AccionResultado href="/tienda" principal>Seguir en la tienda</AccionResultado>

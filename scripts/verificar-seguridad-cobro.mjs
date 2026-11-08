@@ -49,6 +49,7 @@ import { comisionEfectiva, founderVigente, textoFounder } from "../lib/comision.
 import { cifrar } from "../lib/mp/cifrado.ts";
 import { frenarSiEsProduccion } from "./freno-produccion.mjs";
 import { VERSION_TERMINOS_COMPRADORES } from "../lib/terminos.ts";
+import { existsSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
 
 frenarSiEsProduccion();
 
@@ -183,6 +184,15 @@ const confirmar = (grupo, pago) =>
 
 // ── Limpieza (por prefijo, como en verificar-rls-publicaciones.mjs) ──────────
 
+/** Borra de supabase/.temp/correos/ los correos de un pedido (buzón local de dev:pruebas). */
+function borrarDelBuzon(grupo) {
+  const dir = "supabase/.temp/correos";
+  if (!existsSync(dir)) return;
+  for (const archivo of readdirSync(dir)) {
+    if (archivo.includes(`--${grupo}`)) unlinkSync(`${dir}/${archivo}`);
+  }
+}
+
 async function limpiar() {
   console.log("\nLimpiando datos de prueba...");
 
@@ -193,12 +203,19 @@ async function limpiar() {
     const { data: ordenes } = await admin.from("ordenes").select("grupo_id").in("producto_id", ids);
     const grupos = [...new Set((ordenes ?? []).map((o) => o.grupo_id).filter(Boolean))];
     if (grupos.length) await admin.from("pagos_mp").delete().in("grupo_id", grupos);
+    // El cron de correos barre todos los pagos recientes, también los de otros
+    // bloques: sus registros y su buzón local se van con sus pedidos.
+    for (const g of grupos) {
+      await admin.from("correos").delete().or(`referencia.eq.${g},referencia.like.${g}:*`);
+      borrarDelBuzon(g);
+    }
     await admin.from("ordenes").delete().in("producto_id", ids);
   }
   await admin.from("pagos_mp").delete().like("mp_payment_id", `${FAMILIA}%`);
   await admin.from("ordenes").delete().like("comprador_email", `${FAMILIA}%`);
   if (ids.length) await admin.from("productos").delete().in("id", ids);
   await admin.from("cupones").delete().like("codigo", `${CUPON_FAMILIA}%`);
+  await admin.from("correos").delete().like("destinatario", `${FAMILIA}%`);
 
   const { data: artistas } = await admin.from("artistas").select("id, user_id").like("slug", `${FAMILIA}%`);
   for (const a of artistas ?? []) {
@@ -780,6 +797,157 @@ async function terminosEnElCobro() {
   }
 }
 
+// ── Correos de compra (co) ───────────────────────────────────────────────────
+// lib/correo/: confirmación al comprador (art. 12 A) y "nueva venta" a cada
+// artista. Un pago aprobado no se puede simular, así que el pedido se confirma
+// con confirmar_pago y los correos los dispara el cron, como hace él con lo que
+// el webhook no alcanzó a mandar. dev:pruebas no tiene RESEND_API_KEY: los
+// correos quedan en supabase/.temp/correos/ (buzon_local) y se leen de ahí.
+
+async function correosDeCompra(A, ADMIN) {
+  console.log(`\n── (co) Correos de compra · ${API} ──`);
+  const CRON = process.env.CRON_SECRET;
+  if (!CRON) {
+    check("(co) CRON_SECRET en .env.pruebas (ver .env.pruebas.example)", false);
+    return;
+  }
+  const BUZON = "supabase/.temp/correos";
+  const archivo = (tipo, ref) => `${BUZON}/${tipo}--${ref.replace(/[^a-zA-Z0-9-]/g, "_")}.json`;
+  const leerBuzon = (tipo, ref) => {
+    try { return JSON.parse(readFileSync(archivo(tipo, ref), "utf8")); } catch { return null; }
+  };
+  const cron = () => fetch(`${API}/api/cron/correos`, { headers: { authorization: `Bearer ${CRON}` } });
+  const correosDe = async (grupo) =>
+    (await admin.from("correos").select("tipo, referencia, destinatario, estado, intentos").or(`referencia.eq.${grupo},referencia.like.${grupo}:*`)).data ?? [];
+
+  const E = await crearArtista("co-envio");
+  const R = await crearArtista("co-retiro");
+  const PE = await crearProducto(E.artistaId, "co-e", { nombre: `${PREFIJO}-co <b>Polera</b> & "negra"` });
+  const PR = await crearProducto(R.artistaId, "co-r");
+  const COMPRADOR = `${PREFIJO}-co-comprador@example.com`;
+  const ahora = new Date().toISOString();
+  const grupos = [];
+
+  /** Un pedido de dos artistas, como lo deja crear-preferencia (centralizado). */
+  async function pedido(estado = "pendiente") {
+    const grupo = crypto.randomUUID();
+    grupos.push(grupo);
+    const comun = {
+      grupo_id: grupo, estado, comprador_nombre: "Ana <Prueba>", comprador_email: COMPRADOR,
+      terminos_version: VERSION_TERMINOS_COMPRADORES, terminos_aceptados_at: ahora,
+    };
+    const { error } = await admin.from("ordenes").insert([
+      { ...comun, artista_id: E.artistaId, producto_id: PE, cantidad: 2, precio_unitario: 10000, monto_artista: 18000, comision_monto: 2000,
+        envio_monto: 3990, entrega: "envio", entrega_plazo_min: 2, entrega_plazo_max: 5,
+        direccion_envio: "Av. Prueba 123", ciudad_envio: "Santiago", region_envio: "Metropolitana de Santiago" },
+      { ...comun, artista_id: R.artistaId, producto_id: PR, cantidad: 1, precio_unitario: 10000, monto_artista: 9000, comision_monto: 1000,
+        envio_monto: 0, entrega: "retiro", entrega_detalle: "Feria del disco, domingos" },
+    ]);
+    if (error) throw new Error(`Pedido (co): ${error.message}`);
+    return grupo;
+  }
+
+  try {
+    {
+      const sin = await fetch(`${API}/api/cron/correos`);
+      check("(co-1) Cron de correos sin CRON_SECRET → 401", sin.status === 401, `status=${sin.status}`);
+    }
+
+    const G = await pedido();
+    await confirmar(G, pagoId());
+    const GP = await pedido();                        // queda pendiente
+    const GR = await pedido();                        // pagado y después reembolsado
+    const pagoR = pagoId();
+    await confirmar(GR, pagoR);
+    await admin.rpc("revertir_pago", { p_grupo_id: GR, p_payment_id: pagoR, p_motivo: "refunded" });
+    const GA = await pedido();                        // confirmación agotada: no se reintenta
+    await confirmar(GA, pagoId());
+    await admin.from("correos").insert({ tipo: "confirmacion_compra", referencia: GA, destinatario: COMPRADOR, estado: "fallido", intentos: 5, ultimo_error: "prueba" });
+    const viejo = new Date(Date.now() - 3 * 365 * 86_400_000).toISOString();
+    const reciente = new Date(Date.now() - 365 * 86_400_000).toISOString();
+    const REF_VIEJA = `${PREFIJO}-co-vieja`, REF_RECIENTE = `${PREFIJO}-co-reciente`;
+    await admin.from("correos").insert([
+      { tipo: "tienda_aprobada", referencia: REF_VIEJA, destinatario: `${PREFIJO}-co-x@example.com`, estado: "enviado", created_at: viejo },
+      { tipo: "tienda_aprobada", referencia: REF_RECIENTE, destinatario: `${PREFIJO}-co-x@example.com`, estado: "enviado", created_at: reciente },
+    ]);
+
+    const res = await cron();
+    const cuerpo = await res.json().catch(() => null);
+    check("(co-2) Cron con CRON_SECRET → 200", res.status === 200, `status=${res.status} ${JSON.stringify(cuerpo)}`);
+
+    const filas = await correosDe(G);
+    const conf = filas.find((f) => f.tipo === "confirmacion_compra");
+    const ventas = filas.filter((f) => f.tipo === "nueva_venta");
+    check("(co-3) Pedido pagado: una confirmación al comprador y una \"nueva venta\" por artista, al buzón local (sin llave)",
+      conf?.estado === "buzon_local" && conf.destinatario === COMPRADOR && ventas.length === 2
+        && ventas.every((v) => v.estado === "buzon_local")
+        && ventas.some((v) => v.destinatario === E.email) && ventas.some((v) => v.destinatario === R.email), JSON.stringify(filas));
+
+    const c = leerBuzon("confirmacion_compra", G);
+    const num = G.slice(0, 8).toUpperCase();
+    check("(co-4) Confirmación: pedido, vendedor de cada producto, entrega, montos y total",
+      !!c && c.para === COMPRADOR && c.asunto.includes(num) && c.texto.includes(`Pedido: ${num}`)
+        && c.texto.includes("VENDIDO POR RLS TEST CO-ENVIO") && c.texto.includes("VENDIDO POR RLS TEST CO-RETIRO")
+        && c.texto.includes("Llega en 2 a 5 días hábiles desde el pago") && c.texto.includes("Retiro. Feria del disco, domingos")
+        && c.texto.includes("Subtotal: $30.000") && c.texto.includes("Envío: $3.990") && c.texto.includes("Total pagado: $33.990"),
+      c ? c.texto.slice(0, 600) : "sin archivo");
+    check("(co-5) Confirmación: retracto y copia íntegra de los términos aceptados (art. 12 A)",
+      !!c && c.texto.includes("dentro de 10 días") && c.texto.includes("recibes de vuelta todo lo pagado")
+        && c.texto.includes(`Versión ${VERSION_TERMINOS_COMPRADORES}, aceptados el`)
+        && c.texto.includes("5. DERECHO DE RETRACTO") && c.texto.includes("9. LEY APLICABLE")
+        && c.texto.includes("que son irrenunciables") && !c.texto.includes("{correo}") && !c.html.includes("{privacidad}"));
+    check("(co-6) El HTML escapa lo que escribe un usuario (producto y comprador)",
+      !!c && c.html.includes("&lt;b&gt;Polera&lt;/b&gt; &amp; &quot;negra&quot;") && !c.html.includes("<b>Polera") && c.html.includes("Ana &lt;Prueba&gt;"));
+
+    const vE = leerBuzon("nueva_venta", `${G}:${E.artistaId}`);
+    const vR = leerBuzon("nueva_venta", `${G}:${R.artistaId}`);
+    check("(co-7) Nueva venta con envío: qué despachar, a quién, plazo comprometido y montos solo de ese artista",
+      !!vE && vE.para === E.email && vE.texto.includes("2 × ") && vE.texto.includes("Av. Prueba 123, Santiago, Metropolitana de Santiago")
+        && vE.texto.includes(COMPRADOR) && vE.texto.includes("Plazo comprometido: 2 a 5 días hábiles desde el pago")
+        && vE.texto.includes("Para ti: $21.990") && !vE.texto.includes("co-r"), vE ? vE.texto.slice(0, 500) : "sin archivo");
+    check("(co-8) Nueva venta con retiro: las indicaciones y el correo del comprador para coordinar, sin dirección",
+      !!vR && vR.para === R.email && vR.texto.includes("Retiro. Indicaste: Feria del disco, domingos") && vR.texto.includes(`Escríbele a ${COMPRADOR}`)
+        && !vR.texto.includes("Av. Prueba") && vR.texto.includes("Para ti: $9.000"), vR ? vR.texto.slice(0, 500) : "sin archivo");
+
+    check("(co-9) Un pedido sin pagar no manda nada", (await correosDe(GP)).length === 0);
+    check("(co-10) Un pedido reembolsado no manda nada", (await correosDe(GR)).length === 0);
+    {
+      const fa = await correosDe(GA);
+      const confA = fa.find((f) => f.tipo === "confirmacion_compra");
+      check("(co-11) Una confirmación con 5 intentos fallidos no se reintenta; las \"nueva venta\" del pedido sí salen",
+        confA?.estado === "fallido" && confA.intentos === 5 && fa.filter((f) => f.tipo === "nueva_venta" && f.estado === "buzon_local").length === 2, JSON.stringify(fa));
+    }
+    {
+      const { data: quedan } = await admin.from("correos").select("referencia").in("referencia", [REF_VIEJA, REF_RECIENTE]);
+      const refs = (quedan ?? []).map((q) => q.referencia);
+      check("(co-12) Retención: borra el registro de más de 2 años y deja el de 1 año", !refs.includes(REF_VIEJA) && refs.includes(REF_RECIENTE), JSON.stringify(refs));
+    }
+    {
+      // Otra pasada del cron (o MP repitiendo el aviso): nada sale dos veces.
+      await cron();
+      const filas2 = await correosDe(G);
+      check("(co-13) Segunda pasada: no repite ningún correo", filas2.length === 3 && filas2.every((f) => f.intentos === 1), JSON.stringify(filas2));
+    }
+    {
+      const deArtista = await A.cliente.from("correos").select("id").limit(5);
+      const deAdmin = await ADMIN.cliente.from("correos").select("id").or(`referencia.eq.${G},referencia.like.${G}:*`);
+      const anon = createClient(URL, ANON_KEY, { auth: { persistSession: false } });
+      const deAnon = await anon.from("correos").select("id").limit(5);
+      check("(co-14) correos: el admin lo lee; un artista y anon no",
+        (deAdmin.data ?? []).length === 3 && (deArtista.data ?? []).length === 0 && (deAnon.error || (deAnon.data ?? []).length === 0),
+        `admin=${deAdmin.data?.length} ${fmt(deAdmin.error)} artista=${deArtista.data?.length} ${fmt(deArtista.error)} anon=${fmt(deAnon.error)}`);
+    }
+  } finally {
+    for (const g of grupos) {
+      for (const f of await correosDe(g)) {
+        try { unlinkSync(archivo(f.tipo, f.referencia)); } catch { /* no estaba */ }
+      }
+      await admin.from("correos").delete().or(`referencia.eq.${g},referencia.like.${g}:*`);
+    }
+    await admin.from("correos").delete().like("referencia", `${PREFIJO}-co-%`);
+  }
+}
+
 // ── Reembolsos (rb) ──────────────────────────────────────────────────────────
 
 /** Cookie de sesión de un usuario, armada por @supabase/ssr (el formato de la app). */
@@ -1210,6 +1378,7 @@ async function main() {
     if (API) await api(A, B);
     if (API) await despachoEnElCobro();
     if (API) await terminosEnElCobro();
+    if (API) await correosDeCompra(A, ADMIN);
     if (API) await marketplace(A, B, ADMIN);
     if (API) await renovacion(A, B, ADMIN);
   } catch (err) {

@@ -72,11 +72,12 @@ npx supabase migration new descripcion_del_cambio
 
 # 2. Escribir el SQL en el archivo generado
 
-# 3. Aplicarla al proyecto remoto
-npx supabase db push --linked
+# 3. Aplicarla al proyecto remoto (primero con --dry-run)
+npx supabase db push --remote
 
-# 4. Regenerar los tipos y commitear ambos juntos
-npx supabase gen types typescript --linked > lib/supabase/types.ts
+# 4. Regenerar los tipos y commitear ambos juntos. En PowerShell 5, con cmd /c:
+#    su ">" escribe UTF-16.
+cmd /c "npx supabase gen types typescript --remote > lib/supabase/types.ts"
 ```
 
 El paso 4 no es opcional. `lib/supabase/types.ts` es un artefacto generado: no se

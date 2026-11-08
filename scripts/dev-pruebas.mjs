@@ -15,5 +15,10 @@ import { frenarSiEsProduccion } from "./freno-produccion.mjs";
 process.loadEnvFile(".env.pruebas");
 frenarSiEsProduccion();
 
+// Nunca correos de verdad desde la base de pruebas: sin llave, lib/correo/enviar.ts
+// los deja en supabase/.temp/correos/ (lo leen las pruebas). Va vacía y no ausente,
+// para que Next no tome la de .env.local.
+process.env.RESEND_API_KEY = "";
+
 const next = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev"], { stdio: "inherit" });
 next.on("exit", (codigo) => process.exit(codigo ?? 1));

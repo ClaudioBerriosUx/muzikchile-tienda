@@ -130,3 +130,25 @@ export const SECCIONES_TERMINOS_COMPRADORES: SeccionTerminos[] = [
     ],
   },
 ];
+
+export interface TextoTerminos {
+  version: string;
+  actualizado: string;
+  aviso: string;
+  secciones: SeccionTerminos[];
+}
+
+/**
+ * El texto de una versión, para copiarlo en la confirmación de la compra que
+ * la aceptó. Al subir de versión, la anterior se guarda acá con su texto: una
+ * orden siempre se confirma con lo que su comprador aceptó. null si no está.
+ */
+export function terminosCompradores(version: string | null): TextoTerminos | null {
+  if (version !== VERSION_TERMINOS_COMPRADORES) return null;
+  return {
+    version,
+    actualizado: ACTUALIZADO_TERMINOS_COMPRADORES,
+    aviso: AVISO_PILOTO_COMPRADORES,
+    secciones: SECCIONES_TERMINOS_COMPRADORES,
+  };
+}
