@@ -49,6 +49,7 @@ import { comisionEfectiva, founderVigente, textoFounder } from "../lib/comision.
 import { cifrar } from "../lib/mp/cifrado.ts";
 import { frenarSiEsProduccion } from "./freno-produccion.mjs";
 import { VERSION_TERMINOS_COMPRADORES } from "../lib/terminos.ts";
+import { destinoSinLlave } from "../lib/correo/sin-llave.ts";
 import { existsSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
 
 frenarSiEsProduccion();
@@ -258,6 +259,24 @@ function reglaComision() {
   check("(com) Texto de por vida", textoFounder(null) === "Comisión 0% de por vida", textoFounder(null));
   check("(com) Texto con fecha", textoFounder("2027-12-31") === "Comisión 0% hasta 31-12-2027", textoFounder("2027-12-31"));
   check("(com) founderVigente sin founder → false", founderVigente({ es_founder: false, founder_hasta: null }, hoy) === false);
+}
+
+// ── Correos sin llave (lib/correo/sin-llave.ts, sin base de datos) ───────────
+
+function reglaCorreoSinLlave() {
+  console.log("\n── Correos sin RESEND_API_KEY ──");
+  const casos = [
+    ["(cl-1) dev:pruebas (CORREO_BUZON_LOCAL=1) → buzón local", { CORREO_BUZON_LOCAL: "1" }, "buzon_local"],
+    ["(cl-2) Local sin la variable (npm run dev, contra producción) → fallido", {}, "fallido"],
+    ["(cl-3) Preview de Vercel sin llave → fallido", { VERCEL_ENV: "preview" }, "fallido"],
+    ["(cl-4) Producción sin llave → fallido", { VERCEL_ENV: "production" }, "fallido"],
+    ["(cl-5) Producción con CORREO_BUZON_LOCAL=1 por error → fallido igual", { VERCEL_ENV: "production", CORREO_BUZON_LOCAL: "1" }, "fallido"],
+    ["(cl-6) Un valor que no es \"1\" no activa el buzón", { CORREO_BUZON_LOCAL: "true" }, "fallido"],
+  ];
+  for (const [caso, env, esperado] of casos) {
+    const r = destinoSinLlave(env);
+    check(caso, r === esperado, `resultado=${r}`);
+  }
 }
 
 // ── Fase 1 ───────────────────────────────────────────────────────────────────
@@ -1371,6 +1390,7 @@ async function main() {
     const ADMIN = await crearUsuario("admin", "admin");
 
     reglaComision();
+    reglaCorreoSinLlave();
     await fase1(A, B, ADMIN);
     await despacho(A, B);
     await reembolsos(A, B, ADMIN);

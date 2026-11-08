@@ -40,8 +40,10 @@ Copia `.env.example` → `.env.local`:
   por coma). Solo en Production. Nunca va al log: `lib/mp/firma.ts` anota solo
   qué clave coincidió, por posición.
 - `RESEND_API_KEY` — correos transaccionales (`lib/correo/`). Solo en Production.
-  Sin ella, en producción los correos quedan `fallido`; fuera de producción van a
-  `supabase/.temp/correos/`. `npm run dev:pruebas` la deja vacía siempre.
+  Sin ella, los correos quedan `fallido` ("Falta RESEND_API_KEY") y el cron de
+  producción los reintenta. `CORREO_BUZON_LOCAL=1` los guarda en
+  `supabase/.temp/correos/` en vez de mandarlos: lo pone solo `npm run
+  dev:pruebas` (que además vacía la llave), nunca en Vercel.
 
 ## Arquitectura general
 

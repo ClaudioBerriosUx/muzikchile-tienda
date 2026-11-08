@@ -3,6 +3,7 @@ import path from "node:path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/types";
 import { CORREO_CONTACTO } from "@/lib/site";
+import { destinoSinLlave, ERROR_SIN_LLAVE } from "@/lib/correo/sin-llave";
 
 /**
  * Envío de correos transaccionales por la API de Resend, con registro en la
@@ -13,12 +14,14 @@ import { CORREO_CONTACTO } from "@/lib/site";
  * mandar. Resend recibe además una Idempotency-Key con el mismo par, por si dos
  * envíos se cruzan.
  *
- * Sin RESEND_API_KEY:
- *   - en producción (VERCEL_ENV=production), el correo queda `fallido` con el
- *     motivo en el log: nunca se omite en silencio, y el cron lo reintenta;
- *   - fuera de producción se guarda en supabase/.temp/correos/ (`buzon_local`),
- *     que es lo que leen las pruebas. `npm run dev:pruebas` siempre vacía la
- *     llave, para que una prueba nunca mande un correo de verdad.
+ * Sin RESEND_API_KEY (regla en lib/correo/sin-llave.ts):
+ *   - con CORREO_BUZON_LOCAL=1, que pone solo `npm run dev:pruebas`, el correo
+ *     se guarda en supabase/.temp/correos/ (`buzon_local`): lo leen las pruebas.
+ *     dev:pruebas además vacía la llave, para que una prueba nunca mande un
+ *     correo de verdad;
+ *   - en cualquier otro caso queda `fallido` con "Falta RESEND_API_KEY": nunca
+ *     se omite en silencio ni se marca como salido, y el cron de producción lo
+ *     reintenta.
  *
  * Requiere service role.
  */
@@ -108,11 +111,11 @@ export async function enviarCorreo(
   // 3. El envío.
   const llave = process.env.RESEND_API_KEY?.trim();
   if (!llave) {
-    if (process.env.VERCEL_ENV === "production") {
-      return terminar("fallido", { destinatario: correo.para, ultimo_error: "Falta RESEND_API_KEY en producción" });
+    if (destinoSinLlave(process.env) === "buzon_local") {
+      const error = await guardarEnBuzonLocal(tipo, referencia, correo);
+      return terminar("buzon_local", { destinatario: correo.para, ultimo_error: error });
     }
-    const error = await guardarEnBuzonLocal(tipo, referencia, correo);
-    return terminar("buzon_local", { destinatario: correo.para, ultimo_error: error });
+    return terminar("fallido", { destinatario: correo.para, ultimo_error: ERROR_SIN_LLAVE });
   }
 
   try {
