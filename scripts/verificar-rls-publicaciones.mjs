@@ -575,6 +575,62 @@ async function main() {
         error ? `Rechazado: ${error.code} ${error.message}` : null
       );
     }
+
+    // ── Columnas del admin (migración 20261108040000) ────────────────────────
+    // El WITH CHECK solo limita artista_id y estado: el trigger
+    // proteger_columnas_publicacion cubre el resto.
+
+    // (s) Al insertar, lo que mande el artista en columnas del admin se ignora.
+    const { data: colada, error: errS } = await A.cliente.from("publicaciones").insert({
+      ...base,
+      artista_id: A.artistaId,
+      tipo: "convocatoria",
+      titular: "Con columnas del admin",
+      slug: `${PREFIJO}-columnas-admin`,
+      estado: "pendiente",
+      comentario_moderacion: "Aprobada por el admin (falso)",
+      visibilidad: "solo_artistas",
+      fecha_cierre: "2030-01-01T00:00:00Z",
+      ciudad: "Valparaíso",
+      genero: "Rock",
+    }).select("id").single();
+    const { data: filaS } = colada
+      ? await admin.from("publicaciones").select("tipo, comentario_moderacion, visibilidad, fecha_cierre, ciudad, genero, estado").eq("id", colada.id).single()
+      : { data: null };
+    check(
+      "(s) Artista INSERT con comentario_moderacion, tipo, visibilidad y datos de convocatoria → se ignoran",
+      !errS && filaS?.tipo === "noticia" && filaS.comentario_moderacion === null && filaS.visibilidad === "publica"
+        && filaS.fecha_cierre === null && filaS.ciudad === null && filaS.genero === null && filaS.estado === "pendiente",
+      errS ? `Rechazado: ${errS.code} ${errS.message}` : JSON.stringify(filaS)
+    );
+
+    // (t)–(v) En un borrador propio, el artista edita el contenido pero no las columnas del admin.
+    const { data: borradorT } = await A.cliente.from("publicaciones").insert({
+      ...base, artista_id: A.artistaId, titular: "Borrador T", slug: `${PREFIJO}-borrador-t`, estado: "borrador",
+    }).select("id").single();
+    for (const [caso, cambio] of [
+      ["t", { comentario_moderacion: "Lo escribo yo" }],
+      ["u", { slug: `${PREFIJO}-otra-url` }],
+      ["v", { visibilidad: "solo_artistas" }],
+    ]) {
+      const { error } = await A.cliente.from("publicaciones").update(cambio).eq("id", borradorT?.id ?? crypto.randomUUID());
+      check(`(${caso}) Artista UPDATE de ${Object.keys(cambio)[0]} en su borrador → rechazado`, error?.code === "42501",
+        error ? (error.code === "42501" ? null : `Error inesperado: ${error.code} ${error.message}`) : "NO fue rechazado");
+    }
+    {
+      const { error } = await A.cliente.from("publicaciones").update({ titular: "Borrador T editado", estado: "pendiente" }).eq("id", borradorT?.id ?? crypto.randomUUID());
+      check("(w) Artista UPDATE del titular y envío a revisión → permitido (sin regresión)", !error, error ? `Rechazado: ${error.code} ${error.message}` : null);
+    }
+    {
+      // La moderación desde el navegador del admin sigue funcionando.
+      const { error } = await ADM.cliente.from("publicaciones")
+        .update({ estado: "devuelta", comentario_moderacion: "Falta la fecha del show" })
+        .eq("id", borradorT?.id ?? crypto.randomUUID());
+      const { data: filaX } = await admin.from("publicaciones").select("estado, comentario_moderacion").eq("id", borradorT?.id ?? crypto.randomUUID()).maybeSingle();
+      check("(x) Admin devuelve con comentario_moderacion desde el navegador → permitido",
+        !error && filaX?.estado === "devuelta" && filaX.comentario_moderacion === "Falta la fecha del show",
+        error ? `Rechazado: ${error.code} ${error.message}` : JSON.stringify(filaX));
+    }
   } catch (err) {
     console.error("\nError montando o ejecutando la verificación:");
     console.error(`  ${err.message}`);
