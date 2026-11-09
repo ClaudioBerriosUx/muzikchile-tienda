@@ -3,8 +3,9 @@
  * única: la usan el formulario de /panel/videos y el "Copiar JSON" de
  * /admin/videos.
  *
- * La base exige lo mismo con CHECK (migración 20261108050000): esto normaliza
- * para que lo que se envía ya calce, y para dar un mensaje claro antes.
+ * La base exige lo mismo con CHECK (migración 20261108050000; el de Spotify se
+ * sacó en 20261108060000): esto normaliza para que lo que se envía ya calce, y
+ * para dar un mensaje claro antes.
  */
 
 export const MAX_TAGS = 5;
@@ -47,23 +48,22 @@ export function urlDeYoutube(id: string): string {
 
 // ── Spotify ──────────────────────────────────────────────────────────────────
 
-const SPOTIFY_ARTISTA = /^\/(intl-[a-z]{2}(?:-[a-zA-Z]{2})?\/)?artist\/([A-Za-z0-9]{22})\/?$/;
-
 /**
- * Normaliza un link de artista de Spotify: sin query (?si=…) ni barra final.
- * Vacío → null (es opcional). Algo que no es un artista → "invalido".
+ * El link de Spotify del artista, libre (2026-11-08, decisión de Claudio: no se
+ * rechaza ningún formato). Solo saca espacios sobrantes y, si es un link con
+ * ?si=… (el código de seguimiento de "Compartir"), quita ese parámetro.
+ * Vacío → null (es opcional).
  */
-export function normalizarSpotifyArtista(texto: string | null | undefined): string | null | "invalido" {
+export function limpiarSpotify(texto: string | null | undefined): string | null {
   const t = (texto ?? "").trim();
   if (!t) return null;
   try {
     const url = new URL(t);
-    if (url.protocol !== "https:" || url.hostname !== "open.spotify.com") return "invalido";
-    const m = url.pathname.match(SPOTIFY_ARTISTA);
-    if (!m) return "invalido";
-    return `https://open.spotify.com/${m[1] ?? ""}artist/${m[2]}`;
+    if (!url.searchParams.has("si")) return t;
+    url.searchParams.delete("si");
+    return url.toString().replace(/\?$/, "");
   } catch {
-    return "invalido";
+    return t; // No es una URL completa (p. ej. sin https://): va tal cual.
   }
 }
 

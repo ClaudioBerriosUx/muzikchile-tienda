@@ -6,7 +6,7 @@ import { CheckCircle2, Loader2, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import {
-  errorTags, idDeYoutube, MAX_LARGO_TAG, MAX_TAGS, MAX_TITULO, MAX_UBICACION, normalizarSpotifyArtista, normalizarTags, textoArtista,
+  errorTags, idDeYoutube, MAX_LARGO_TAG, MAX_TAGS, MAX_TITULO, MAX_UBICACION, limpiarSpotify, normalizarTags, textoArtista,
 } from "@/lib/videos";
 
 const F = { titulo: "var(--font-titulo)", body: "var(--font-body)" };
@@ -57,8 +57,7 @@ interface Artista {
 
 function spotifyDelPerfil(redes: unknown): string {
   const s = redes && typeof redes === "object" && "spotify" in redes && typeof redes.spotify === "string" ? redes.spotify : null;
-  const n = normalizarSpotifyArtista(s);
-  return n && n !== "invalido" ? n : "";
+  return limpiarSpotify(s) ?? "";
 }
 
 function FormVideo({ artista }: { artista: Artista }) {
@@ -89,14 +88,13 @@ function FormVideo({ artista }: { artista: Artista }) {
     const titulo = f.titulo.replace(/\s+/g, " ").trim();
     const colaboracion = f.colaboracion.replace(/\s+/g, " ").trim();
     const ciudad = f.ciudad.replace(/\s+/g, " ").trim();
-    const spotify = normalizarSpotifyArtista(f.spotify);
+    const spotify = limpiarSpotify(f.spotify);
     const todos = tagTexto.trim() ? normalizarTags([...tags, tagTexto]) : tags;
 
     const errs: Record<string, string> = {};
     if (!youtube) errs.url = "Pega el link de tu video en YouTube, por ejemplo https://www.youtube.com/watch?v=…";
     if (!titulo) errs.titulo = "Escribe el título de la canción.";
     if (!ciudad) errs.ciudad = "Escribe tu ciudad.";
-    if (spotify === "invalido") errs.spotify = "Tiene que ser tu página de artista: https://open.spotify.com/artist/…";
     const et = errorTags(todos);
     if (et) errs.tags = et;
     if (!derechos) errs.derechos = "Tienes que confirmarlo para enviar.";
@@ -109,7 +107,7 @@ function FormVideo({ artista }: { artista: Artista }) {
       youtube_id: youtube,
       tracktitle: titulo,
       colaboracion: colaboracion || null,
-      artist_link: spotify === "invalido" ? null : spotify,
+      artist_link: spotify,
       ubicacion: ciudad,
       tags: todos,
       derechos_declarados: true,
@@ -170,8 +168,7 @@ function FormVideo({ artista }: { artista: Artista }) {
 
         <div className="md:col-span-2">
           <label htmlFor="v-spotify" className={etiqueta}>Tu página de artista en Spotify</label>
-          <input id="v-spotify" type="url" inputMode="url" className={campo} placeholder="Opcional: https://open.spotify.com/artist/…" value={f.spotify} onChange={set("spotify")} aria-invalid={!!errores.spotify} />
-          {error("spotify")}
+          <input id="v-spotify" type="text" inputMode="url" className={campo} maxLength={500} placeholder="Opcional: el link a tu perfil de artista" value={f.spotify} onChange={set("spotify")} />
         </div>
 
         <div className="md:col-span-2">

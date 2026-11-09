@@ -17,7 +17,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { frenarSiEsProduccion } from "./freno-produccion.mjs";
 import {
-  aJsonChannel, errorTags, idDeYoutube, normalizarSpotifyArtista, normalizarTags, textoArtista, urlDeYoutube,
+  aJsonChannel, errorTags, idDeYoutube, limpiarSpotify, normalizarTags, textoArtista, urlDeYoutube,
 } from "../lib/videos.ts";
 
 frenarSiEsProduccion();
@@ -114,15 +114,18 @@ function reglas() {
     JSON.stringify([...formas, ...malas].map((f) => [f, idDeYoutube(f)])));
 
   const sp = [
-    ["https://open.spotify.com/intl-es/artist/7xUuAVqoc6B9aITQZaU8HK?si=KByhc2wuQCy7", "https://open.spotify.com/intl-es/artist/7xUuAVqoc6B9aITQZaU8HK"],
-    ["https://open.spotify.com/artist/7xUuAVqoc6B9aITQZaU8HK/", "https://open.spotify.com/artist/7xUuAVqoc6B9aITQZaU8HK"],
+    // El link real que fallaba en producción (2026-11-08).
+    ["https://open.spotify.com/intl-es/artist/7xUuAVqoc6B9aITQZaU8HK?si=Odwkp3lkS_-XJYs5tmtpCQ", "https://open.spotify.com/intl-es/artist/7xUuAVqoc6B9aITQZaU8HK"],
+    ["  https://open.spotify.com/artist/7xUuAVqoc6B9aITQZaU8HK/  ", "https://open.spotify.com/artist/7xUuAVqoc6B9aITQZaU8HK/"],
+    ["https://open.spotify.com/artist/7xUuAVqoc6B9aITQZaU8HK?si=x&nd=1", "https://open.spotify.com/artist/7xUuAVqoc6B9aITQZaU8HK?nd=1"],
+    ["open.spotify.com/intl-es/artist/7xUuAVqoc6B9aITQZaU8HK?si=abc", "open.spotify.com/intl-es/artist/7xUuAVqoc6B9aITQZaU8HK?si=abc"],
+    ["https://spotify.link/AbCdEf123", "https://spotify.link/AbCdEf123"],
+    ["https://open.spotify.com/track/7xUuAVqoc6B9aITQZaU8HK", "https://open.spotify.com/track/7xUuAVqoc6B9aITQZaU8HK"],
+    ["mi spotify: Los Prueba", "mi spotify: Los Prueba"],
     ["  ", null], [null, null],
-    ["https://open.spotify.com/track/7xUuAVqoc6B9aITQZaU8HK", "invalido"],
-    ["http://open.spotify.com/artist/7xUuAVqoc6B9aITQZaU8HK", "invalido"],
-    ["https://spotify.com/artist/7xUuAVqoc6B9aITQZaU8HK", "invalido"],
   ];
-  check("(l2) Spotify: artista con o sin intl, sin ?si=; vacío null; track u otro dominio, inválido",
-    sp.every(([e, s]) => normalizarSpotifyArtista(e) === s), JSON.stringify(sp.map(([e]) => normalizarSpotifyArtista(e))));
+  check("(l2) Spotify libre: no rechaza nada; solo saca espacios y el ?si= de un link completo; vacío null",
+    sp.every(([e, s]) => limpiarSpotify(e) === s), JSON.stringify(sp.map(([e]) => limpiarSpotify(e))));
 
   const t = normalizarTags(" Trap , trap,  Hip   hop ,, ,Cumbia ");
   const t2 = normalizarTags(["Rock, pop", "ROCK", " Indie "]);
@@ -181,8 +184,6 @@ async function base_(A, B, ADM) {
     ["(v12) género de 31 caracteres", { tags: ["x".repeat(31)] }],
     ["(v13) género con espacios sobrantes", { tags: [" Trap"] }],
     ["(v14) género vacío", { tags: [""] }],
-    ["(v15) Spotify que no es artista", { artist_link: "https://open.spotify.com/track/7xUuAVqoc6B9aITQZaU8HK" }],
-    ["(v16) Spotify con ?si=", { artist_link: "https://open.spotify.com/artist/7xUuAVqoc6B9aITQZaU8HK?si=x" }],
     ["(v17) título vacío", { tracktitle: "  " }],
     ["(v18) ciudad con espacios sobrantes", { ubicacion: " Valparaíso" }],
   ]) {
@@ -194,14 +195,24 @@ async function base_(A, B, ADM) {
       artist_link: "https://open.spotify.com/intl-es/artist/7xUuAVqoc6B9aITQZaU8HK", colaboracion: "R$ Moneysign", tags: [] }));
     check("(v19) Con colaboración, Spotify intl y sin géneros → permitido", !error, fmt(error));
   }
+  {
+    // Migración 20261108060000: artist_link sin CHECK.
+    const r = await Promise.all([
+      "https://open.spotify.com/intl-es/artist/7xUuAVqoc6B9aITQZaU8HK?si=Odwkp3lkS_-XJYs5tmtpCQ",
+      "open.spotify.com/artist/7xUuAVqoc6B9aITQZaU8HK",
+      "https://spotify.link/AbCdEf123",
+    ].map((artist_link) => A.cliente.from("videos_channel").insert(base(A.artistaId, { artist_link }))));
+    check("(v15) Spotify en cualquier formato (con ?si=, sin https, link corto) → permitido por la base", r.every((x) => !x.error), JSON.stringify(r.map((x) => fmt(x.error))));
+  }
   const { data: deA } = await admin.from("videos_channel").select("id").eq("artista_id", A.artistaId).limit(1).single();
   {
     const { data: propios, error } = await A.cliente.from("videos_channel").select("id").eq("artista_id", A.artistaId);
     const { data: deOtros } = await B.cliente.from("videos_channel").select("id");
     const { error: eAnon } = await anon.from("videos_channel").select("id").limit(1);
     const { data: todos, error: eAdm } = await ADM.cliente.from("videos_channel").select("id, artistas(nombre)").eq("artista_id", A.artistaId);
+    const { count: total } = await admin.from("videos_channel").select("id", { count: "exact", head: true }).eq("artista_id", A.artistaId);
     check("(v20) Solo el admin lee la lista (con el nombre del artista); el artista no ve ni los suyos; sin sesión, nada",
-      !error && (propios ?? []).length === 0 && (deOtros ?? []).length === 0 && !!eAnon && !eAdm && todos?.length === 2 && todos[0].artistas?.nombre === "Los Videos",
+      !error && (propios ?? []).length === 0 && (deOtros ?? []).length === 0 && !!eAnon && !eAdm && todos?.length === total && total === 5 && todos[0].artistas?.nombre === "Los Videos",
       `propios=${propios?.length} B=${deOtros?.length} anon=${fmt(eAnon)} admin=${todos?.length} ${fmt(eAdm)}`);
   }
   {

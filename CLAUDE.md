@@ -194,8 +194,9 @@ y exige motivo (`lib/reembolsos.ts`).
 **Videos para el Channel** (`videos_channel`, desde 2026-11-08): versión simple, sin estados ni
 revisión. RLS: el artista solo inserta envíos propios (permisos por columna; `id` y
 `created_at` los pone la base); solo el admin lee; nadie edita ni borra. Los CHECK
-exigen lo que normaliza `lib/videos.ts` (id de YouTube, Spotify de artista sin `?si=`,
-hasta 5 géneros). Verificación: `npm run verificar:videos`.
+exigen lo que normaliza `lib/videos.ts` (id de YouTube, hasta 5 géneros). El link de
+Spotify es texto libre (`limpiarSpotify`: solo saca espacios y `?si=`; sin CHECK desde
+`20261108060000`). Verificación: `npm run verificar:videos`.
 
 **Retención** (plazos de la política de privacidad): cron diario
 `/api/cron/retencion` → `aplicar_retencion()` (solo service role). Órdenes de
