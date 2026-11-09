@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Package, Newspaper, Music, Tag,
   ShoppingBag, Ticket, Wallet, Settings, LogOut, Mail,
-  Store,
+  Store, Clapperboard,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import HeaderPanel from "@/components/layout/HeaderPanel";
@@ -112,6 +112,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     { label: "Productos pendientes", href: "/admin/productos",      icon: <Package size={16} />, badge: pendientes },
     { label: "Publicaciones",        href: "/admin/publicaciones",  icon: <Newspaper size={16} />, badge: pendientesPub },
     { label: "Tiendas",              href: "/admin/tiendas",        icon: <Store size={16} />, badge: tiendasPorRevisar },
+    { label: "Videos",               href: "/admin/videos",         icon: <Clapperboard size={16} /> },
     { label: "Artistas",             href: "/admin/artistas",       icon: <Music size={16} /> },
     { label: "Categorías",           href: "/admin/categorias",     icon: <Tag size={16} /> },
     { label: "Órdenes",              href: "/admin/ordenes",        icon: <ShoppingBag size={16} /> },

@@ -839,6 +839,53 @@ export type Database = {
         }
         Relationships: []
       }
+      videos_channel: {
+        Row: {
+          artist_link: string | null
+          artista_id: string
+          colaboracion: string | null
+          created_at: string
+          derechos_declarados: boolean
+          id: string
+          tags: string[]
+          tracktitle: string
+          ubicacion: string
+          youtube_id: string
+        }
+        Insert: {
+          artist_link?: string | null
+          artista_id: string
+          colaboracion?: string | null
+          created_at?: string
+          derechos_declarados: boolean
+          id?: string
+          tags?: string[]
+          tracktitle: string
+          ubicacion: string
+          youtube_id: string
+        }
+        Update: {
+          artist_link?: string | null
+          artista_id?: string
+          colaboracion?: string | null
+          created_at?: string
+          derechos_declarados?: boolean
+          id?: string
+          tags?: string[]
+          tracktitle?: string
+          ubicacion?: string
+          youtube_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "videos_channel_artista_id_fkey"
+            columns: ["artista_id"]
+            isOneToOne: false
+            referencedRelation: "artistas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -900,6 +947,7 @@ export type Database = {
         Args: { p_admin: string; p_artista_id: string; p_motivo: string }
         Returns: string
       }
+      tags_video_validos: { Args: { p_tags: string[] }; Returns: boolean }
       tomar_lock_renovacion_mp: {
         Args: { p_artista_id: string }
         Returns: boolean

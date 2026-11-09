@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { LayoutDashboard, Package, Plus, Newspaper, Store, User, Ticket, Truck, Wallet, LogOut, AlertTriangle } from "lucide-react";
+import { LayoutDashboard, Package, Plus, Newspaper, Store, User, Ticket, Truck, Wallet, LogOut, AlertTriangle, Clapperboard } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import HeaderPanel from "@/components/layout/HeaderPanel";
 import Sidebar from "@/components/layout/Sidebar";
@@ -15,6 +15,7 @@ const SIDEBAR_ITEMS = [
   { label: "Mi tienda",         href: "/panel/tienda",         icon: <Store size={16} /> },
   { label: "Mis productos",     href: "/panel/productos",      icon: <Package size={16} /> },
   { label: "Mis publicaciones", href: "/panel/publicaciones",  icon: <Newspaper size={16} /> },
+  { label: "Enviar video",      href: "/panel/videos",         icon: <Clapperboard size={16} /> },
   { label: "Mi perfil",         href: "/panel/perfil",         icon: <User size={16} /> },
 ];
 

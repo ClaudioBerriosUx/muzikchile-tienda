@@ -105,7 +105,9 @@ Header y Footer. No importes `<Header/>` a mano en una página.
 | `/panel/**` | rol: `artista` | Dashboard del artista |
 | `/panel/tienda` | rol: `artista` | Mi tienda: estado, comisión, checklist (términos, Mercado Pago, identidad, despacho, borrador) y solicitud. `/panel/cobros` redirige acá |
 | `/panel/despacho` | rol: `artista` | Pedidos pagados/enviados con nombre, email y dirección del comprador. RLS (`artista_lee_sus_ordenes_pagadas`): el artista solo lee órdenes pagado/enviado/entregado/reembolsado |
+| `/panel/videos` | rol: `artista` | "Enviar video" para MuzikChile TV (cualquier artista con cuenta, tenga o no tienda). Inserta directo en `videos_channel`; el artista no lee la tabla |
 | `/admin/tiendas` | rol: `admin` | Bandeja de tiendas: checklist en vivo, aprobar, devolver, suspender y reactivar. `tienda_activa` y `artistas.cobro` se cambian solo acá |
+| `/admin/videos` | rol: `admin` | Videos enviados, el más reciente primero, con "Copiar JSON" por fila (formato del Import JSON del Channel, `aJsonChannel` en `lib/videos.ts`) |
 | `/admin/**` | rol: `admin` | Panel de administración |
 
 `/contacto` es una página simple con `CORREO_CONTACTO` (`lib/site.ts`).
@@ -188,6 +190,12 @@ garantía y reclamos van al artista, a `tiendas.contacto_email` (obligatorio en 
 checklist, público, copiado en `ordenes.vendedor_contacto` al pagar), y él reembolsa
 desde su cuenta de MP. MuzikChile es el respaldo: el botón del admin es de emergencia
 y exige motivo (`lib/reembolsos.ts`).
+
+**Videos para el Channel** (`videos_channel`, desde 2026-11-08): versión simple, sin estados ni
+revisión. RLS: el artista solo inserta envíos propios (permisos por columna; `id` y
+`created_at` los pone la base); solo el admin lee; nadie edita ni borra. Los CHECK
+exigen lo que normaliza `lib/videos.ts` (id de YouTube, Spotify de artista sin `?si=`,
+hasta 5 géneros). Verificación: `npm run verificar:videos`.
 
 **Retención** (plazos de la política de privacidad): cron diario
 `/api/cron/retencion` → `aplicar_retencion()` (solo service role). Órdenes de
