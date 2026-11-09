@@ -114,6 +114,10 @@ Header y el Footer; al crearlas, se vuelven a enlazar.
 
 ### Dominio y redirects
 
+**Deploy:** el repo está conectado a Git en Vercel; cada push a `main` despliega a
+Production (no hace falta `vercel --prod`). Una migración que el código nuevo
+necesita se aplica **antes** del push.
+
 Dominio canónico: **www.muzikchile.cl**. `muzikchile.cl` y
 `tienda.muzikchile.cl` (desde 2026-10-25, `/api` incluido) redirigen a www
 como redirect de dominio en Vercel, no en el código. Los redirects de
