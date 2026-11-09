@@ -1696,6 +1696,18 @@ cambió; esto solo deja que los artistas conecten su cuenta.
 
 ## 🧪 Artistas de prueba: `artistas.es_prueba` (commit 3a) — 2026-10-24
 
+> **Regla (2026-11-08): en producción no quedan datos de ejemplo con nombres de
+> artistas reales.** Lo que sea de prueba va con `es_prueba = true` y un nombre
+> claramente ficticio ("Los Prueba", "RLS Test …"), nunca el de un artista que
+> existe. Motivo: "Camila Moreno", "Fother Mukcer" y "Benja Valencia" eran datos de
+> ejemplo de mayo, sin cuenta, con fichas públicas y productos pausados, y se
+> podían confundir con artistas reales de MuzikChile (Camila Moreno además aparece
+> en una nota editorial real, la de MUDA 2026). Borrados de producción el
+> 2026-11-08 (SQL Editor, una transacción): 10 productos, 3 tiendas y los 3 artistas;
+> no tenían usuario, órdenes, cupones, publicaciones ni archivos en Storage.
+> Verificado leyendo: quedan Valentina Ruz, MuzikChile y +invite; sus fichas y
+> productos dan 404; fuera del sitemap y de `/tienda`.
+
 - Migración `20261024204929_artista_es_prueba` ✅ aplicada 2026-10-24 (antes
   del deploy: el build pre-renderiza `/noticias` contra la base real y sin la
   columna falla). Columna `es_prueba` (default false), `GRANT SELECT` a anon y
