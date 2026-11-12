@@ -1,7 +1,7 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-11-08
-> Branch: `main` (lanzamiento mergeado y en producción en www.muzikchile.cl)
+> Actualizado: 2026-11-12
+> Branch: `main` (en producción en muzikchile.cl; canónico sin www desde 2026-11-12)
 
 ---
 
@@ -2280,6 +2280,38 @@ real.** `verificar:invitar` además necesita la Edge Function desplegada ahí.
 - **`(u4)` de `verificar:mp` es intermitente** (anterior al commit 7): altera los últimos caracteres del base64 y a veces solo toca bits de relleno, así que descifra igual. Falla ~1 de cada 64 corridas; arreglarlo alterando un byte del medio.
 - **Mejora futura del despacho:** envío por pagar y costo por zona (RM / regiones / extremas). Hoy es un costo fijo por pedido para todo Chile.
 - Commits 8 a 10 del plan de activación.
+
+---
+
+## 🌐 Dominio canónico sin www — 2026-11-12
+
+De **www.muzikchile.cl** a **muzikchile.cl**. Las secciones anteriores hablan
+de www porque así era entonces.
+
+- **Vercel** (lo hizo Claudio): muzikchile.cl → Production; www y tienda. →
+  308 a la raíz.
+- **Código** (`e379544`): `BASE_URL` (`lib/site.ts`), el redirect del alias
+  `muzikchile-tienda.vercel.app` va directo a la raíz, el texto de
+  `/privacidad`, `aplicar-plantillas-auth.mjs` (`site_url` y Redirect URL de la
+  raíz; la de www queda en la lista), el respaldo de `SITE_URL` en
+  `invitar-artista` y `public/google57740c79c477eb8e.html` (verificación de
+  Search Console).
+- **Plantillas de auth** (`supabase/templates/`): enlaces a la raíz.
+
+### Pendiente fuera del código (lo hace Claudio)
+- `NEXT_PUBLIC_URL=https://muzikchile.cl` en Vercel (Production) y redeploy.
+- **App de MP**: registrar `https://muzikchile.cl/api/mp/oauth/callback` como
+  redirect URI **antes** de cambiar `NEXT_PUBLIC_URL`, o el OAuth falla.
+- **Webhook de MP** (productivo y de prueba) →
+  `https://muzikchile.cl/api/mercadopago/webhook`: un 308 en un POST no se
+  sigue.
+- **Secret `SITE_URL`** de `invitar-artista` (Dashboard → Edge Functions →
+  Secrets) → `https://muzikchile.cl`. Redeploy de la función opcional (solo
+  cambia el respaldo).
+- Correr `aplicar-plantillas-auth.mjs --aplicar` (Site URL, Redirect URLs y
+  plantillas).
+- Search Console: verificar la propiedad y enviar
+  `https://muzikchile.cl/sitemap.xml`.
 
 ---
 

@@ -31,7 +31,7 @@ Copia `.env.example` → `.env.local`:
 - `SUPABASE_SERVICE_ROLE_KEY` — solo en Route Handlers (bypassa RLS)
 - `NEXT_PUBLIC_URL` — URL base para los `back_urls` de MercadoPago (ej. `http://localhost:3000`)
   y la `redirect_uri` del OAuth de MP: en producción tiene que ser exactamente
-  `https://www.muzikchile.cl` (la registrada en la aplicación de MP)
+  `https://muzikchile.cl` (sin www; la registrada en la aplicación de MP)
 - `MP_CLIENT_ID` / `MP_CLIENT_SECRET` — aplicación de MP del marketplace (OAuth)
 - `MP_TOKENS_KEY` — llave AES-256 (32 bytes base64) que cifra los tokens de los
   artistas; si cambia, todas las cuentas tienen que reconectarse
@@ -120,13 +120,16 @@ Header y el Footer; al crearlas, se vuelven a enlazar.
 Production (no hace falta `vercel --prod`). Una migración que el código nuevo
 necesita se aplica **antes** del push.
 
-Dominio canónico: **www.muzikchile.cl**. `muzikchile.cl` y
-`tienda.muzikchile.cl` (desde 2026-10-25, `/api` incluido) redirigen a www
-como redirect de dominio en Vercel, no en el código. Los redirects de
+Dominio canónico: **muzikchile.cl** (sin www, desde 2026-11-12).
+`www.muzikchile.cl` y `tienda.muzikchile.cl` (`/api` incluido) redirigen 308 a
+la raíz como redirect de dominio en Vercel, no en el código. Un 308 no sirve
+para un POST (webhooks, cron): todo lo que llame a la API usa la raíz.
+`public/google57740c79c477eb8e.html` es la verificación de Search Console: no
+se borra. Los redirects de
 `next.config.ts` son de rutas: `/?categoria=` → `/tienda`, y las rutas del
 Channel sin equivalente acá → `tv.muzikchile.cl`, donde sigue el Channel
 (reproductor y su admin). El webhook de MP (panel de la app, modo productivo y
-de prueba) apunta a `https://www.muzikchile.cl/api/mercadopago/webhook`.
+de prueba) apunta a `https://muzikchile.cl/api/mercadopago/webhook`.
 
 ### Auth y roles
 
