@@ -3,11 +3,11 @@
  *
  * `NEXT_PUBLIC_URL` ya se usa para los `back_urls` de MercadoPago; acá se
  * reutiliza para robots.txt, sitemap.xml y las URLs de OpenGraph. El fallback
- * es el dominio canónico de producción (www; muzikchile.cl y
- * tienda.muzikchile.cl redirigen ahí desde Vercel).
+ * es el dominio canónico de producción (sin www; www.muzikchile.cl y
+ * tienda.muzikchile.cl redirigen acá desde Vercel).
  */
 export const BASE_URL = (
-  process.env.NEXT_PUBLIC_URL ?? "https://www.muzikchile.cl"
+  process.env.NEXT_PUBLIC_URL ?? "https://muzikchile.cl"
 ).replace(/\/$/, "");
 
 /**

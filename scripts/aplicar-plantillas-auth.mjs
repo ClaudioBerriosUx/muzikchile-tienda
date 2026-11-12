@@ -86,11 +86,11 @@ const actual = await api("GET");
 // Ajustes de auth que van junto con las plantillas. tienda. es un redirect de
 // dominio desde el 2026-10-25: sus Redirect URLs se sacan. El resto de la lista
 // (p. ej. un localhost agregado a mano) se conserva.
-const WWW = "https://www.muzikchile.cl";
+const SITIO = "https://muzikchile.cl";
 const listaActual = (actual.uri_allow_list ?? "").split(",").filter(Boolean);
 const AJUSTES = {
-  site_url: WWW,
-  uri_allow_list: [...new Set([`${WWW}/**`, ...listaActual])]
+  site_url: SITIO,
+  uri_allow_list: [...new Set([`${SITIO}/**`, ...listaActual])]
     .filter((u) => !u.startsWith("https://tienda.muzikchile.cl"))
     .join(","),
   // 24 h: lo que dicen las plantillas ("vence en 24 horas"). Es el máximo.

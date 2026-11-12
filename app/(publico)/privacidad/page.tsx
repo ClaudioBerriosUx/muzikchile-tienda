@@ -62,7 +62,7 @@ export default function PrivacidadPage() {
 
         <div className="mt-8 space-y-4">
           <P>
-            En esta política te contamos qué datos personales tratamos en www.muzikchile.cl, para qué
+            En esta política te contamos qué datos personales tratamos en muzikchile.cl, para qué
             los usamos, quién más los recibe, cuánto tiempo los guardamos y cómo ejercer tus derechos.
             Sigue la Ley 19.628 sobre Protección de la Vida Privada, con las modificaciones de la Ley
             21.719.
