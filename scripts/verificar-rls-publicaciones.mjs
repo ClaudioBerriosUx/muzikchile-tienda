@@ -19,6 +19,11 @@
  * todos con el prefijo `rlstest-`, y los borra en el `finally`. Si el script
  * muere de forma abrupta, buscar y limpiar por ese prefijo.
  *
+ * Los casos (ac)–(ae) cambian la noticia destacada de la base. Se anota cuál era
+ * al empezar y el `finally` la restaura (caso "(limpieza)"). Si el script muere
+ * antes de eso, la destacada original queda desmarcada: volver a marcarla desde
+ * /admin/publicaciones.
+ *
  * ─────────────────────────────────────────────────────────────────────────────
  * POR QUÉ ESTÁ HECHO ASÍ
  *
@@ -214,6 +219,33 @@ async function limpiar() {
   console.log(`  Artistas de prueba eliminados: ${artistasTest?.length ?? 0}`);
 }
 
+/**
+ * Deja la destacada como estaba al empezar, aunque un caso haya fallado o el
+ * script se haya caído. Con service role: el trigger de columnas del admin no
+ * aplica. Se reporta como un caso más, así una restauración fallida hace
+ * fallar la corrida.
+ */
+async function restaurarDestacada(idOriginal) {
+  let desmarcar = admin.from("publicaciones").update({ destacada: false }).eq("destacada", true);
+  if (idOriginal) desmarcar = desmarcar.neq("id", idOriginal);
+  const { error: errDesmarcar } = await desmarcar;
+
+  let errMarcar = null;
+  if (idOriginal) {
+    ({ error: errMarcar } = await admin.from("publicaciones").update({ destacada: true }).eq("id", idOriginal));
+  }
+
+  const { data: ahora, error: errLeer } = await admin.from("publicaciones").select("id").eq("destacada", true);
+  const ids = (ahora ?? []).map((f) => f.id);
+  const ok = !errDesmarcar && !errMarcar && !errLeer
+    && (idOriginal ? ids.length === 1 && ids[0] === idOriginal : ids.length === 0);
+  check(
+    `(limpieza) Destacada restaurada a la del inicio (${idOriginal ?? "ninguna"})`,
+    ok,
+    ok ? null : (errDesmarcar ?? errMarcar ?? errLeer)?.message ?? `Quedó: ${ids.join(", ") || "ninguna"}`
+  );
+}
+
 // ── Casos ────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -223,6 +255,20 @@ async function main() {
 
   let A = null;
   let B = null;
+
+  // Los casos de `destacada` mueven la destacada real de la base: se anota cuál
+  // era para dejarla igual al final (restaurarDestacada, en el finally). Sin la
+  // columna no se sigue: falta aplicar la migración 20261114120000.
+  const { data: destacadaOriginal, error: errOriginal } = await admin
+    .from("publicaciones")
+    .select("id")
+    .eq("destacada", true)
+    .maybeSingle();
+  if (errOriginal) {
+    console.error(`No se pudo leer la destacada actual (¿falta la migración 20261114120000?): ${errOriginal.message}`);
+    process.exit(1);
+  }
+  console.log(`Destacada al empezar: ${destacadaOriginal?.id ?? "ninguna"}\n`);
 
   try {
     console.log("Montando escenario (service role)...");
@@ -631,6 +677,96 @@ async function main() {
         !error && filaX?.estado === "devuelta" && filaX.comentario_moderacion === "Falta la fecha del show",
         error ? `Rechazado: ${error.code} ${error.message}` : JSON.stringify(filaX));
     }
+
+    // ── Destacada en portada (migración 20261114120000) ──────────────────────
+    // Mueven la destacada real de la base de pruebas; restaurarDestacada la
+    // deja como estaba al terminar.
+
+    /** Rechazo con un código dado, con detalle si llegó otro o ninguno. */
+    const rechazoCon = (error, code) =>
+      error ? (error.code === code ? null : `Error inesperado: ${error.code} ${error.message}`) : "NO fue rechazado";
+
+    /** Publicada directa con service role (el artista no puede autopublicarse). */
+    const publicadaDePrueba = async (artistaId, sufijo) => {
+      const { data, error } = await admin.from("publicaciones").insert({
+        ...base, artista_id: artistaId, titular: `Publicada ${sufijo}`,
+        slug: `${PREFIJO}-publicada-${sufijo}`, estado: "publicada", visibilidad: "publica",
+      }).select("id").single();
+      if (error) throw new Error(`No se pudo crear la publicada ${sufijo}: ${error.message}`);
+      return data.id;
+    };
+    const destacadaDe = async (id) =>
+      (await admin.from("publicaciones").select("destacada").eq("id", id).maybeSingle()).data?.destacada;
+
+    // (y) El artista no se destaca a sí mismo editando la columna.
+    {
+      const { data: borradorY } = await A.cliente.from("publicaciones").insert({
+        ...base, artista_id: A.artistaId, titular: "Borrador Y", slug: `${PREFIJO}-borrador-y`, estado: "borrador",
+      }).select("id").single();
+      const { error } = await A.cliente.from("publicaciones").update({ destacada: true }).eq("id", borradorY?.id ?? crypto.randomUUID());
+      check("(y) Artista UPDATE de destacada = true en su borrador → rechazado (42501)", error?.code === "42501", rechazoCon(error, "42501"));
+    }
+
+    // (z) Al insertar, destacada = true se ignora.
+    {
+      const { data: filaZ, error } = await A.cliente.from("publicaciones").insert({
+        ...base, artista_id: A.artistaId, titular: "Insert Z", slug: `${PREFIJO}-insert-z`, estado: "pendiente", destacada: true,
+      }).select("id").single();
+      const destacadaZ = filaZ ? await destacadaDe(filaZ.id) : undefined;
+      check("(z) Artista INSERT con destacada = true → se ignora (queda false)",
+        !error && destacadaZ === false,
+        error ? `Rechazado: ${error.code} ${error.message}` : `destacada = ${destacadaZ}`);
+    }
+
+    const P1 = await publicadaDePrueba(A.artistaId, "p1");
+    const P2 = await publicadaDePrueba(A.artistaId, "p2");
+
+    // (aa) Solo un admin llama a destacar_publicacion.
+    {
+      const { error } = await A.cliente.rpc("destacar_publicacion", { p_id: P1 });
+      check("(aa) Artista llama a destacar_publicacion → rechazado (42501)", error?.code === "42501", rechazoCon(error, "42501"));
+    }
+
+    // (ab) Un borrador no se puede destacar.
+    {
+      const { data: borradorAb } = await admin.from("publicaciones").insert({
+        ...base, artista_id: A.artistaId, titular: "Borrador AB", slug: `${PREFIJO}-borrador-ab`, estado: "borrador",
+      }).select("id").single();
+      const { error } = await ADM.cliente.rpc("destacar_publicacion", { p_id: borradorAb?.id ?? crypto.randomUUID() });
+      check("(ab) Admin destaca un borrador → rechazado (22023)", error?.code === "22023", rechazoCon(error, "22023"));
+    }
+
+    // (ac) Destacar otra desmarca la anterior: siempre una sola.
+    {
+      const { error: e1 } = await ADM.cliente.rpc("destacar_publicacion", { p_id: P1 });
+      const { error: e2 } = await ADM.cliente.rpc("destacar_publicacion", { p_id: P2 });
+      const { data: marcadas } = await admin.from("publicaciones").select("id").eq("destacada", true);
+      const ids = (marcadas ?? []).map((f) => f.id);
+      check("(ac) Admin destaca P1 y después P2 → queda solo P2",
+        !e1 && !e2 && ids.length === 1 && ids[0] === P2,
+        e1 || e2 ? `Rechazado: ${(e1 ?? e2).code} ${(e1 ?? e2).message}` : `Destacadas: ${ids.join(", ") || "ninguna"}`);
+    }
+
+    // (ad) Despublicar la destacada la desmarca (trigger publicaciones_quitar_destacada).
+    {
+      const { error } = await ADM.cliente.from("publicaciones").update({ estado: "borrador" }).eq("id", P2);
+      const destacadaAd = await destacadaDe(P2);
+      check("(ad) Admin despublica la destacada → queda destacada = false",
+        !error && destacadaAd === false,
+        error ? `Rechazado: ${error.code} ${error.message}` : `destacada = ${destacadaAd}`);
+    }
+
+    // (ae) Una nota de un artista de prueba no se destaca: la portada no la mostraría.
+    {
+      const PB = await publicadaDePrueba(B.artistaId, "pb");
+      const { error: errPrueba } = await admin.from("artistas").update({ es_prueba: true }).eq("id", B.artistaId);
+      if (errPrueba) throw new Error(`No se pudo marcar a B como de prueba: ${errPrueba.message}`);
+      const { error } = await ADM.cliente.rpc("destacar_publicacion", { p_id: PB });
+      const destacadaAe = await destacadaDe(PB);
+      check("(ae) Admin destaca la nota de un artista de prueba → rechazado (22023)",
+        error?.code === "22023" && destacadaAe === false,
+        rechazoCon(error, "22023") ?? (destacadaAe === false ? null : `destacada = ${destacadaAe}`));
+    }
   } catch (err) {
     console.error("\nError montando o ejecutando la verificación:");
     console.error(`  ${err.message}`);
@@ -640,6 +776,8 @@ async function main() {
     // recoge lo que quedó de una corrida que murió durante el montaje.
     void A; void B;
     await limpiar();
+    // Después de limpiar: si quedó marcada una nota de prueba, ya se borró.
+    await restaurarDestacada(destacadaOriginal?.id ?? null);
   }
 
   // ── Resumen ────────────────────────────────────────────────────────────────

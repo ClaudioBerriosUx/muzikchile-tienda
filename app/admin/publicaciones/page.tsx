@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, Undo2, Newspaper, Trash2, EyeOff, ExternalLink, Plus, Pencil } from "lucide-react";
+import { CheckCircle, Undo2, Newspaper, Trash2, EyeOff, ExternalLink, Plus, Pencil, Star, StarOff } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import StatusBadge from "@/components/ui/StatusBadge";
@@ -31,6 +31,18 @@ const ESTADOS_FILTRO = [
   { value: "devuelta",  label: "Devueltas" },
   { value: "borrador",  label: "Borradores" },
 ];
+
+/** La nota que va arriba de la portada (`publicaciones.destacada`). */
+function BadgePortada() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-semibold"
+      style={{ fontFamily: "var(--font-body)", backgroundColor: "#fef3c7", color: "#92400e" }}
+    >
+      <Star size={11} fill="currentColor" /> En portada
+    </span>
+  );
+}
 
 export default function ModerarPublicacionesPage() {
   const queryClient = useQueryClient();
@@ -187,6 +199,38 @@ export default function ModerarPublicacionesPage() {
     setProcesando(false);
   };
 
+  /**
+   * Fija esta nota arriba de la portada, o la quita. `destacar_publicacion`
+   * desmarca la anterior en la misma transacción y rechaza (22023) una nota
+   * que la portada no mostraría: no publicada, o de un artista de prueba.
+   *
+   * Despublicar o borrar la destacada no pasa por acá: la base la desmarca
+   * sola (trigger `publicaciones_quitar_destacada`), y esas acciones ya
+   * revalidan `/`.
+   */
+  const alternarDestacada = async () => {
+    if (!seleccionada) return;
+    setProcesando(true);
+    const supabase = createClient();
+    const quitar = seleccionada.destacada;
+
+    const { error } = await supabase.rpc(
+      "destacar_publicacion",
+      quitar ? {} : { p_id: seleccionada.id }
+    );
+
+    if (error) {
+      toast.error(`Error al ${quitar ? "quitar de" : "destacar en"} portada: ${error.message}`);
+    } else {
+      toast.success(quitar ? "Quitada de la portada" : "Destacada en la portada");
+      // Revalida `/` (y las rutas de la nota): la anterior también sale de ahí.
+      if (!(await revalidarNoticias(seleccionada.id))) toast.warning(AVISO_SIN_REVALIDAR);
+      invalidar();
+      setSeleccionada({ ...seleccionada, destacada: !quitar });
+    }
+    setProcesando(false);
+  };
+
   /** Borrado definitivo. Lo permite `publicaciones_delete_admin`. */
   const borrar = async () => {
     if (!aBorrar) return;
@@ -316,7 +360,10 @@ export default function ModerarPublicacionesPage() {
                     <p className="text-xs mt-0.5 truncate" style={{ fontFamily: "var(--font-body)", color: "#666666" }}>
                       {p.artistas?.nombre ?? "—"} · {etiquetaCategoria(p.categoria)}
                     </p>
-                    <div className="mt-1"><StatusBadge estado={p.estado} /></div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <StatusBadge estado={p.estado} />
+                      {p.destacada && <BadgePortada />}
+                    </div>
                   </div>
                 </button>
               );
@@ -367,6 +414,7 @@ export default function ModerarPublicacionesPage() {
 
             <div className="flex items-center gap-2 mb-3">
               <StatusBadge estado={seleccionada.estado} />
+              {seleccionada.destacada && <BadgePortada />}
               <span style={{ fontFamily: "var(--font-body)", fontSize: "13px", color: "#999999" }}>
                 {etiquetaCategoria(seleccionada.categoria)} · {fecha(seleccionada.created_at)}
               </span>
@@ -503,6 +551,26 @@ export default function ModerarPublicacionesPage() {
                     >
                       <ExternalLink size={16} /> Ver en el sitio
                     </Link>
+
+                    {/* Una sola destacada: destacar esta desmarca la anterior. */}
+                    <button
+                      onClick={alternarDestacada}
+                      disabled={procesando}
+                      className="w-full h-11 rounded-md font-semibold flex items-center justify-center gap-2 border transition-colors"
+                      style={{
+                        fontFamily: "var(--font-body)",
+                        backgroundColor: seleccionada.destacada ? "#ffffff" : "#fff7e0",
+                        borderColor: "#d97706",
+                        color: "#92400e",
+                        cursor: procesando ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {seleccionada.destacada ? (
+                        <><StarOff size={16} /> Quitar de portada</>
+                      ) : (
+                        <><Star size={16} /> Destacar en portada</>
+                      )}
+                    </button>
 
                     <div className="border border-[#e8e8e8] rounded-lg p-4">
                       <p className="mb-2 text-sm" style={{ fontFamily: "var(--font-body)", color: "#444444" }}>

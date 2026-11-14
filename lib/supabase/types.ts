@@ -635,6 +635,7 @@ export type Database = {
           comentario_moderacion: string | null
           created_at: string
           cuerpo: string | null
+          destacada: boolean
           estado: string
           fecha_cierre: string | null
           fecha_publicacion: string
@@ -655,6 +656,7 @@ export type Database = {
           comentario_moderacion?: string | null
           created_at?: string
           cuerpo?: string | null
+          destacada?: boolean
           estado?: string
           fecha_cierre?: string | null
           fecha_publicacion?: string
@@ -675,6 +677,7 @@ export type Database = {
           comentario_moderacion?: string | null
           created_at?: string
           cuerpo?: string | null
+          destacada?: boolean
           estado?: string
           fecha_cierre?: string | null
           fecha_publicacion?: string
@@ -923,6 +926,7 @@ export type Database = {
           tipo_cuenta: string
         }[]
       }
+      destacar_publicacion: { Args: { p_id?: string }; Returns: undefined }
       devolver_tienda: {
         Args: { p_admin: string; p_artista_id: string; p_comentario: string }
         Returns: string

@@ -194,6 +194,15 @@ checklist, público, copiado en `ordenes.vendedor_contacto` al pagar), y él ree
 desde su cuenta de MP. MuzikChile es el respaldo: el botón del admin es de emergencia
 y exige motivo (`lib/reembolsos.ts`).
 
+**Noticia destacada** (`publicaciones.destacada`, desde 2026-11-14): la nota de arriba
+de "Últimas noticias" en la portada (`traerNoticiaDestacada`; sin destacada, la
+editorial más reciente). Una sola (índice único parcial). Se elige solo con la RPC
+`destacar_publicacion(p_id)` desde `/admin/publicaciones`: solo admin, solo notas
+publicada + publica + noticia de un artista que no sea de prueba (22023 si no);
+sin `p_id`, la quita. El artista no la escribe (`proteger_columnas_publicacion`), y
+el trigger `publicaciones_quitar_destacada` la desmarca si la nota deja de ser
+pública. Verificación: `npm run verificar:rls` (casos y–ae).
+
 **Videos para el Channel** (`videos_channel`, desde 2026-11-08): versión simple, sin estados ni
 revisión. RLS: el artista solo inserta envíos propios (permisos por columna; `id` y
 `created_at` los pone la base); solo el admin lee; nadie edita ni borra. Los CHECK

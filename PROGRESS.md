@@ -1,6 +1,6 @@
 # PROGRESS.md — MuzikChile Tienda
 
-> Actualizado: 2026-11-12
+> Actualizado: 2026-11-14
 > Branch: `main` (en producción en muzikchile.cl; canónico sin www desde 2026-11-12)
 
 ---
@@ -2312,6 +2312,38 @@ de www porque así era entonces.
   plantillas).
 - Search Console: verificar la propiedad y enviar
   `https://muzikchile.cl/sitemap.xml`.
+
+---
+
+## ⭐ Noticia destacada en la portada — 2026-11-14
+
+El admin fija una nota arriba de "Últimas noticias" y se queda ahí aunque se
+publiquen otras. La fila de 3 sigue siendo las más recientes, sin repetirla.
+
+- **Migración `20261114120000_publicaciones_destacada`** (solo agrega):
+  `publicaciones.destacada` (default false) con índice único parcial (una sola);
+  `proteger_columnas_publicacion` la fuerza a false en el INSERT de un no-admin y
+  da 42501 si la cambia en un UPDATE; trigger `publicaciones_quitar_destacada`
+  (desmarca si la nota deja de ser publicada + publica + noticia); RPC
+  `destacar_publicacion(p_id)`: solo admin, rechaza con 22023 una nota no
+  pública o de un artista de prueba; sin `p_id`, la quita.
+- `lib/noticias.ts`: `traerNoticiaDestacada()` (mismos filtros de
+  `traerNoticias`, lanza ante error) y `aLista()` compartido.
+- Portada: principal = destacada ?? editorial más reciente ?? la más reciente.
+- `/admin/publicaciones`: badge "En portada" en la lista y el detalle, y botón
+  "Destacar en portada" / "Quitar de portada" en las publicadas, con
+  `revalidarNoticias`.
+- `verificar:rls`: casos (y)–(ae), y el `finally` restaura la destacada que había
+  al empezar (caso "(limpieza)").
+- `lib/supabase/types.ts` editado a mano (columna + RPC); falta regenerarlo.
+
+### Pendiente (lo corre Claudio)
+1. Aplicar la migración en `muzikchile-pruebas` y correr `npm run verificar:rls`.
+2. Producción: `db push --remote --dry-run` (solo esta migración) → `db push
+   --remote` → regenerar los tipos con `cmd /c`. **Antes del push del código**:
+   el build prerenderiza `/`, y sin la columna `traerNoticiaDestacada` lanza.
+3. Si la regeneración cambia algo más que el formato de `types.ts`, va en un
+   commit aparte antes del push.
 
 ---
 

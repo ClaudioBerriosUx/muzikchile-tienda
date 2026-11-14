@@ -98,6 +98,13 @@ export function resumenNoticia(bajada: string | null, cuerpo: string | null): st
   return cuerpo ? aTextoPlano(cuerpo, LARGO_RESUMEN) || null : null;
 }
 
+/** Fila de CAMPOS_LISTA → NoticiaLista: el cuerpo arma el resumen y no viaja a la tarjeta. */
+function aLista<T extends { bajada: string | null; cuerpo: string | null }>(
+  { cuerpo, ...n }: T
+): Omit<T, "cuerpo"> & { resumen: string | null } {
+  return { ...n, resumen: resumenNoticia(n.bajada, cuerpo) };
+}
+
 function cliente() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -133,10 +140,36 @@ export async function traerNoticias(
     console.error("[noticias] error cargando el listado:", error.message);
     throw new Error(`[noticias] error cargando el listado: ${error.message}`);
   }
-  return (data ?? []).map(({ cuerpo, ...n }) => ({
-    ...n,
-    resumen: resumenNoticia(n.bajada, cuerpo),
-  }));
+  return (data ?? []).map(aLista);
+}
+
+/**
+ * La noticia que el admin fijó arriba de la portada (`publicaciones.destacada`,
+ * con `destacar_publicacion` desde /admin/publicaciones). Mismos filtros que
+ * `traerNoticias`: si la nota deja de ser pública o su artista pasa a ser de
+ * prueba, no sale, y la portada vuelve a la editorial más reciente.
+ *
+ * Devuelve null si no hay ninguna. Un error lanza, igual que el resto.
+ */
+export async function traerNoticiaDestacada(): Promise<NoticiaLista | null> {
+  const supabase = cliente();
+
+  const { data, error } = await supabase
+    .from("publicaciones")
+    .select(CAMPOS_LISTA)
+    .eq("destacada", true)
+    .eq("estado", "publicada")
+    .eq("visibilidad", "publica")
+    .eq("tipo", "noticia")
+    .eq("artistas.es_prueba", false)
+    // El índice único garantiza una sola; maybeSingle: "ninguna" no es error.
+    .maybeSingle();
+
+  if (error) {
+    console.error("[noticias] error cargando la destacada:", error.message);
+    throw new Error(`[noticias] error cargando la destacada: ${error.message}`);
+  }
+  return data ? aLista(data) : null;
 }
 
 /**
@@ -160,10 +193,7 @@ export async function traerNoticiasDeArtista(artistaId: string): Promise<Noticia
     console.error("[noticias] error cargando las noticias del artista:", error.message);
     throw new Error(`[noticias] error cargando las noticias del artista: ${error.message}`);
   }
-  return (data ?? []).map(({ cuerpo, ...n }) => ({
-    ...n,
-    resumen: resumenNoticia(n.bajada, cuerpo),
-  }));
+  return (data ?? []).map(aLista);
 }
 
 /**

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { C, F, TEMA } from "@/lib/portada";
 import { etiquetaCategoria } from "@/lib/publicaciones";
-import { traerNoticias, fechaCorta, origenNoticia } from "@/lib/noticias";
+import { traerNoticias, traerNoticiaDestacada, fechaCorta, origenNoticia } from "@/lib/noticias";
 import ImagenNoticia from "@/components/noticias/ImagenNoticia";
 import FirmaNoticia, { ENLACE_ESTIRADO } from "@/components/noticias/FirmaNoticia";
 import BadgeComunidad from "@/components/noticias/BadgeComunidad";
@@ -11,8 +11,10 @@ import BadgeComunidad from "@/components/noticias/BadgeComunidad";
  * (lib/noticias.ts), la misma consulta del feed /noticias.
  *
  * Composición, imágenes en formato Instagram 4:5:
- *   1. Destacada a todo el ancho: SIEMPRE la editorial más reciente, aunque haya
- *      una nota de la comunidad más nueva. Imagen a 1/3, texto al lado.
+ *   1. Destacada a todo el ancho: la que fijó el admin ("Destacar en portada"
+ *      en /admin/publicaciones, `traerNoticiaDestacada`), que se queda aunque
+ *      se publiquen notas nuevas. Sin destacada, la editorial más reciente,
+ *      aunque haya una de la comunidad más nueva. Imagen a 1/3, texto al lado.
  *   2. Fila de 3 tarjetas: las más recientes de cualquier origen, sin repetir la
  *      destacada. Imagen arriba, badges + fecha, titular y firma.
  *
@@ -77,13 +79,15 @@ function Badge({ categoria }: { categoria: string | null }) {
 export default async function UltimasNoticias() {
   // En paralelo. Se traen 4 recientes para que, si la destacada está entre
   // ellas, al sacarla queden igual 3.
-  const [[editorial], recientes] = await Promise.all([
+  const [destacada, [editorial], recientes] = await Promise.all([
+    traerNoticiaDestacada(),
     traerNoticias({ origen: "editorial", limite: 1 }),
     traerNoticias({ limite: 4 }),
   ]);
 
-  // Sin editoriales (no debería pasar), la más reciente de cualquier origen.
-  const principal = editorial ?? recientes[0];
+  // La fijada por el admin; si no hay, la editorial más reciente; sin
+  // editoriales (no debería pasar), la más reciente de cualquier origen.
+  const principal = destacada ?? editorial ?? recientes[0];
 
   // Sin noticias publicadas, la sección no existe.
   if (!principal) return null;
